@@ -1,0 +1,76 @@
+{
+  "ai": {
+    "defaultTone": "Professional",
+    "defaultType": "Clinical Pearl",
+    "language": "English"
+  },
+  "notifications": {
+    "emailPublish": true,
+    "emailAnalytics": true,
+    "emailFails": true,
+    "pushPublish": true,
+    "pushComments": true,
+    "pushWeeklyReport": true
+  },
+  "prompts": {},
+  "autoPost": {
+    "enabled": true,
+    "postsPerDay": 2,
+    "postTypes": [
+      "EDUCATIONAL",
+      "CLINICAL_PEARL",
+      "QUIZ",
+      "CAROUSEL",
+      "MYTH_FACT",
+      "CASE_STUDY",
+      "ANGIOGRAPHY_QUIZ",
+      "ECG_QUIZ",
+      "PREVENTIVE"
+    ],
+    "topics": [
+      "Coronary artery disease",
+      "Heart failure management",
+      "ECG interpretation",
+      "Hypertension guidelines",
+      "STEMI recognition"
+    ],
+    "scheduleDays": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "scheduleTimes": [
+      "08:00",
+      "19:00"
+    ],
+    "timezone": "UTC",
+    "autoPublish": true
+  },
+  "stories": {
+    "enabled": true,
+    "postTime": "09:00",
+    "scheduleDays": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "topics": [
+      "Preventing heart disease with diet and exercise",
+      "Blood pressure management tips",
+      "Cholesterol and heart health",
+      "Warning signs of heart attack",
+      "Diabetes and cardiovascular risk",
+      "Stress management for heart health",
+      "Heart-healthy lifestyle habits"
+    ],
+    "customPromptExtra": ""
+  }
+}

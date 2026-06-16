@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Environment files (contain secrets — never commit these)
+.env
+.env.local
+.env.production
+
+# Generated content
+generated/posts/*.json
+generated/carousels/*.json
+generated/quizzes/*.json
+generated/reels/*.json
+generated/hashtags/*.json
+generated/images/*
+
+# Prisma
+prisma/migrations/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env*
+!.env.example
+
+# Railway
+.railway/
+
+# Build artifacts
+*.log
+.turbo/
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.swp
+
+tsconfig.tsbuildinfo

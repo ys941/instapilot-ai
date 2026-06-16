@@ -1,0 +1,322 @@
+// InstaPilot AI - Prisma Schema
+// White-label, any-niche, multi-account dual-platform (Instagram + YouTube) automation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum PostType {
+  EDUCATIONAL
+  QUIZ
+  CAROUSEL
+  MYTH_FACT
+  CLINICAL_PEARL
+  CASE_STUDY
+  ANGIOGRAPHY_QUIZ
+  ECG_QUIZ
+  PREVENTIVE
+  CTA
+  REEL
+  STORY
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}
+
+enum ScheduleStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+  CANCELLED
+}
+
+enum HashtagCategory {
+  HIGH_VOLUME
+  MEDIUM_COMPETITION
+  NICHE
+  TRENDING
+}
+
+enum WorkflowStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+}
+
+// ─────────────────────────────────────────────
+// MODELS
+// ─────────────────────────────────────────────
+
+// A "Brand" = a paired Instagram account + YouTube channel.
+// Mirrors the current single-account setup. The PRIMARY brand (isPrimary=true)
+// resolves credentials from ENV vars (backward compatible); non-primary brands
+// store their own credentials in the columns below.
+//
+// NOTE: credential columns are NULLABLE on purpose — the primary brand leaves
+// them null and resolves from ENV. Schema is ADDITIVE so `prisma db push`
+// applies cleanly without breaking existing rows.
+model Brand {
+  id        String  @id @default(cuid())
+  label     String
+  isPrimary Boolean @default(false)
+  active    Boolean @default(true)
+
+  // Instagram credentials (null for primary → resolved from ENV)
+  igAccessToken       String?
+  igBusinessAccountId String?
+  igUsername          String?
+  fbPageId            String?
+
+  // YouTube credentials (null for primary → resolved from ENV)
+  ytClientId     String?
+  ytClientSecret String?
+  ytRefreshToken String?
+  ytChannelId    String?
+  ytChannelTitle String?
+
+  // Per-brand settings blob — same shape as AllPreferences
+  // (ai, autoPost, stories, youtube, notifications, prompts) PLUS
+  // igDefaultPrompt and ytDefaultPrompt. For the primary brand, settings live
+  // in the Preferences singleton instead, so this stays null for primary.
+  settings Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isPrimary])
+  @@index([active, createdAt])
+}
+
+model User {
+  id                   String          @id @default(cuid())
+  email                String          @unique
+  password             String
+  name                 String?
+  role                 Role            @default(USER)
+  instagramToken       String?
+  instagramAccountId   String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  posts                Post[]
+  scheduledPosts       ScheduledPost[]
+  aiGenerations        AIGeneration[]
+  activityLogs         ActivityLog[]
+}
+
+model Post {
+  id                   String      @id @default(cuid())
+  userId               String
+  user                 User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                 PostType
+  title                String
+  content              String      @db.Text
+  hook                 String?
+  cta                  String?
+  hashtags             String[]
+  imagePrompt          String?
+  reelScript           String?
+  status               PostStatus  @default(DRAFT)
+  instagramPostId      String?
+  viralScore           Float?
+  engagementPrediction Float?
+  publishedAt          DateTime?
+  scheduledFor         DateTime?
+  platform             String      @default("instagram")  // "instagram" | "youtube" | "both"
+  youtubeVideoId       String?     // set after the post is mirrored/published to YouTube as a Short
+  mediaUrls            String[]
+  carouselSlides       Json?
+  metrics              Json?
+  brandId              String?     // NULL = the primary brand (backward compatible)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  analytics            Analytics?
+
+  @@index([userId, createdAt(sort: Desc)])  // dashboard list — most common query
+  @@index([userId, status])                 // filter by status (DRAFT / PUBLISHED)
+  @@index([instagramPostId])                // webhook lookup by IG post ID
+  @@index([brandId])                        // per-brand filtering (multi-account)
+}
+
+model ScheduledPost {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId        String?
+  postType      String?        // "STORY" for stories, or any PostType value; null = regular post
+  platform      String         @default("instagram")  // "instagram" | "youtube" | "both"
+  title         String
+  content       String         @db.Text
+  hashtags      String[]
+  mediaUrl      String?
+  scheduledFor  DateTime
+  timezone      String         @default("UTC")
+  status        ScheduleStatus @default(PENDING)
+  retryCount    Int            @default(0)
+  isRecurring   Boolean        @default(false)
+  recurringRule String?
+  publishedAt     DateTime?
+  instagramPostId String?        // IG media ID returned after successful publish
+  youtubeVideoId  String?        // YouTube video ID after the Short is mirrored (idempotency guard)
+  error           String?
+  brandId         String?        // NULL = the primary brand (backward compatible)
+  createdAt       DateTime       @default(now())
+
+  @@index([status, scheduledFor])  // catchup runs this query every 60s
+  @@index([platform, status, scheduledFor])  // YouTube per-day count + platform-routed publish
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([brandId])               // per-brand filtering (multi-account)
+}
+
+model Analytics {
+  id               String   @id @default(cuid())
+  postId           String   @unique
+  post             Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  likes            Int      @default(0)
+  comments         Int      @default(0)
+  shares           Int      @default(0)
+  saves            Int      @default(0)
+  reach            Int      @default(0)
+  impressions      Int      @default(0)
+  engagementRate   Float    @default(0)
+  clickThroughRate Float    @default(0)
+  brandId          String?  // NULL = the primary brand (backward compatible)
+  updatedAt        DateTime @updatedAt
+
+  @@index([brandId])         // per-brand filtering (multi-account)
+}
+
+model AccountAnalytics {
+  id             String   @id @default(cuid())
+  date           DateTime @default(now())
+  followers      Int      @default(0)
+  following      Int      @default(0)
+  posts          Int      @default(0)
+  reach          Int      @default(0)
+  impressions    Int      @default(0)
+  profileVisits  Int      @default(0)
+  websiteClicks  Int      @default(0)
+  engagementRate Float    @default(0)
+  brandId        String?  // NULL = the primary brand (backward compatible)
+
+  @@index([brandId])        // per-brand filtering (multi-account)
+}
+
+model Comment {
+  id                  String   @id @default(cuid())
+  instagramCommentId  String   @unique
+  postId              String?  // nullable — comments on non-DB Instagram posts have no linked post
+  mediaId             String?  // Instagram media ID (for posts not tracked in DB)
+  username            String
+  text                String
+  timestamp           DateTime
+  sentiment           String?
+  replied             Boolean  @default(false)
+  replyText           String?
+  brandId             String?  // NULL = the primary brand (backward compatible)
+  createdAt           DateTime @default(now())
+
+  @@index([mediaId])              // webhook: find post by IG media ID
+  @@index([replied, createdAt(sort: Desc)])  // dashboard: unreplied comments list
+  @@index([brandId])              // per-brand filtering (multi-account)
+}
+
+model Hashtag {
+  id             String          @id @default(cuid())
+  tag            String          @unique
+  category       HashtagCategory
+  volume         Int             @default(0)
+  engagementRate Float           @default(0)
+  score          Float           @default(0)
+  estimatedReach Int             @default(0)
+  isBanned       Boolean         @default(false)
+  topic          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model AIGeneration {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       PostType
+  prompt     String   @db.Text
+  result     Json
+  tokensUsed Int      @default(0)
+  model      String   @default("grok-beta")
+  duration   Int?
+  createdAt  DateTime @default(now())
+}
+
+model Workflow {
+  id            String        @id @default(cuid())
+  name          String
+  description   String?
+  n8nWorkflowId String?
+  status        WorkflowStatus @default(ACTIVE)
+  schedule      String?
+  lastRunAt     DateTime?
+  nextRunAt     DateTime?
+  successCount  Int           @default(0)
+  failureCount  Int           @default(0)
+  createdAt     DateTime      @default(now())
+
+  logs          WorkflowLog[]
+}
+
+model WorkflowLog {
+  id         String   @id @default(cuid())
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  status     String
+  message    String   @db.Text
+  duration   Int?
+  createdAt  DateTime @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  entity    String?
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])  // activity feed — always sorted newest first
+}
+
+// Singleton preferences row — always id = "singleton"
+// Replaces the ephemeral data/preferences.json file so settings
+// survive Railway restarts and redeployments.
+model Preferences {
+  id            String   @id @default("singleton")
+  ai            Json
+  notifications Json
+  prompts       Json
+  autoPost      Json
+  stories       Json
+  youtube       Json?
+  brand         Json?    // BrandConfig white-label skin for the primary account
+  updatedAt     DateTime @updatedAt
+}

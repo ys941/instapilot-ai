@@ -1,0 +1,18 @@
+# Nixpacks build configuration for Railway.
+#
+# Backstop for SVG text rendering: the hook/outro cards (lib/hookCard.ts) and the
+# Satori content cards are rasterized by `sharp` (bundled librsvg + fontconfig).
+# The hook/outro cards now embed their own @font-face, so they no longer depend
+# on system fonts — but we ALSO install real TTF families here so that any plain
+# `font-family="Arial"` (or future SVG) substitutes to Liberation/DejaVu instead
+# of rendering blank on the bare Linux container.
+#
+#   fontconfig    — font discovery/matching used by librsvg/pango
+#   liberation_ttf — metric-compatible Arial/Helvetica/Times substitutes
+#   dejavu_fonts   — broad Unicode sans/serif coverage fallback
+#
+# ffmpeg is included as a safe backstop for video assembly (the app ships
+# ffmpeg-static, but a system ffmpeg costs nothing and avoids surprises).
+
+[phases.setup]
+nixPkgs = ["...", "fontconfig", "liberation_ttf", "dejavu_fonts", "ffmpeg"]

@@ -1,0 +1,73 @@
+version: "3.9"
+
+# Self-host InstaPilot AI with one command:
+#   cp .env.example .env   # fill in your keys
+#   docker compose up -d --build
+#
+# Brings up the Next.js app + PostgreSQL (+ optional Redis). DATABASE_URL is wired
+# automatically to the bundled Postgres; everything else comes from your .env file.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: instapilot-app
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # Override the connection string to point at the bundled Postgres service.
+      DATABASE_URL: postgresql://instapilot:instapilot_secret@postgres:5432/instapilot_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: instapilot-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: instapilot
+      POSTGRES_PASSWORD: instapilot_secret
+      POSTGRES_DB: instapilot_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U instapilot -d instapilot_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # Optional — only used if you wire a cache/queue. Safe to remove.
+  redis:
+    image: redis:7-alpine
+    container_name: instapilot-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres-data:
+    name: instapilot-postgres-data
+  redis-data:
+    name: instapilot-redis-data

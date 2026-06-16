@@ -1,0 +1,27 @@
+node_modules
+.next
+.git
+.env
+.env.local
+.env.production
+*.log
+dev-server.log
+tsconfig.tsbuildinfo
+.turbo
+.vscode
+.idea
+generated/posts/*.json
+generated/carousels/*.json
+generated/quizzes/*.json
+generated/reels/*.json
+generated/hashtags/*.json
+generated/images/*
+Dockerfile.bak
+docker-entrypoint.sh.bak
+*.bak
+# Throwaway local card-render scratch scripts (not part of the app)
+render-all.ts
+render-all2.ts
+render-test.ts
+render-edu-v2.mjs
+README.md
