@@ -154,3 +154,73 @@ export async function generateTextResilient(
   if (bestNonEmpty) return bestNonEmpty; // no tier passed the gate — caller validates/falls back
   throw lastErr ?? new Error("[AIFactory] all text tiers failed");
 }
+
+/**
+ * Resilient JSON generation — the JSON analogue of generateTextResilient.
+ *
+ * The Gemini-only JSON path (gemini.ts#generateContentJSON) walks just the Gemini
+ * model chain and, when EVERY model 429s (free quota fully exhausted, limit:0),
+ * returns "" without ever trying Grok — so callers ship canned filler. This wrapper
+ * tiers Gemini JSON ↔ Grok JSON the same way generateTextResilient tiers text.
+ *
+ * Tiers:
+ *   provider "gemini" → [Gemini JSON, Grok JSON]
+ *   otherwise         → [Grok JSON,  Gemini JSON]
+ *
+ * A tier's result is ACCEPTED only if it's non-empty AND, after stripping
+ * ```json / ``` fences and trimming, it STARTS WITH `{` or `[` (looks like JSON).
+ * The first acceptable RAW string is returned un-stripped (callers already strip).
+ * If no tier passes, the best non-empty raw string is returned; else "".
+ *
+ * Returns a RAW JSON string (caller parses), or "" if all tiers fail.
+ */
+export async function generateJSONResilient(
+  prompt: string,
+  system: string,
+  maxTokens = 2000,
+  /** When set, selects the AI provider/key for THIS brand (else primary/global). */
+  brandId?: string | null,
+): Promise<string> {
+  const provider = await selectedProvider(brandId);
+  const gemini   = await maybeGemini(brandId);
+
+  // A raw model reply "looks like JSON" if, after fence-strip + trim, it starts
+  // with { or [. Same fence-strip pattern used by gemini.ts#parseJson.
+  const looksLikeJSON = (raw: string): boolean => {
+    const cleaned = raw.replace(/```json\n?/gi, "").replace(/```\n?/gi, "").trim();
+    return cleaned.startsWith("{") || cleaned.startsWith("[");
+  };
+
+  const tiers: Array<{ name: string; run: () => Promise<string> }> = [];
+  const grokTier   = { name: "grok-json",   run: () => getGrokClient().generateContentJSON(prompt, system, maxTokens) };
+  const geminiTier = gemini ? { name: "gemini-json", run: () => gemini.generateContentJSON(prompt, system, maxTokens) } : null;
+
+  if (provider === "gemini") {
+    if (geminiTier) tiers.push(geminiTier); // 1. Gemini JSON
+    tiers.push(grokTier);                    // 2. Grok JSON
+  } else {
+    tiers.push(grokTier);                    // 1. Grok JSON (selected)
+    if (geminiTier) tiers.push(geminiTier);  // 2. Gemini JSON
+  }
+
+  let bestNonEmpty = "";
+  for (const t of tiers) {
+    try {
+      const out = await t.run();
+      if (out && out.trim().length > 0) {
+        if (looksLikeJSON(out)) {
+          if (t.name !== tiers[0].name) console.log(`[AIFactory] JSON served by tier: ${t.name}`);
+          return out; // raw, un-stripped — callers already strip fences
+        }
+        // Non-empty but not JSON-shaped — keep as a last-ditch option, try next tier.
+        if (!bestNonEmpty) bestNonEmpty = out;
+        console.warn(`[AIFactory] tier ${t.name} returned non-JSON output — trying next tier`);
+      }
+    } catch (err: any) {
+      // 429/throw — advance to the next tier (this is what lets Grok run when
+      // every Gemini model is rate-limited).
+      console.warn(`[AIFactory] JSON tier ${t.name} failed:`, err?.message ?? err);
+    }
+  }
+  return bestNonEmpty; // "" if no tier produced anything — caller falls back
+}

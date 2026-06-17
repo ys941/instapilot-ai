@@ -9,7 +9,10 @@
  * Carousel → multi-slide Short; story → story card; everything else → one card.
  */
 
-import { renderCardsToShortMp4 } from "@/lib/videoGenerator";
+import { renderCardsToShortMp4, probeAudioDurationSec } from "@/lib/videoGenerator";
+import { withRenderLock } from "@/lib/renderLock";
+import { synthesizeSpeech, isTtsConfigured } from "@/lib/tts";
+import { wordTimestamps, buildAssCaptions } from "@/lib/captions";
 import { uploadShort, setVideoThumbnail, type YouTubeCreds } from "@/lib/youtube";
 import { renderHookCard, renderOutroCard, THEMES, type Theme } from "@/lib/hookCard";
 import { buildBeautifulCaption } from "@/lib/captionBuilder";
@@ -854,8 +857,13 @@ function pickRotatingShortTheme(postId?: string): Theme {
  */
 export async function buildShortForPost(
   post: YtPostInput,
-  yt: Pick<YouTubeSettings, "secondsPerImage" | "descriptionSuffix">,
+  yt: Pick<YouTubeSettings, "secondsPerImage" | "descriptionSuffix" | "voiceover" | "voiceoverVoice" | "burnCaptions">,
 ): Promise<BuiltShort> {
+  // Serialize the ENTIRE build (slide + hook/outro render + music + ffmpeg) PROCESS-WIDE
+  // so only ONE memory-heavy Short renders at a time. The publish triggers (30s scheduler
+  // route, 5min catchup, auto-publish) aren't otherwise coordinated, and two concurrent
+  // builds (~20 card buffers + 2 music buffers) OOM-killed the container.
+  return withRenderLock(async (): Promise<BuiltShort> => {
   const brand = await getBrand();
   const uploadedUrl = post.mediaUrls?.find(Boolean) ?? null;
 
@@ -941,16 +949,64 @@ export async function buildShortForPost(
     ...(hasOutro ? [OUTRO_SECS] : []),
   ];
 
+  // ── AI voiceover + word-by-word captions (Settings → YouTube → voiceover) ─────
+  // Best-effort: any failure (TTS/Whisper/parse) falls back to the silent music-only
+  // Short. When on, narration becomes the dominant audio (music auto-ducked) and the
+  // cards are re-timed to span the narration so the burned captions stay in sync.
+  // The script is NEUTRAL — built from the post + the brand's niche, never a fixed niche.
+  let voiceTrack: Buffer | null = null;
+  let assSubtitles: string | null = null;
+  let voDurations = durations;
+  if (yt.voiceover && isTtsConfigured()) {
+    try {
+      const niche = (brand.niche ?? "").trim();
+      const strip = (s: string) => (s || "").replace(/[*_#`>~]/g, "").replace(/\s+/g, " ").trim();
+      const points = strip(post.content || "")
+        .split(/\n|(?<=[.!?])\s+/).map(strip).filter((p) => p.length > 1);
+      let script = [strip(shortHook || post.title), ...points].filter(Boolean).join(". ").replace(/\.{2,}/g, ".");
+      const words = script.split(/\s+/);
+      if (words.length > 130) script = words.slice(0, 130).join(" "); // ~≤55s of speech
+      script = `${script}. Follow for more ${niche || "tips"}.`;
+
+      const tts = await synthesizeSpeech(script, { voice: yt.voiceoverVoice || undefined });
+      if (tts?.audio?.length) {
+        voiceTrack = tts.audio;
+        const dur = await probeAudioDurationSec(tts.audio);
+        if (dur > 1) {
+          // Re-time ALL cards to evenly span the narration (cap 58s); captions sync to voice.
+          const totalV = Math.min(58, dur + 0.5);
+          voDurations = buffers.map(() => Math.max(2, totalV / buffers.length));
+        }
+        // Burned-in captions are opt-in (Settings → "Burn captions"). When OFF we still
+        // narrate, but skip the Whisper align + caption burn so YouTube can auto-generate
+        // captions and auto-translate them per viewer location (burned text can't translate).
+        if (yt.burnCaptions) {
+          try {
+            const w = await wordTimestamps(tts.audio, tts.format);
+            if (w.length) assSubtitles = buildAssCaptions(w, { width: 720, height: 1280 });
+          } catch (e: any) { console.warn("[YouTube] caption build failed:", e?.message ?? e); }
+        }
+        console.log(`[YouTube] Voiceover ON: ${Math.round(voiceTrack.length / 1024)}KB voice, burnedCaptions=${assSubtitles ? "yes" : "no (YouTube auto-captions)"}`);
+      } else {
+        console.warn("[YouTube] Voiceover enabled but TTS returned no audio — music-only fallback");
+      }
+    } catch (e: any) {
+      console.warn("[YouTube] Voiceover generation failed — music-only fallback:", e?.message ?? e);
+    }
+  }
+
   const music = await selectMusicForCardSafe(buffers[0]);
 
   const mp4 = await renderCardsToShortMp4(buffers, {
-    durations,
+    durations:       voDurations,
     secondsPerImage: contentSecs, // fallback for any unspecified card
     audio:           music?.buffer ?? null,
+    voiceTrack,
+    assSubtitles,
   });
   if (!mp4) throw new Error("ffmpeg failed to render the Short MP4");
 
-  console.log(`[YouTube] Built carousel Short: ${buffers.length} cards (hook ${HOOK_SECS}s + ${contentCount}×${contentSecs}s + outro ${OUTRO_SECS}s) ≈ ${durations.reduce((a,b)=>a+b,0)}s`);
+  console.log(`[YouTube] Built carousel Short: ${buffers.length} cards${voiceTrack ? " + AI voiceover" : ` (hook ${HOOK_SECS}s + ${contentCount}×${contentSecs}s + outro ${OUTRO_SECS}s)`} ≈ ${voDurations.reduce((a,b)=>a+b,0).toFixed(0)}s`);
 
   // Build the ONE unified rich caption + suffix (shared identically with Instagram —
   // generated once and cached in-memory by post.id), then append the music attribution
@@ -966,6 +1022,7 @@ export async function buildShortForPost(
     isPassthroughVideo: false,
     hookThumb: hookCard,   // also used as the custom YouTube thumbnail
   };
+  }); // end withRenderLock
 }
 
 /**
@@ -997,7 +1054,7 @@ async function selectMusicForCardSafe(
  */
 export async function publishPostToYouTubeShort(
   post: YtPostInput,
-  yt: Pick<YouTubeSettings, "privacy" | "secondsPerImage" | "descriptionSuffix">,
+  yt: Pick<YouTubeSettings, "privacy" | "secondsPerImage" | "descriptionSuffix" | "voiceover" | "voiceoverVoice" | "burnCaptions">,
   creds?: YouTubeCreds,
 ): Promise<PublishYtResult & { mp4: Buffer; description: string }> {
   const brand = await getBrand();

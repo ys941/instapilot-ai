@@ -41,6 +41,7 @@ Running a serious Instagram **and** YouTube presence is two full-time jobs: idea
 - **🎨 Truly white-label, zero code.** App name, niche, persona, account handles, content-type labels — all from the **Settings UI**. Re-skin it for cooking, fitness, finance, anything, in minutes.
 - **📱 + ▶️ Two platforms, one brain.** Native Instagram posts, carousels, and Stories **and** vertical YouTube Shorts — written once, published everywhere, with identical rich captions.
 - **🔁 Smart cross-posting.** Turn a YouTube Short into an Instagram Reel automatically — same render, on its own deferred schedule.
+- **🎙️ AI voiceover + auto-translated captions.** Give every Short a natural AI narration over auto-ducked music, and let YouTube auto-translate your captions into every viewer's language — or burn TikTok-style word-by-word captions right into the video. Reach a global audience, hands-free.
 - **🤖 Real conversations.** Auto-replies to Instagram comments and DMs (even **voice notes → transcribed → spoken reply**) and YouTube comments — context-aware, in your voice, never to itself.
 - **🧠 Two AI brains, never stalls.** Grok *and* Gemini with automatic fallback chains.
 - **🏢 Run a whole network.** Many paired Instagram + YouTube brands from one dashboard, each independent.
@@ -55,7 +56,7 @@ For each brand (a paired Instagram + YouTube account), on the schedule you set:
 1. **🧪 Invents topics** — from your rotating list, auto-expanded by AI so content never repeats.
 2. **✍️ Writes the content** — hooks, body, CTA, hashtags — in your niche and voice.
 3. **🎨 Designs the visuals** — branded image cards, multi-image **carousels**, and a daily **Story**.
-4. **🎞️ Builds the Shorts** — vertical multi-slide videos (hook → content → subscribe outro) with mood-matched music and AI search tags.
+4. **🎞️ Builds the Shorts** — vertical multi-slide videos (hook → content → subscribe outro) with mood-matched music, AI search tags, and optional AI voiceover + word-by-word captions.
 5. **📤 Publishes everywhere** — native IG posts/carousels/Stories and YouTube Shorts, on a per-weekday schedule.
 6. **🔁 Cross-posts** — Shorts become Instagram Reels on their own timing (opt-in).
 7. **💬 Engages** — instant replies to IG comments & DMs (incl. voice notes) and YouTube comments.

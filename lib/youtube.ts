@@ -184,6 +184,10 @@ export async function uploadShort(
       description: buildDescription(meta.description, meta.tags ?? []),
       tags,
       categoryId:  meta.categoryId ?? "27", // 27 = Education
+      // Declare the source language so YouTube can auto-generate captions and
+      // auto-translate them (and is eligible for auto-dubbing) per viewer location.
+      defaultLanguage:      "en",
+      defaultAudioLanguage: "en",
     },
     status: {
       privacyStatus,

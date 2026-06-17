@@ -66,6 +66,12 @@ export async function POST(request: NextRequest) {
         postTimes:         postTimes.length ? postTimes : ["19:00"],
         scheduleDays,
         publishToInstagram: typeof body.publishToInstagram === "boolean" ? body.publishToInstagram : false,
+        // AI voiceover + word-by-word captions (beta, opt-in). Default OFF.
+        voiceover:         typeof body.voiceover === "boolean" ? body.voiceover : false,
+        // Narration voice (Orpheus). Validate against the known voice list; default male "daniel".
+        voiceoverVoice:    ["autumn", "diana", "hannah", "austin", "daniel", "troy"].includes(body.voiceoverVoice) ? body.voiceoverVoice : "daniel",
+        // Burn captions into the video. Default OFF → YouTube auto-captions + auto-translate per viewer.
+        burnCaptions:      typeof body.burnCaptions === "boolean" ? body.burnCaptions : false,
         // Per-day timing/post-count overrides (validated: day 0-6, postsPerDay 1-5, HH:MM times).
         // withReelTimes:true carries each Custom day's per-day Instagram-Reel slots
         // through (YouTube section only) for the deferred YT→IG cross-post.

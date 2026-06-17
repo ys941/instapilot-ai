@@ -2362,6 +2362,9 @@ function YouTubeTab() {
   const [postTimes,         setPostTimes]         = useState<string[]>(["19:00"]);
   const [scheduleDays,      setScheduleDays]      = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [publishToInstagram, setPublishToInstagram] = useState(false);
+  const [voiceover,         setVoiceover]         = useState(false);
+  const [voiceoverVoice,    setVoiceoverVoice]    = useState("daniel");
+  const [burnCaptions,      setBurnCaptions]      = useState(false);
   const [dailySchedule,     setDailySchedule]     = useState<DayScheduleEntry[]>([]);
   const [customScheduleOnly, setCustomScheduleOnly] = useState(false);
   const [reelPublishTimes,  setReelPublishTimes]  = useState<string[]>([]);
@@ -2389,6 +2392,9 @@ function YouTubeTab() {
           setPostTimes(cfg.postTimes ?? ["19:00"]);
           setScheduleDays(cfg.scheduleDays ?? [0, 1, 2, 3, 4, 5, 6]);
           setPublishToInstagram(cfg.publishToInstagram ?? false);
+          setVoiceover(cfg.voiceover ?? false);
+          setVoiceoverVoice(cfg.voiceoverVoice ?? "daniel");
+          setBurnCaptions(cfg.burnCaptions ?? false);
           setDailySchedule(Array.isArray(cfg.dailySchedule) ? cfg.dailySchedule : []);
           setCustomScheduleOnly(cfg.customScheduleOnly ?? false);
           setReelPublishTimes(Array.isArray(cfg.reelPublishTimes) ? cfg.reelPublishTimes : []);
@@ -2429,7 +2435,7 @@ function YouTubeTab() {
       const res  = await fetch(withBrand("/api/settings/youtube", brandId), {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ enabled, privacy, secondsPerImage, postsPerDay, descriptionSuffix, replyToComments, topics, postTypes, customPromptExtra, postTimes, scheduleDays, publishToInstagram, dailySchedule, customScheduleOnly, reelPublishTimes }),
+        body:    JSON.stringify({ enabled, privacy, secondsPerImage, postsPerDay, descriptionSuffix, replyToComments, topics, postTypes, customPromptExtra, postTimes, scheduleDays, publishToInstagram, voiceover, voiceoverVoice, burnCaptions, dailySchedule, customScheduleOnly, reelPublishTimes }),
       });
       const data = await res.json();
       if (data.success) toast.success("YouTube settings saved ✅", { id: tid });
@@ -2649,6 +2655,52 @@ function YouTubeTab() {
                   >
                     <Plus size={13} /> Add Reel Time
                   </motion.button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* AI voiceover + word-by-word captions (beta) */}
+          <div className="rounded-xl p-4 border border-white/[0.07] bg-white/[0.01]">
+            <Toggle
+              label="AI voiceover + word-by-word captions (beta)"
+              description="Narrates each Short with an AI voice and burns in synced captions. Adds render time — uses Groq-hosted Orpheus (or your self-hosted Canopy/Orpheus endpoint)."
+              value={voiceover}
+              onChange={setVoiceover}
+            />
+            {voiceover && (
+              <div className="mt-4 pt-4 border-t border-white/[0.06]">
+                <label className="text-xs font-medium text-white/40 block mb-1.5 uppercase tracking-wider">
+                  Narration voice
+                </label>
+                <select
+                  value={voiceoverVoice}
+                  onChange={(e) => setVoiceoverVoice(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none transition-all"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  <optgroup label="Male" style={{ background: "#111118" }}>
+                    <option value="daniel" style={{ background: "#111118" }}>Daniel — warm, natural (recommended)</option>
+                    <option value="austin" style={{ background: "#111118" }}>Austin — bright, energetic</option>
+                    <option value="troy"   style={{ background: "#111118" }}>Troy — deep, authoritative</option>
+                  </optgroup>
+                  <optgroup label="Female" style={{ background: "#111118" }}>
+                    <option value="autumn" style={{ background: "#111118" }}>Autumn — warm, friendly</option>
+                    <option value="diana"  style={{ background: "#111118" }}>Diana — calm, clear</option>
+                    <option value="hannah" style={{ background: "#111118" }}>Hannah — soft, youthful</option>
+                  </optgroup>
+                </select>
+                <p className="text-[11px] text-white/35 mt-2 leading-relaxed">
+                  The voice that narrates every Short. Changes apply to the next generated Short.
+                </p>
+
+                <div className="mt-4 pt-4 border-t border-white/[0.06]">
+                  <Toggle
+                    label="Burn captions into the video"
+                    description="OFF (recommended): no hardcoded captions, so YouTube auto-generates captions and auto-translates them per viewer's location/language. ON: hardcoded word-by-word captions (same text for everyone, can't be translated)."
+                    value={burnCaptions}
+                    onChange={setBurnCaptions}
+                  />
                 </div>
               </div>
             )}

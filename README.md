@@ -102,6 +102,12 @@ All scheduling runs in a configurable timezone (per brand via `autoPost.timezone
 - **AI-written full caption (resilient fallback chain)** — `buildRichCaption()` writes one rich, detailed caption (hook → intro → expanded points → "💡 Why it matters" → dual-account CTA) via a tiered chain — **Gemini flash → Grok → Gemini reasoning** (`generateTextResilient`, with a completeness validator) — so the caption never silently degrades to a thin/truncated result. Generated once and cached per `post.id`, so Instagram and YouTube get byte-identical text.
 - **Engagement seed comment on every upload** — after upload, the channel auto-posts a friendly engagement-question top-level comment (`buildSeedComment()`) to kick-start comment velocity (a strong Shorts reach signal). The own-comment skip in the reply bot ignores this seed.
 - **Mood-matched music** — Gemini **vision** reads the cover card → picks a mood → **Jamendo** returns a CC-licensed instrumental, mixed under the video (faded) and credited in the description. Best-effort: any failure or missing `JAMENDO_CLIENT_ID` → silent Short.
+- **AI voiceover + word-by-word captions (opt-in, default OFF)** — each Short can be narrated by an AI voice and carry TikTok-style burned captions:
+  - **`voiceover`** (`Settings → YouTube`, default OFF) — narrates every Short with an AI voice mixed at full volume over the **auto-DUCKED** background music; the content cards are **re-timed to span the narration** so the visuals track the spoken track. Best-effort: any TTS failure **falls back to the existing silent, music-only Short**, so a Short is never lost.
+  - **`voiceoverVoice`** — the narration voice (**Orpheus**): male `daniel` (default), `austin`, `troy`; female `autumn`, `diana`, `hannah`.
+  - **`burnCaptions`** (default OFF) — **OFF** → no hardcoded captions, so **YouTube auto-generates AND auto-translates** captions to each viewer's language (the upload now declares `defaultLanguage` / `defaultAudioLanguage = "en"`). **ON** → burns **word-by-word** captions into the video (bundled Geist font `public/fonts/CFSans.ttf` via **libass**; the active word pops **gold + scales** in a lower-middle safe zone) using **Groq Whisper** word-level timestamps (`whisper-large-v3`) → ASS subtitles → a re-encode.
+  - **TTS providers** (`lib/tts.ts`; `TTS_PROVIDER` default `groq`, with auto-fallback to the other provider then **Gemini TTS**): **Groq Orpheus** (`canopylabs/orpheus-v1-english`; needs a one-time **org-admin terms acceptance** in the Groq console; tune via `GROQ_TTS_MODEL` / `GROQ_TTS_VOICE`), **Canopy self-hosted** (`CANOPY_TTS_URL` / `CANOPY_TTS_KEY` / `CANOPY_TTS_VOICE`, select with `TTS_PROVIDER=canopy`), and **Gemini TTS** (last-resort).
+  - **Cost:** adds one TTS call per Short (plus Whisper + a re-encode **only** when `burnCaptions` is ON) — heavier on memory, which is why both are **opt-in**.
 - **AI YouTube search tags** — `buildYouTubeTagsAI()` uses the selected AI provider to generate YouTube-search-optimized keyword tags (distinct from IG reach hashtags), with a deterministic `buildYouTubeTags()` fallback; `uploadShort()` adds the `#` prefix, appends `#Shorts`, and uploads via Data API v3.
 - **YouTube comment auto-replies** — `replyToYouTubeComments()` reads recent-video comment threads (and nested replies) and replies with **Grok**, deduped via the `Comment` table and an atomic claim. **Robust own-comment skipping**: it compares the channel id, channel title, and `@handle` so it never replies to itself (including the seed comment). Toggle in **Settings → YouTube**.
 - **Per-weekday scheduling** — YouTube posts are scheduled and published by the same catchup loop, routed by `platform`, on the YouTube auto-poster's own per-day plan (see [Scheduling](#-scheduling-per-weekday)).
@@ -211,9 +217,11 @@ Both `Post` and `ScheduledPost` carry a `platform` column (default `"instagram"`
 
 ### Idempotency & self-healing
 - **`youtubeVideoId`** is stored on both `ScheduledPost` and `Post`; every YouTube path re-reads the freshest value before uploading, so retries never double-post.
-- **Claim lock** — `publishOverdueScheduled` and the manual route both atomically flip a `PENDING` `ScheduledPost` to `FAILED("__CLAIMING__")`; only the caller that gets `count===1` proceeds. A **reaper** resets `__CLAIMING__` rows older than ~10 min back to `PENDING`.
-- **ffmpeg safety** — a 120s watchdog SIGKILLs wedged renders; a single-flight serial queue ensures only one ffmpeg pipeline runs at a time (OOM guard on memory-limited hosts).
-- **AI fallback chains** everywhere; graceful degradation (silent Shorts, default mood, branded fallback replies).
+- **Claim lock + timestamped reaper** — `publishOverdueScheduled` and the manual route both atomically flip a `PENDING` `ScheduledPost` to `FAILED("__CLAIMING__")`; only the caller that gets `count===1` proceeds. The claim-lock **embeds a timestamp**, and the **reaper resets stale claims by that embedded claim time** (older than ~10 min) — **not** by the row's `createdAt` — so genuinely-stuck claims recover while in-flight ones are left alone, stopping duplicate posts.
+- **Render lock (OOM guard)** — a **process-wide single-flight queue** wraps the **entire memory-heavy build** (card render + music + ffmpeg) for **both** the YouTube Short build **and** the IG carousel render, so only **one** render is ever in memory at a time on memory-limited hosts. A 120s watchdog still SIGKILLs any wedged ffmpeg render.
+- **JSON-resilient AI** — content-JSON generation tries the selected provider then **falls through to the other** on empty/quota-exhaustion responses (429 / `limit:0`), so Stories, IG posts, and Shorts never silently degrade to canned filler when a provider's free quota is gone.
+- **Passed slots publish today** — if a day's slot time has already passed when the auto-generator runs, the post is scheduled for **now (today)** instead of being pushed to tomorrow — fixing over-generation and the "N posts at one time" same-time collision (in **both** the IG and YouTube generators).
+- **AI fallback chains** everywhere; graceful degradation (silent Shorts, silent-Short voiceover fallback, default mood, branded fallback replies).
 
 ### Instagram events: webhook + polling
 Real-time events arrive at `/api/webhooks/instagram` (HMAC-verified) for instant replies; the catchup loop's `fetchMissedComments()` / `replyMissedDMs()` provide a polling fallback for anything missed. Webhook subscription is **auto-ensured on startup**: the app-level + IG object-level fields are `comments` / `messages` / `mentions` (+ `story_insights`), and the **Page** object is auto-bound to `feed,messages,mention` via `POST /{page-id}/subscribed_apps`. That Page binding is what actually makes Meta deliver events and **requires a Page token with the `pages_manage_metadata` scope** — without it the bind is rejected and real-time delivery silently never starts (the polling fallback still works).
@@ -286,6 +294,9 @@ Rename the **user-facing label** of each fixed content slot (the internal ID is 
 | `customScheduleOnly` | When **ON**, only weekdays with a Custom `dailySchedule` entry post — days without one generate **nothing** (the global Publishing Days/Times fallback is disabled). Default **OFF**. |
 | `publishToInstagram` | **YouTube → Instagram cross-post:** each YouTube Short is also published to Instagram as a **Reel** (deferred per the Reel times above, else immediate). |
 | `secondsPerImage` | Seconds each content slide shows (2–15, default 5; hook ≈2s, outro ≈3s) |
+| `voiceover` | **AI voiceover (default OFF)** — narrate each Short with an AI voice over the **auto-ducked** music; cards are re-timed to span the narration. Any TTS failure falls back to the silent music-only Short. |
+| `voiceoverVoice` | Narration voice (**Orpheus**): male `daniel` (default), `austin`, `troy`; female `autumn`, `diana`, `hannah` |
+| `burnCaptions` | **Word-by-word captions (default OFF)** — **OFF** lets YouTube auto-generate + auto-translate captions per viewer (upload declares `defaultLanguage`/`defaultAudioLanguage = "en"`); **ON** burns TikTok-style word-by-word captions (Groq Whisper `whisper-large-v3` timestamps → ASS → re-encode, active word pops gold) |
 | `descriptionSuffix` | Appended to every YouTube description (e.g. channel CTA) |
 | `replyToComments` | Grok auto-replies to comments on the channel's videos, skipping its own (default on) |
 | `topics[]` | Topics the **independent** YouTube poster writes about |
@@ -379,6 +390,12 @@ npm run youtube:auth  # one-command YouTube OAuth → prints YOUTUBE_REFRESH_TOK
 | `YOUTUBE_CHANNEL_ID` | – | Channel ID — display only |
 | `JAMENDO_CLIENT_ID` | – | Free Jamendo client ID — enables vision-selected background music |
 | `FFMPEG_PATH` | – | Override path to an ffmpeg binary (fallback if `ffmpeg-static` is missing) |
+| `TTS_PROVIDER` | – | Voiceover TTS provider: `groq` (default) \| `canopy` — auto-falls back to the other provider, then Gemini TTS |
+| `GROQ_TTS_MODEL` | – | Groq Orpheus TTS model (default `canopylabs/orpheus-v1-english`) |
+| `GROQ_TTS_VOICE` | – | Default Groq Orpheus voice (overridden per brand by `voiceoverVoice`) |
+| `CANOPY_TTS_URL` | – | Self-hosted Canopy TTS endpoint (used when `TTS_PROVIDER=canopy`) |
+| `CANOPY_TTS_KEY` | – | Auth key for the self-hosted Canopy TTS endpoint |
+| `CANOPY_TTS_VOICE` | – | Default voice for the self-hosted Canopy TTS endpoint |
 
 > `isYouTubeConfigured()` is true only when `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, and `YOUTUBE_REFRESH_TOKEN` are all set. Without all three, every YouTube path silently no-ops and Instagram is unaffected. Without `JAMENDO_CLIENT_ID`, Shorts render silently (no music). `FACEBOOK_PAGE_ACCESS_TOKEN` must be a **Page** token (from `GET /me/accounts`), not a User token.
 

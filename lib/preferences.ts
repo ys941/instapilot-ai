@@ -114,6 +114,16 @@ export interface YouTubeSettings {
   scheduleDays: number[];
   /** ON → YouTube-native auto-posts also publish to Instagram as Reels. */
   publishToInstagram: boolean;
+  /** ON → narrate each Short with an AI voice and (optionally) burn in word-by-word captions (beta, opt-in). */
+  voiceover?: boolean;
+  /** Which AI narration voice. Orpheus: female (autumn, diana, hannah) · male (austin, daniel, troy). */
+  voiceoverVoice?: string;
+  /**
+   * ON → burn hardcoded word-by-word captions into the video. OFF (default) → no burned
+   * captions, so YouTube can auto-generate captions and auto-translate them per viewer's
+   * location/language (burned-in text can't be translated). Narration still plays.
+   */
+  burnCaptions?: boolean;
   /**
    * Optional per-weekday timing + post-count overrides for the YouTube auto-poster.
    * When present for today's weekday, it supersedes postsPerDay/postTimes/scheduleDays
@@ -210,6 +220,9 @@ export const DEFAULTS: AllPreferences = {
     postTimes:         ["19:00"],
     scheduleDays:      [0, 1, 2, 3, 4, 5, 6],
     publishToInstagram: false,
+    voiceover:         false,   // opt-in: AI voiceover + word-by-word captions (beta)
+    voiceoverVoice:    "daniel", // default male narration voice (Orpheus)
+    burnCaptions:      false,   // OFF → let YouTube auto-caption + auto-translate per viewer location
     dailySchedule:     [],   // empty → fall back to the global fields above
     customScheduleOnly: false,   // true → skip days with no custom entry (ignore global)
     reelPublishTimes:  [],   // empty → cross-post Reels immediately (current behaviour)

@@ -14,10 +14,11 @@
 import { prisma } from "@/lib/prisma";
 import { claimCommentForReply, releaseCommentClaim, markCommentReplied } from "@/lib/commentClaim";
 import { PostCommentContext, getGrokClient, checkGrokHealth } from "@/lib/grok";
-import { getAIClient } from "@/lib/ai-factory";
+import { getAIClient, generateJSONResilient } from "@/lib/ai-factory";
 // renderPostToJpeg and renderStoryToJpeg are imported dynamically at call sites
 // to prevent Turbopack from bundling Node.js-only modules (satori/sharp) for the edge runtime.
 import { uploadBufferToStableCdn, uploadVideoToStableCdn, deleteFromCloudinary, generateCarouselImages } from "@/lib/imageGenerator";
+import { withRenderLock } from "@/lib/renderLock";
 import { buildBeautifulCaption, capIgCaption } from "@/lib/captionBuilder";
 import { readPreferences, readPreferencesForBrand, resolveDaySchedule, getBrand } from "@/lib/preferences";
 import { atHandle, buildBrandSystemPrompt, type BrandConfig } from "@/lib/brandConfig";
@@ -723,6 +724,9 @@ async function forceYouTubeShort(args: {
       privacy:           yt?.privacy ?? "public",
       secondsPerImage:   yt?.secondsPerImage ?? 5,
       descriptionSuffix: yt?.descriptionSuffix ?? "",
+      voiceover:         yt?.voiceover ?? false,
+      voiceoverVoice:    yt?.voiceoverVoice ?? "daniel",
+      burnCaptions:      yt?.burnCaptions ?? false,
     }, ctx.ytCreds);
     await prisma.scheduledPost.update({ where: { id: sp.id }, data: { youtubeVideoId: videoId } }).catch(() => {});
     if (sp.postId) {
@@ -1003,18 +1007,38 @@ export async function publishOverdueScheduled(
   const igConfigured = !!(igToken && igAcctId);
 
   // -- Self-heal: reap stuck "__CLAIMING__" locks ---------------------------------
-  // The claim guard below flips PENDING→FAILED("__CLAIMING__") to lock an entry
-  // while it publishes. If the process restarts mid-publish, the row stays
-  // FAILED("__CLAIMING__") forever and is never retried. Reset any such lock older
-  // than ~10 min back to PENDING so it gets picked up again. (Mirrors the story
-  // self-heal pattern in runAutoStory.)
-  const claimCutoff = new Date(Date.now() - 10 * 60 * 1000);
-  const reaped = await prisma.scheduledPost.updateMany({
-    where: { status: "FAILED", error: "__CLAIMING__", createdAt: { lt: claimCutoff }, ...brandFilter(ctx) },
-    data:  { status: "PENDING", error: null },
-  }).catch(() => ({ count: 0 }));
-  if (reaped.count > 0) {
-    console.log(`[Catchup] Claim-lock self-heal: reset ${reaped.count} stuck __CLAIMING__ post(s) older than 10min to PENDING`);
+  // The claim guard below flips PENDING→FAILED("__CLAIMING__:<ts>") to lock an entry
+  // while it publishes. If the process restarts mid-publish, the row stays locked
+  // forever and is never retried. Reset any such lock whose CLAIM is older than ~10
+  // min back to PENDING. CRITICAL: we measure the CLAIM age (the <ts> embedded in the
+  // sentinel), NOT the row's createdAt — keying on createdAt instantly reaped the
+  // active claim of any post older than 10 min mid-publish, which re-queued it for a
+  // concurrent sweep and produced DUPLICATE Instagram posts.
+  const claimCutoffMs = Date.now() - 10 * 60 * 1000;
+  const stuckClaims = await prisma.scheduledPost.findMany({
+    where:  { status: "FAILED", error: { startsWith: "__CLAIMING__" }, ...brandFilter(ctx) },
+    select: { id: true, error: true },
+  }).catch((e: any) => {
+    // Don't silently swallow — if this read fails, stuck claims go un-reaped and
+    // those posts never publish, with no signal otherwise.
+    console.warn("[Catchup] Claim-lock self-heal: stuck-claim read failed (stuck posts may not be reaped):", e?.message ?? e);
+    return [] as { id: string; error: string | null }[];
+  });
+  const reapIds = stuckClaims
+    .filter((s) => {
+      const ts = Number(String(s.error ?? "").split(":")[1] ?? 0);
+      // No embedded timestamp (legacy "__CLAIMING__") OR claimed >10 min ago → reap.
+      return !ts || ts < claimCutoffMs;
+    })
+    .map((s) => s.id);
+  if (reapIds.length > 0) {
+    const reaped = await prisma.scheduledPost.updateMany({
+      where: { id: { in: reapIds }, status: "FAILED", error: { startsWith: "__CLAIMING__" } },
+      data:  { status: "PENDING", error: null },
+    }).catch(() => ({ count: 0 }));
+    if (reaped.count > 0) {
+      console.log(`[Catchup] Claim-lock self-heal: reset ${reaped.count} stuck claim(s) (claimed >10min ago) to PENDING`);
+    }
   }
 
   const overdue = await prisma.scheduledPost.findMany({
@@ -1074,9 +1098,13 @@ export async function publishOverdueScheduled(
       // gets count=1 proceeds; the other sees count=0 and skips.
       // On success the entry is reset to PUBLISHED; on real failure the catch
       // block overwrites the sentinel with the real error message.
+      // The sentinel embeds the CLAIM time so the self-heal reaper can tell an
+      // actively-publishing claim from a genuinely stuck one by CLAIM AGE — not by the
+      // row's createdAt (which would instantly reap any post older than 10 min while
+      // it's mid-publish, causing a re-claim and a DUPLICATE Instagram post).
       const claimed = await prisma.scheduledPost.updateMany({
         where: { id: sp.id, status: "PENDING" },
-        data:  { status: "FAILED", error: "__CLAIMING__" },
+        data:  { status: "FAILED", error: `__CLAIMING__:${Date.now()}` },
       }).catch(() => ({ count: 0 }));
       if (claimed.count === 0) {
         console.log(`[Catchup] Skipping SP ${sp.id} — already claimed by a concurrent scheduler call`);
@@ -1141,6 +1169,9 @@ export async function publishOverdueScheduled(
             privacy:           yt?.privacy ?? "public",
             secondsPerImage:   yt?.secondsPerImage ?? 5,
             descriptionSuffix: yt?.descriptionSuffix ?? "",
+            voiceover:         yt?.voiceover ?? false,
+            voiceoverVoice:    yt?.voiceoverVoice ?? "daniel",
+            burnCaptions:      yt?.burnCaptions ?? false,
           }, ctx.ytCreds);
           await prisma.scheduledPost.update({
             where: { id: sp.id },
@@ -1211,7 +1242,9 @@ export async function publishOverdueScheduled(
         if (cPost && cPost.type === "CAROUSEL" && Array.isArray(slides) && slides.length >= 2) {
           try {
             console.log(`[Catchup] Carousel post ${sp.id} — rendering ${slides.length} slides...`);
-            const slideUrls = await generateCarouselImages(slides, cPost.imagePrompt ?? "", cPost.title);
+            // Serialize against YouTube Short builds (same process-wide render lock) so a
+            // carousel render + a Short render can't run concurrently and OOM the container.
+            const slideUrls = await withRenderLock(() => generateCarouselImages(slides, cPost.imagePrompt ?? "", cPost.title));
             if (slideUrls.length < 2) throw new Error(`only ${slideUrls.length} slide image(s) rendered`);
 
             // Unified rich caption (identical on IG + YT, generated once & cached as
@@ -2603,11 +2636,10 @@ export async function scheduleAutoStory(force = false, ctxArg?: BrandContext): P
       : "";
 
     // Generate a fresh unique story via AI provider — headline, body, 6 topic-specific tips, tagline.
-    // Use generateContentJSON so it walks the full model chain until a model returns
-    // VALID JSON (instead of falling back to a generic hardcoded story on the first
-    // model that "thinks out loud" or truncates). Larger token budget so JSON completes.
-    const ai  = await getAIClient(ctx.brandId);
-    const raw = await ai.generateContentJSON(
+    // generateJSONResilient walks the SELECTED provider's JSON chain THEN falls back to the
+    // OTHER provider's JSON when the first is exhausted (429/quota=0), so the story never
+    // silently degrades to canned filler when the free Gemini quota is gone.
+    const raw = await generateJSONResilient(
       `Generate content for an Instagram Story card for ${atHandle(brand)} (a ${brand.niche} account).
 
 TODAY'S TOPIC: ${todayTopic}${avoidBlock}
@@ -2634,7 +2666,8 @@ RULES:
 - All text plain (no asterisks, no hashtags, no markdown)
 ${extraInstructions}`,
       `You are an expert ${brand.niche} educator creating content for a general audience. Return ONLY valid JSON, no markdown, no code blocks.`,
-      1800
+      1800,
+      ctx.brandId,
     );
 
     let headline = `${brand.niche} tip of the day`;
@@ -3246,7 +3279,6 @@ export async function runAutoGeneratePosts(ctxArg?: BrandContext): Promise<Gener
       return [];
     }
 
-    const ai    = await getAIClient(ctx.brandId);
     const brand = ctx.prefs.brand;
     const tz  = cfg.timezone || "Asia/Kolkata";
 
@@ -3376,12 +3408,13 @@ RULES:
 - For QUIZ-type posts the card MUST contain the question + options A) B) C) D); the caption must NOT reveal the answer (tease it).
 - hashtags: EXACTLY 3. Mix 1 high-volume (>500k) + 1 medium (50k-500k) + 1 niche (<50k).${toneDirective}${customTypePrompt}${avoidBlock}${languageDirective}`;
 
-        // Use generateContentJSON so it walks the model chain until a model returns
-        // VALID JSON — this prevents parse failures that dumped raw "{...}" text into
+        // generateJSONResilient walks the SELECTED provider's JSON chain then falls back
+        // to the OTHER provider's JSON when the first is exhausted (429/quota=0) — this
+        // prevents parse failures (and quota dead-ends) that dumped raw "{...}" text into
         // BOTH the image card and the caption (making them identical and broken).
-        const raw   = await ai.generateContentJSON(prompt,
+        const raw   = await generateJSONResilient(prompt,
           buildBrandSystemPrompt(brand) + " Return ONLY valid JSON — no markdown, no preamble. Every post you write must be distinct from previous ones — never repeat the same facts, angle, or wording." + languageDirective,
-          2500);
+          2500, ctx.brandId);
 
         // Parse AI response
         let parsed: any = {};
@@ -3407,7 +3440,7 @@ RULES:
         let carouselSlides: Array<{ slide: number; headline: string; body: string }> | null = null;
         if (type === "CAROUSEL") {
           try {
-            const slideRaw = await ai.generateContentJSON(
+            const slideRaw = await generateJSONResilient(
               `Create a 9-slide Instagram carousel for ${atHandle(brand)} about: "${topic}".
 Return ONLY a JSON array of 9 objects: [{"slide":1,"headline":"...","body":"..."}, ...]
 - Slide 1 = COVER: punchy title + a hook stat or question.
@@ -3415,7 +3448,7 @@ Return ONLY a JSON array of 9 objects: [{"slide":1,"headline":"...","body":"..."
 - Slide 9 = "Save & Follow ${atHandle(brand)}" CTA slide.
 - headline ≤ 6 words; body ≤ 220 chars; plain text, no markdown, no asterisks.`,
               "Return ONLY a valid JSON array of 9 slide objects. No other text.",
-              2000);
+              2000, ctx.brandId);
             const cl  = slideRaw.replace(/```json\n?/gi, "").replace(/```\n?/gi, "").trim();
             const arr = JSON.parse(cl.match(/\[[\s\S]*\]/)?.[0] ?? cl);
             if (Array.isArray(arr)) {
@@ -3510,14 +3543,13 @@ Return ONLY a JSON array of 9 objects: [{"slide":1,"headline":"...","body":"..."
 
         let scheduledFor = wallTimeToUTC(istYear, istMonth, istDay, hh, mm, tz);
 
-        // If the slot is already past, push to tomorrow
+        // If the slot already passed today, publish promptly TODAY instead of pushing
+        // to tomorrow. Pushing dated the post tomorrow, which let it escape today's
+        // generation cap (which counts posts scheduledFor today) → repeated over-
+        // generation across restarts, all colliding on the same pushed slot. Keeping
+        // it on today means the cap counts it and no duplicates pile up.
         if (scheduledFor.getTime() <= Date.now()) {
-          const tomorrow = new Date(nowUtc);
-          tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-          scheduledFor = wallTimeToUTC(
-            tomorrow.getUTCFullYear(), tomorrow.getUTCMonth() + 1, tomorrow.getUTCDate(),
-            hh, mm, tz
-          );
+          scheduledFor = new Date();
         }
 
         // Honour scheduleDays — advance until a permitted weekday.
@@ -3702,7 +3734,6 @@ export async function runAutoGenerateYouTube(ctxArg?: BrandContext): Promise<Gen
       return [];
     }
 
-    const ai = await getAIClient(ctx.brandId);
     const brand = ctx.prefs.brand;
     console.log(`[YT-AutoGen] Generating ${toGenerate} YouTube Short post(s) for today (${todayIST})`);
 
@@ -3805,9 +3836,9 @@ RULES:
 - "caption" = ONLY prose with emojis. Must be DIFFERENT from the card content.
 - hashtags: EXACTLY 3. Mix 1 high-volume (>500k) + 1 medium (50k-500k) + 1 niche (<50k).${toneDirective}${angleBlock}${ytExtra}${avoidBlock}${languageDirective}`;
 
-        const raw = await ai.generateContentJSON(prompt,
+        const raw = await generateJSONResilient(prompt,
           buildBrandSystemPrompt(brand) + " This is for a YouTube channel — optimize hooks to grab a broad audience. Return ONLY valid JSON — no markdown, no preamble. Every post you write must be distinct from previous ones — never repeat the same facts, angle, or wording." + languageDirective,
-          2500);
+          2500, ctx.brandId);
 
         let parsed: any = {};
         try {
@@ -3878,13 +3909,13 @@ RULES:
         const hhStaggered = ((hh || 0) + reuseCycle) % 24;
 
         let scheduledFor = wallTimeToUTC(istYear, istMonth, istDay, hhStaggered, mm, IST_TZ);
+        // If the slot already passed today, publish promptly TODAY instead of pushing
+        // to tomorrow — pushing dated the Short tomorrow, escaping today's generation
+        // cap (counted by scheduledFor-today) → over-generation + multiple Shorts all
+        // landing on the same pushed slot (the "4 at 9:30 PM" pile-up). Keeping it on
+        // today makes the cap count it and prevents the collision.
         if (scheduledFor.getTime() <= Date.now()) {
-          const tomorrow = new Date(nowUtc);
-          tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-          scheduledFor = wallTimeToUTC(
-            tomorrow.getUTCFullYear(), tomorrow.getUTCMonth() + 1, tomorrow.getUTCDate(),
-            hh, mm, IST_TZ
-          );
+          scheduledFor = new Date();
         }
 
         await prisma.scheduledPost.create({
@@ -4243,7 +4274,7 @@ export async function runDailyHealthCheck(): Promise<boolean> {
     }).catch(() => []);
 
     const failedPosts24h = failedRaw24h
-      .filter((p) => p.error && p.error !== "__CLAIMING__")
+      .filter((p) => p.error && !p.error.startsWith("__CLAIMING__"))
       .map((p) => ({
         title:    p.title,
         error:    p.error!,

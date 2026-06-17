@@ -73,6 +73,18 @@ export interface ShortRenderOptions {
   /** Optional background-music MP3 bytes (mixed under the video, faded). */
   audio?: Buffer | null;
   /**
+   * Optional AI-narration audio (WAV/MP3 bytes) for the WHOLE Short. When present,
+   * it's mixed at full volume OVER the music (which is auto-ducked) and becomes the
+   * dominant track. Pair `durations` so the cards span the narration length.
+   */
+  voiceTrack?: Buffer | null;
+  /**
+   * Optional ASS subtitle document (word-by-word captions, already timed to the
+   * voiceTrack from t=0). When present it's BURNED into the video. Requires a
+   * re-encode of the video stream (heavier) — only used when voiceTrack is set.
+   */
+  assSubtitles?: string | null;
+  /**
    * Force the legacy simple render path (720×1280, no Ken Burns motion).
    * Optional — existing callers omit it. Mainly an escape hatch / for tests.
    */
@@ -145,6 +157,37 @@ function runSerialized<T>(task: () => Promise<T>): Promise<T> {
 }
 
 /**
+ * Probe the duration (seconds) of an audio buffer via ffmpeg. Returns 0 on failure.
+ * Used to size a Short's card durations to the AI narration length so the slides span
+ * the voiceover. Tolerates ffmpeg's non-zero exit (an `-i`-only call has no output).
+ */
+export async function probeAudioDurationSec(audio: Buffer): Promise<number> {
+  if (!audio || audio.length === 0) return 0;
+  let dir: string | null = null;
+  try {
+    dir = await mkdtemp(join(tmpdir(), "cf-probe-"));
+    const p = join(dir, "a");
+    await writeFile(p, audio);
+    return await new Promise<number>((resolve) => {
+      const proc = spawn(ffmpegBin(), ["-i", p], { windowsHide: true });
+      let err = "";
+      const t = setTimeout(() => { try { proc.kill("SIGKILL"); } catch {} resolve(0); }, 20_000);
+      proc.stderr.on("data", (d) => { err += d.toString(); });
+      proc.on("error", () => { clearTimeout(t); resolve(0); });
+      proc.on("close", () => {
+        clearTimeout(t);
+        const m = err.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
+        resolve(m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : 0);
+      });
+    });
+  } catch {
+    return 0;
+  } finally {
+    if (dir) await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/**
  * Render an array of card image buffers into a single vertical Short MP4.
  * Pass one buffer for a normal post, or multiple for a carousel.
  * Returns the MP4 Buffer, or null on failure (caller should fall back gracefully).
@@ -203,9 +246,9 @@ async function renderCardsToShortMp4Impl(
   for (let t = 0; t < tiers.length; t++) {
     const tier = tiers[t];
     try {
-      const buf = await renderWithTier(used, durations, fps, opts.audio ?? null, tier);
+      const buf = await renderWithTier(used, durations, fps, opts.audio ?? null, tier, opts.voiceTrack ?? null, opts.assSubtitles ?? null);
       if (buf && buf.length > 0) {
-        console.log(`[VideoGen] Rendered ${used.length}-card Short via "${tier.label}" (${tier.width}x${tier.height}, ${Math.round(buf.length / 1024)} KB, music=${opts.audio ? "yes" : "no"})`);
+        console.log(`[VideoGen] Rendered ${used.length}-card Short via "${tier.label}" (${tier.width}x${tier.height}, ${Math.round(buf.length / 1024)} KB, music=${opts.audio ? "yes" : "no"}, voice=${opts.voiceTrack ? "yes" : "no"}, captions=${opts.assSubtitles ? "yes" : "no"})`);
         return buf;
       }
       console.warn(`[VideoGen] Tier "${tier.label}" produced empty output — falling back`);
@@ -231,6 +274,8 @@ async function renderWithTier(
   fps: number,
   audio: Buffer | null,
   tier: RenderTier,
+  voiceTrack: Buffer | null = null,
+  assSubtitles: string | null = null,
 ): Promise<Buffer> {
   const { width, height } = tier;
   const totalDuration = durations.reduce((a, b) => a + b, 0);
@@ -310,9 +355,57 @@ async function renderWithTier(
       ]);
     }
 
-    // ── Add audio — selected music (faded) or silence ────────────────────────
+    // ── Add audio — voiceover (+ducked music +burned captions), music, or silence ──
     const outPath = join(dir, "out.mp4");
-    if (audio && audio.length > 0) {
+    if (voiceTrack && voiceTrack.length > 0) {
+      // VOICEOVER: narration at full volume OVER ducked music, with optional burned-in
+      // word-by-word captions. Burning captions requires a video re-encode (heavier);
+      // when there are no captions the video is stream-copied (light) and only audio is
+      // (re)muxed. Only reached when narration is enabled (the Settings toggle).
+      const voicePath = join(dir, "voice.wav");
+      await writeFile(voicePath, voiceTrack);
+      const fadeOutStart = Math.max(0, totalDuration - 2);
+      const burn = !!(assSubtitles && assSubtitles.trim());
+      const fc: string[] = [];
+      if (burn) {
+        const assPath = join(dir, "subs.ass");
+        await writeFile(assPath, assSubtitles!);
+        // Linux production paths have no special chars; escape colons/backslashes defensively.
+        const esc = assPath.replace(/\\/g, "/").replace(/:/g, "\\:");
+        // Supply the bundled caption font so the captions render in our font (libass
+        // would otherwise fall back to a system default — Arial doesn't exist on Linux).
+        const fontsDir = join(process.cwd(), "public", "fonts").replace(/\\/g, "/").replace(/:/g, "\\:");
+        fc.push(`[0:v]subtitles=${esc}:fontsdir=${fontsDir}[v]`);
+      }
+      const inputs: string[] = ["-i", videoPath, "-i", voicePath];
+      if (audio && audio.length > 0) {
+        const musicPath = join(dir, "music.mp3");
+        await writeFile(musicPath, audio);
+        inputs.push("-stream_loop", "-1", "-i", musicPath);
+        // Keep the music well under the narration so the voice stays crisp & clear.
+        fc.push(`[2:a]volume=0.06,afade=t=in:st=0:d=1,afade=t=out:st=${fadeOutStart}:d=2[mu]`);
+        fc.push(`[1:a]volume=1.0[vo]`);
+        fc.push(`[vo][mu]amix=inputs=2:duration=first:dropout_transition=0[a]`);
+      } else {
+        fc.push(`[1:a]volume=1.0[a]`);
+      }
+      const vmap   = burn ? "[v]" : "0:v";
+      const vcodec = burn
+        ? ["-c:v", "libx264", "-profile:v", "high", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p"]
+        : ["-c:v", "copy"];
+      await runFfmpeg([
+        "-y",
+        "-threads", "1",
+        ...inputs,
+        "-filter_complex", fc.join(";"),
+        "-map", vmap, "-map", "[a]",
+        ...vcodec,
+        "-c:a", "aac", "-b:a", "128k",
+        "-t", String(totalDuration),
+        "-movflags", "+faststart",
+        outPath,
+      ]);
+    } else if (audio && audio.length > 0) {
       const musicPath = join(dir, "music.mp3");
       await writeFile(musicPath, audio);
       const fadeOutStart = Math.max(0, totalDuration - 2);
