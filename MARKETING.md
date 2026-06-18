@@ -41,7 +41,7 @@ Running a serious Instagram **and** YouTube presence is two full-time jobs: idea
 - **🎨 Truly white-label, zero code.** App name, niche, persona, account handles, content-type labels — all from the **Settings UI**. Re-skin it for cooking, fitness, finance, anything, in minutes.
 - **📱 + ▶️ Two platforms, one brain.** Native Instagram posts, carousels, and Stories **and** vertical YouTube Shorts — written once, published everywhere, with identical rich captions.
 - **🔁 Smart cross-posting.** Turn a YouTube Short into an Instagram Reel automatically — same render, on its own deferred schedule.
-- **🎙️ AI voiceover + auto-translated captions.** Give every Short a natural AI narration over auto-ducked music, and let YouTube auto-translate your captions into every viewer's language — or burn TikTok-style word-by-word captions right into the video. Reach a global audience, hands-free.
+- **🎙️ AI voiceover + auto-translated captions.** Give every Short a natural AI narration over auto-ducked music, with **perfectly synced per-card narration** — each card is spoken exactly while it's on screen, and the Short's length adapts to your content. Let YouTube auto-translate your captions into every viewer's language — or burn TikTok-style word-by-word captions right into the video. Reach a global audience, hands-free.
 - **🤖 Real conversations.** Auto-replies to Instagram comments and DMs (even **voice notes → transcribed → spoken reply**) and YouTube comments — context-aware, in your voice, never to itself.
 - **🧠 Two AI brains, never stalls.** Grok *and* Gemini with automatic fallback chains.
 - **🏢 Run a whole network.** Many paired Instagram + YouTube brands from one dashboard, each independent.

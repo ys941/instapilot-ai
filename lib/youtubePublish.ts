@@ -9,10 +9,10 @@
  * Carousel → multi-slide Short; story → story card; everything else → one card.
  */
 
-import { renderCardsToShortMp4, probeAudioDurationSec } from "@/lib/videoGenerator";
+import { renderCardsToShortMp4, probeAudioDurationSec, assembleVoiceTrack } from "@/lib/videoGenerator";
 import { withRenderLock } from "@/lib/renderLock";
 import { synthesizeSpeech, isTtsConfigured } from "@/lib/tts";
-import { wordTimestamps, buildAssCaptions } from "@/lib/captions";
+import { wordTimestamps, buildAssCaptions, type CaptionWord } from "@/lib/captions";
 import { uploadShort, setVideoThumbnail, type YouTubeCreds } from "@/lib/youtube";
 import { renderHookCard, renderOutroCard, THEMES, type Theme } from "@/lib/hookCard";
 import { buildBeautifulCaption } from "@/lib/captionBuilder";
@@ -937,61 +937,146 @@ export async function buildShortForPost(
   // ── Per-card durations: FRONT-LOAD THE HOOK ──────────────────────────────────
   // Live data showed 70–90% of viewers swipe away in the first ~2s, so the hook
   // cover must flash by FAST (≈2s) to get viewers into the value before they bounce;
-  // content slides hold longer (readable), and the subscribe outro is brief (≈3s).
-  // Aim ~45–58s total; the renderer hard-caps at 58s.
-  const HOOK_SECS = 2, OUTRO_SECS = 3, TARGET = 50;
+  // content slides hold for the configured per-card duration, and the subscribe outro
+  // is brief (≈3s). The renderer hard-caps the grand total at the ~3-min Shorts ceiling.
+  // Content-card seconds come from the YouTube "Seconds per card" SETTING so the owner
+  // can actually control Short length/pacing (clamped to the UI's 2–15s range). Previously
+  // this was a fixed ~50s target that ignored the setting entirely. (These are the
+  // SILENT-Short durations; with voiceover ON each card is timed to its narration below.)
+  const HOOK_SECS = 2, OUTRO_SECS = 3;
   const contentCount = Math.max(1, cardBuffers.length);
-  const contentBudget = Math.max(contentCount * 4, TARGET - (hasHook ? HOOK_SECS : 0) - (hasOutro ? OUTRO_SECS : 0));
-  const contentSecs = Math.min(8, Math.max(4, Math.round(contentBudget / contentCount)));
+  const contentSecs = Math.max(2, Math.min(15, Math.round(yt.secondsPerImage ?? 6)));
   const durations = [
     ...(hasHook ? [HOOK_SECS] : []),
     ...cardBuffers.map(() => contentSecs),
     ...(hasOutro ? [OUTRO_SECS] : []),
   ];
 
-  // ── AI voiceover + word-by-word captions (Settings → YouTube → voiceover) ─────
-  // Best-effort: any failure (TTS/Whisper/parse) falls back to the silent music-only
-  // Short. When on, narration becomes the dominant audio (music auto-ducked) and the
-  // cards are re-timed to span the narration so the burned captions stay in sync.
-  // The script is NEUTRAL — built from the post + the brand's niche, never a fixed niche.
+  // ── AI voiceover + per-card-synced timing, paced by "Seconds per card" ────────
+  // Best-effort: any failure falls back to the silent music-only Short. When on, the
+  // narration is the dominant audio (music auto-ducked). Each card is narrated as its
+  // OWN segment (hook + each content spec body + CTA, in card order) so the voice
+  // always matches the card on screen. The "Seconds per card" setting is the MINIMUM
+  // hold per content card: if a card's narration is shorter, the card lingers and an
+  // equal silence is inserted into the audio so the voice stays in sync; if it's
+  // longer, the card shows for the full narration. Burned captions (opt-in) reuse the
+  // assembled track. Falls back to a single narration + even split when the cards can't
+  // be aligned 1:1 (carousel/story) or per-segment synthesis fails.
+  // The CTA is NEUTRAL — built from the brand's niche, never a fixed niche.
   let voiceTrack: Buffer | null = null;
   let assSubtitles: string | null = null;
   let voDurations = durations;
   if (yt.voiceover && isTtsConfigured()) {
-    try {
-      const niche = (brand.niche ?? "").trim();
-      const strip = (s: string) => (s || "").replace(/[*_#`>~]/g, "").replace(/\s+/g, " ").trim();
-      const points = strip(post.content || "")
-        .split(/\n|(?<=[.!?])\s+/).map(strip).filter((p) => p.length > 1);
-      let script = [strip(shortHook || post.title), ...points].filter(Boolean).join(". ").replace(/\.{2,}/g, ".");
-      const words = script.split(/\s+/);
-      if (words.length > 130) script = words.slice(0, 130).join(" "); // ~≤55s of speech
-      script = `${script}. Follow for more ${niche || "tips"}.`;
+    const niche = (brand.niche ?? "").trim();
+    const strip = (s: string) => (s || "").replace(/[*_#`>~]/g, "").replace(/\s+/g, " ").trim();
+    const ctaText = `Follow for more ${niche || "tips"}.`;
+    const ttsVoice = yt.voiceoverVoice || undefined;
+    let synced = false;
 
-      const tts = await synthesizeSpeech(script, { voice: yt.voiceoverVoice || undefined });
-      if (tts?.audio?.length) {
-        voiceTrack = tts.audio;
-        const dur = await probeAudioDurationSec(tts.audio);
-        if (dur > 1) {
-          // Re-time ALL cards to evenly span the narration (cap 58s); captions sync to voice.
-          const totalV = Math.min(58, dur + 0.5);
-          voDurations = buffers.map(() => Math.max(2, totalV / buffers.length));
+    // PER-CARD PATH — one narration segment per card, paced by the seconds-per-card min.
+    try {
+      const specsForVoice = buildContentSlideSpecs(post);
+      const canAlign = specsForVoice.length > 0 && specsForVoice.length === cardBuffers.length;
+      if (canAlign) {
+        let segTexts = [
+          ...(hasHook ? [strip(shortHook || post.title)] : []),
+          ...specsForVoice.map((s) => strip(s.body) || "and"),
+          ...(hasOutro ? [ctaText] : []),
+        ];
+        // The Short's length ADAPTS to the content (long card text → longer card →
+        // longer Short), so we narrate each card's FULL text. Only trim if the whole
+        // narration would approach YouTube's ~3-min Shorts ceiling (~380 words ≈ 170s).
+        const MAXW = 380;
+        let segW = segTexts.map((s) => s.split(/\s+/).filter(Boolean));
+        const totW = segW.reduce((a, w) => a + w.length, 0);
+        if (totW > MAXW) {
+          const r = MAXW / totW;
+          segW = segW.map((w) => w.slice(0, Math.max(2, Math.round(w.length * r))));
+          segTexts = segW.map((w) => w.join(" "));
         }
-        // Burned-in captions are opt-in (Settings → "Burn captions"). When OFF we still
-        // narrate, but skip the Whisper align + caption burn so YouTube can auto-generate
-        // captions and auto-translate them per viewer location (burned text can't translate).
-        if (yt.burnCaptions) {
-          try {
-            const w = await wordTimestamps(tts.audio, tts.format);
-            if (w.length) assSubtitles = buildAssCaptions(w, { width: 720, height: 1280 });
-          } catch (e: any) { console.warn("[YouTube] caption build failed:", e?.message ?? e); }
+
+        if (segTexts.length === buffers.length) {
+          // Narrate each segment separately and measure its spoken length.
+          const clips: Buffer[] = [];
+          const speech: number[] = [];
+          let ok = true;
+          for (const t of segTexts) {
+            const c = await synthesizeSpeech(t, { voice: ttsVoice });
+            if (!c?.audio?.length) { ok = false; break; }
+            clips.push(c.audio);
+            speech.push(await probeAudioDurationSec(c.audio));
+          }
+
+          if (ok && clips.length === buffers.length) {
+            // Target hold per card: content cards honour the "Seconds per card" MINIMUM;
+            // hook/outro use a small floor. Extra time over the spoken length → silence.
+            const target = speech.map((d, i) => {
+              const isHook  = hasHook  && i === 0;
+              const isOutro = hasOutro && i === buffers.length - 1;
+              const floor = isHook ? 1.5 : isOutro ? 2 : contentSecs;
+              return Math.max(d, floor);
+            });
+            let pad = target.map((t, i) => Math.max(0, t - speech[i]));
+
+            // Keep within the ~3-min Shorts ceiling by trimming pads (never the speech).
+            const totSpeech = speech.reduce((a, b) => a + b, 0);
+            const totPad = pad.reduce((a, b) => a + b, 0);
+            const budget = 178 - totSpeech;
+            if (budget <= 0) pad = pad.map(() => 0);
+            else if (totPad > budget) { const k = budget / totPad; pad = pad.map((p) => p * k); }
+
+            const vt = await assembleVoiceTrack(clips, pad);
+            if (vt?.length) {
+              voiceTrack  = vt;
+              voDurations = speech.map((d, i) => Math.max(1.0, d + pad[i]));
+              synced = true;
+              if (yt.burnCaptions) {
+                const w = await wordTimestamps(vt, "wav").catch(() => [] as CaptionWord[]);
+                if (w.length) {
+                  try { assSubtitles = buildAssCaptions(w, { width: 720, height: 1280 }); }
+                  catch (e: any) { console.warn("[YouTube] caption build failed:", e?.message ?? e); }
+                }
+              }
+              console.log(`[YouTube] Voiceover ON: per-card synced (${buffers.length} cards, min hold ${contentSecs}s), burnedCaptions=${assSubtitles ? "yes" : "no (YouTube auto-captions)"}`);
+            }
+          }
         }
-        console.log(`[YouTube] Voiceover ON: ${Math.round(voiceTrack.length / 1024)}KB voice, burnedCaptions=${assSubtitles ? "yes" : "no (YouTube auto-captions)"}`);
-      } else {
-        console.warn("[YouTube] Voiceover enabled but TTS returned no audio — music-only fallback");
       }
     } catch (e: any) {
-      console.warn("[YouTube] Voiceover generation failed — music-only fallback:", e?.message ?? e);
+      console.warn("[YouTube] Per-card voiceover failed — trying single-track fallback:", e?.message ?? e);
+    }
+
+    // FALLBACK PATH — single narration + even split (carousel/story, or per-card failed).
+    if (!synced) {
+      try {
+        const points = strip(post.content || "")
+          .split(/\n|(?<=[.!?])\s+/).map(strip).filter((p) => p.length > 1);
+        let s = [strip(shortHook || post.title), ...points].filter(Boolean).join(". ").replace(/\.{2,}/g, ".");
+        const w = s.split(/\s+/);
+        if (w.length > 130) s = w.slice(0, 130).join(" ");
+        const script = `${s}. ${ctaText}`;
+        const tts = await synthesizeSpeech(script, { voice: ttsVoice });
+        if (tts?.audio?.length) {
+          voiceTrack = tts.audio;
+          const dur = await probeAudioDurationSec(tts.audio);
+          if (dur > 1) {
+            const totalV = Math.min(180, dur + 0.5);
+            voDurations = buffers.map(() => Math.max(2, totalV / buffers.length));
+          }
+          if (yt.burnCaptions) {
+            const w2 = await wordTimestamps(tts.audio, tts.format).catch(() => [] as CaptionWord[]);
+            if (w2.length) {
+              try { assSubtitles = buildAssCaptions(w2, { width: 720, height: 1280 }); }
+              catch (e: any) { console.warn("[YouTube] caption build failed:", e?.message ?? e); }
+            }
+          }
+          console.log(`[YouTube] Voiceover ON: even split (${buffers.length} cards), burnedCaptions=${assSubtitles ? "yes" : "no (YouTube auto-captions)"}`);
+        } else {
+          console.warn("[YouTube] Voiceover enabled but TTS returned no audio — music-only fallback");
+        }
+      } catch (e: any) {
+        console.warn("[YouTube] Voiceover generation failed — music-only fallback:", e?.message ?? e);
+      }
     }
   }
 

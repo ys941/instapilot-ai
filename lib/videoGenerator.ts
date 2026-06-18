@@ -117,7 +117,7 @@ function ffmpegBin(): string {
 // within this budget. The carousel Short now has ~7–10 cards (a ~45–60s total),
 // so the bound is 180s to comfortably cover the longer per-card + concat + mux
 // pipeline on the memory/CPU-constrained container without ever stalling forever.
-const FFMPEG_TIMEOUT_MS = Number(process.env.FFMPEG_TIMEOUT_MS) || 180_000;
+const FFMPEG_TIMEOUT_MS = Number(process.env.FFMPEG_TIMEOUT_MS) || 240_000;
 
 /** Run ffmpeg with the given args; resolves on exit 0, rejects with stderr tail otherwise. */
 function runFfmpeg(args: string[]): Promise<void> {
@@ -188,6 +188,49 @@ export async function probeAudioDurationSec(audio: Buffer): Promise<number> {
 }
 
 /**
+ * Assemble per-card narration clips into ONE voice track, inserting `padsSec[i]`
+ * seconds of trailing silence after clip i. This lets each Short card be held for a
+ * MINIMUM time (the "seconds per card" setting) while keeping the voice perfectly in
+ * sync: card i shows for (clip_i speech + pad_i silence), then card i+1 begins exactly
+ * when clip_{i+1} starts. Returns the concatenated WAV, or null on failure.
+ */
+export async function assembleVoiceTrack(clips: Buffer[], padsSec: number[]): Promise<Buffer | null> {
+  const present = clips.filter((c) => c && c.length > 0);
+  if (present.length === 0) return null;
+  let dir: string | null = null;
+  try {
+    dir = await mkdtemp(join(tmpdir(), "cf-voice-"));
+    const inputs: string[] = [];
+    const filters: string[] = [];
+    const labels: string[] = [];
+    for (let i = 0; i < clips.length; i++) {
+      const c = clips[i];
+      if (!c || c.length === 0) continue;
+      const idx = labels.length; // ffmpeg input index (sequential as added)
+      const p = join(dir, `c${idx}.wav`);
+      await writeFile(p, c);
+      inputs.push("-i", p);
+      const pad = Math.max(0, padsSec[i] ?? 0);
+      filters.push(
+        `[${idx}:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono` +
+        (pad > 0.02 ? `,apad=pad_dur=${pad.toFixed(3)}` : "") +
+        `[a${idx}]`,
+      );
+      labels.push(`[a${idx}]`);
+    }
+    if (labels.length === 0) return null;
+    const out = join(dir, "voice.wav");
+    const fc = `${filters.join(";")};${labels.join("")}concat=n=${labels.length}:v=0:a=1[out]`;
+    await runFfmpeg(["-y", ...inputs, "-filter_complex", fc, "-map", "[out]", out]);
+    return await readFile(out);
+  } catch {
+    return null;
+  } finally {
+    if (dir) await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/**
  * Render an array of card image buffers into a single vertical Short MP4.
  * Pass one buffer for a normal post, or multiple for a carousel.
  * Returns the MP4 Buffer, or null on failure (caller should fall back gracefully).
@@ -213,23 +256,41 @@ async function renderCardsToShortMp4Impl(
     return null;
   }
 
-  // Cap total length at ~58s (Shorts limit). Trim images / per-image duration to fit.
+  // Hard ceiling = YouTube Shorts max (~3 min). The Short's length ADAPTS to its
+  // content; this is only the safety cap so a render can never run away.
+  const MAX_SECS = 180;
   let perImage = Math.max(2, opts.secondsPerImage ?? 5);
   const fps    = opts.fps ?? 24;  // still cards don't need 30fps; fewer frames = lighter encode
-  const maxImages = Math.min(valid.length, Math.floor(58 / Math.max(2, perImage)) || 1);
-  const used = valid.slice(0, maxImages);
-  if (used.length * perImage > 58) perImage = Math.floor(58 / used.length);
 
-  // Per-card durations: use opts.durations when supplied (front-loaded hook), else
-  // a uniform perImage. Each clamped ≥2s; the whole thing scaled down if it would
-  // exceed the 58s Shorts limit.
-  let durations: number[] = used.map((_, i) =>
-    Math.max(2, Math.round(opts.durations?.[i] ?? perImage)));
-  let total = durations.reduce((a, b) => a + b, 0);
-  if (total > 58) {
-    const scale = 58 / total;
-    durations = durations.map((d) => Math.max(2, Math.floor(d * scale)));
-    total = durations.reduce((a, b) => a + b, 0);
+  let used: Buffer[];
+  let durations: number[];
+
+  const voiced = !!(opts.voiceTrack && opts.voiceTrack.length > 0)
+    && Array.isArray(opts.durations) && opts.durations.length > 0;
+
+  if (voiced) {
+    // VOICEOVER: the per-card durations are AUTHORITATIVE — they're already synced to
+    // the assembled narration track (card i is exactly as long as its spoken segment +
+    // its silence pad). So keep EVERY card and its exact duration; never drop cards or
+    // rescale (that would desync the voice). Only clamp the total to the hard ceiling.
+    used = valid.slice(0, opts.durations!.length);
+    durations = used.map((_, i) => Math.max(1, opts.durations![i] ?? perImage));
+    const total = durations.reduce((a, b) => a + b, 0);
+    if (total > MAX_SECS) {
+      const scale = MAX_SECS / total;
+      durations = durations.map((d) => Math.max(1, d * scale));
+    }
+  } else {
+    // SILENT/MUSIC: trim images / per-image duration to fit the ceiling.
+    const maxImages = Math.min(valid.length, Math.floor(MAX_SECS / Math.max(2, perImage)) || 1);
+    used = valid.slice(0, maxImages);
+    if (used.length * perImage > MAX_SECS) perImage = Math.floor(MAX_SECS / used.length);
+    durations = used.map((_, i) => Math.max(2, Math.round(opts.durations?.[i] ?? perImage)));
+    const total = durations.reduce((a, b) => a + b, 0);
+    if (total > MAX_SECS) {
+      const scale = MAX_SECS / total;
+      durations = durations.map((d) => Math.max(2, Math.floor(d * scale)));
+    }
   }
 
   // ── Render tier ──────────────────────────────────────────────────────────

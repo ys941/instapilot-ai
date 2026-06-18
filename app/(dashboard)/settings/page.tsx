@@ -2534,7 +2534,9 @@ function YouTubeTab() {
             className="w-full max-w-md accent-red-500"
           />
           <p className="text-xs text-white/30 mt-2">
-            How long each card stays on screen. Carousels show one card after another (capped at ~58s total).
+            How long each card stays on screen (capped at ~58s total). With AI voiceover ON, this is the
+            <strong className="text-white/45"> minimum</strong> hold per card — a card always stays at least this long,
+            and if its narration is longer it stays for the full narration, so the voice stays in sync.
           </p>
         </div>
 
