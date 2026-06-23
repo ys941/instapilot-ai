@@ -379,7 +379,7 @@ ${baseTopics.map((t) => `- ${t}`).join("\n")}
 ALREADY USED — never repeat, rephrase, or closely paraphrase any of these:
 ${usedList.length ? usedList.map((t) => `- ${t}`).join("\n") : "- (none yet)"}
 
-Generate ${count} BRAND-NEW ${niche} content topics in the same style and subject area as the existing ones, but each must be clearly distinct from every topic listed above.
+Generate ${count} BRAND-NEW ${niche} content topics in the same style and subject area as the existing ones. Each must be a genuinely DIFFERENT SUBJECT/THEME from every topic above — not a reworded angle on the same theme (e.g. if "morning routine" is used, do NOT return "the first hour of your day"). Each topic must also be distinct from the others you return.
 Return ONLY a JSON array of plain topic strings. No numbering, no commentary.`;
     const raw = await ai.generateContent(
       prompt,
@@ -3363,7 +3363,7 @@ export async function runAutoGeneratePosts(ctxArg?: BrandContext): Promise<Gener
       usedThisRun.add(topic);
 
       const avoidBlock = recentAvoidList.length
-        ? `\n\nDO NOT repeat, reuse, or closely paraphrase any of these recent posts. Use a completely fresh angle, fresh facts, and fresh wording:\n${recentAvoidList.map((t) => `- ${t}`).join("\n")}`
+        ? `\n\nANTI-REPETITION (critical for reach — platforms suppress repetitive uploads): do NOT cover the same SUBJECT/THEME as any recent post below, not just the same wording. If a theme already appears here, pick a genuinely DIFFERENT ${brand.niche} subject — do not make another post on that same theme with fresh words. Use a fresh subject, fresh angle, and fresh facts:\n${recentAvoidList.map((t) => `- ${t}`).join("\n")}`
         : "";
 
       // Honour the user's custom prompt for this post type (Settings → AI Prompts).
@@ -3566,14 +3566,15 @@ Return ONLY a JSON array of 9 objects: [{"slide":1,"headline":"...","body":"..."
           }
         }
 
-        // ── autoPublish (#3): when enabled, publish on THIS cycle ────────────
-        // Previously cfg.autoPublish was dead — every generated post got a future
-        // PENDING slot regardless. When autoPublish is true, set the slot to NOW so
-        // publishOverdueScheduled picks it up immediately this same cycle. When
-        // false, keep the computed scheduled-for-later slot above.
-        if (cfg.autoPublish) {
-          scheduledFor = new Date();
-        }
+        // ── autoPublish: auto-publish at the SCHEDULED slot, NOT at generation time ──
+        // Previously `if (cfg.autoPublish) scheduledFor = new Date()` forced every
+        // generated post to publish on the generation cycle. The daily generator runs
+        // right after IST-midnight, so this made the feed post go out at ~00:00 instead
+        // of the configured time (e.g. 19:00 IST). We now KEEP the computed slot — the
+        // catchup publisher auto-publishes the PENDING post at that slot. The earlier
+        // passed-slot guard still publishes promptly when the slot has already passed,
+        // so a genuinely-missed slot isn't skipped. (autoPublish no longer overrides
+        // the slot; it never gated auto-publishing, which the catchup does regardless.)
 
         // ── Create scheduled post ───────────────────────────────────────────
         const sp = await prisma.scheduledPost.create({
@@ -3756,7 +3757,7 @@ export async function runAutoGenerateYouTube(ctxArg?: BrandContext): Promise<Gen
       take:    40,
       select:  { title: true },
     }).catch(() => [] as { title: string }[]);
-    const recentAvoidList = recentPosts.map((p) => p.title).filter(Boolean).slice(0, 25);
+    const recentAvoidList = recentPosts.map((p) => p.title).filter(Boolean).slice(0, 40);
 
     const usedThisRun = new Set<string>();
 
@@ -3784,7 +3785,7 @@ export async function runAutoGenerateYouTube(ctxArg?: BrandContext): Promise<Gen
       usedThisRun.add(topic);
 
       const avoidBlock = recentAvoidList.length
-        ? `\n\nDO NOT repeat, reuse, or closely paraphrase any of these recent posts. Use a completely fresh angle, fresh facts, and fresh wording:\n${recentAvoidList.map((t) => `- ${t}`).join("\n")}`
+        ? `\n\nANTI-REPETITION (critical for reach — platforms suppress repetitive uploads): do NOT cover the same SUBJECT/THEME as any recent post below, not just the same wording. If a theme already appears here, pick a genuinely DIFFERENT ${brand.niche} subject — do not make another post on that same theme with fresh words. Use a fresh subject, fresh angle, and fresh facts:\n${recentAvoidList.map((t) => `- ${t}`).join("\n")}`
         : "";
 
       const ytExtra = customExtra
@@ -3801,7 +3802,7 @@ export async function runAutoGenerateYouTube(ctxArg?: BrandContext): Promise<Gen
       const isExpertAngle = (dayNumber + i) % 10 === 0;
       const angleBlock = isExpertAngle
         ? `\n\nCONTENT ANGLE — IN-DEPTH (this is one of the ~10% expert-level posts): you MAY use precise terminology and educational depth here. Name specific facts/criteria/details and write at a level that respects experts while still being understandable. Do not dumb it down — this slot exists to showcase credibility. TITLE RULE: even here, the "title" must still be a plain-language CURIOSITY hook a layperson would click (you may add the technical term AFTER a plain hook).`
-        : `\n\nCONTENT ANGLE — ACCESSIBLE (this is one of the ~90% accessible posts, framed for the general public, NOT specialists): frame the topic in plain, relatable, everyday language. Focus entirely on what it means for the VIEWER's daily life — practical, actionable advice they can use today. Lead with the personal "what does this mean for me" angle. AVOID heavy jargon and insider terminology; if a technical term is unavoidable, explain it in one plain phrase. Keep it warm, accessible, and motivating for an everyday viewer.\nTITLE RULE: the "title" MUST be a plain-language CURIOSITY hook the average person would click — NEVER jargon. Make the viewer NEED to know the answer.`;
+        : `\n\nCONTENT ANGLE — ACCESSIBLE (this is one of the ~90% accessible posts, framed for the general public, NOT specialists): frame the topic in plain, relatable, everyday language. Focus entirely on what it means for the VIEWER's daily life — practical, actionable advice they can use today. Lead with the personal "what does this mean for me" angle. AVOID heavy jargon and insider terminology; if a technical term is unavoidable, explain it in one plain phrase. Keep it warm, accessible, and motivating for an everyday viewer.\nTITLE RULE: the "title" MUST be a plain-language CURIOSITY hook the average person would click — NEVER jargon. Follow the WINNING PATTERN: a concrete everyday noun + a specific curiosity or benefit (a number ONLY if it is truthful — NEVER invent a statistic). GOOD: concrete, specific, names the actual thing. BANNED (these flop — abstract, vague, no concrete picture): generic "...your <thing>" patterns, "How X causes silent Y", "Why X is killing your <thing>", with no specific noun or number. Make the viewer NEED to know the answer.`;
 
       const cardSpec = cardSpecFor(brand)[type] ?? cardSpecFor(brand).EDUCATIONAL;
 
@@ -3823,7 +3824,7 @@ ${cardSpec}
 
 Return ONLY a valid JSON object with EXACTLY these fields:
 {
-  "title": "SEO title under 60 chars — searchable YouTube phrasing",
+  "title": "SEO title under 60 chars, searchable YouTube phrasing. Obey the TITLE RULE: concrete everyday noun + specific curiosity/benefit (a number only if truthful); NEVER abstract/jargon or the banned vague patterns.",
   "hook": "Card headline — bold 6-9 words, no asterisks, no punctuation at end.",
   "content": "The IMAGE-CARD text. Follow the IMAGE-CARD REQUIREMENT above EXACTLY. Each item on its OWN LINE separated by \\n. Plain lines only — NO prose paragraphs, NO markdown, NO asterisks.",
   "caption": "Caption (prose, DIFFERENT from and RICHER than the card). Make it detailed and substantial: a strong scroll-stopping hook, then 2-4 sentences of context with specifics, then 5 key points each starting with ① ② ③ ④ ⑤ and each EXPANDED to a full, complete sentence with a real number/stat/detail AND its significance (NOT a fragment), then a 'Why it matters:' line (one full sentence), then the save prompt and a Follow ${atHandle(brand)} CTA.",

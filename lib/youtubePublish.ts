@@ -349,15 +349,17 @@ SOURCE CONTENT:
 ${(source ?? "").slice(0, 600)}
 
 The hook MUST:
-- Be a COMPLETE, self-contained thought of 6 to 12 words on a SINGLE line — never a sentence fragment, never cut off, never ending on a weak word like "is/the/a/your/secretly".
-- Open a strong CURIOSITY GAP — tease the payoff/secret/danger, do NOT explain or answer it.
-- Make the viewer feel they NEED the answer (surprise, stakes, "I didn't know that").
-- Be specific to THIS topic (not generic). No hashtags, no emojis, no quotation marks.
+- WIN THE FIRST SECOND: viewers decide in ~1s, so put the most surprising/concrete word in the FIRST 3 words. Lead with ONE of: a direct QUESTION ("Why does this happen every morning?"), a concrete everyday specific ("The breakfast habit that…"), or a count of list items ("3 signs…") — ONLY if that count is truthful. Never open with a slow wind-up like "Did you know" or "There is a".
+- Be accurate — NEVER invent, exaggerate, or guess a statistic. A fabricated or overstated figure destroys trust. This includes percentages ("90% of people…") AND magnitude claims ("doubles/triples it", "cuts it in half"): do not use any number or magnitude unless it is a well-established fact about this ${niche} topic. If you are not certain, use a QUESTION or a CONCRETE everyday image instead.
+- Be a COMPLETE, self-contained thought of 6 to 12 words on a SINGLE line — never a fragment, never cut off, never ending on a weak word like "is/the/a/your/secretly".
+- Open a strong CURIOSITY GAP — tease the payoff/secret/danger/stakes, do NOT explain or answer it.
+- Be CONCRETE and specific to THIS topic — name the actual thing, the everyday object, the moment. Avoid vague abstractions ("silent damage", "quietly costing you") with no concrete picture. No hashtags, no emojis, no quotation marks.
 
-Examples of the STYLE (do not copy — match the energy):
-- "The mistake most people make and never notice"
-- "This common habit is quietly costing you results"
-- "The one thing experts wish everyone knew"
+Examples of the STYLE (do not copy — match the punchy, concrete, first-word-strong energy):
+- "The everyday habit quietly wrecking your ${niche} results"
+- "This one thing changes your ${niche} routine for 6 hours"
+- "3 mistakes people make every single morning"
+- "Why does this keep happening at 3 in the morning?"
 
 Return ONLY the single complete hook line — no prose, no markdown, no label, no quotes.`;
     const hookSystem =
