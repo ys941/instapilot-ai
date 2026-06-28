@@ -9,7 +9,7 @@ import {
   ShieldCheck, Clock, Database, Globe, Calendar,
   Activity, Sparkles, Zap, FileText, Plus, X,
   ChevronDown, ChevronUp, RotateCw, BookImage, Radio, LogOut, Youtube,
-  Building2, Layers,
+  Building2, Layers, Sunrise,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
@@ -31,6 +31,7 @@ const tabs = [
   { id: "youtube",       label: "YouTube",        icon: Youtube },
   { id: "webhook",       label: "Webhook",        icon: Radio },
   { id: "notifications", label: "Notifications",  icon: Bell },
+  { id: "morning-digest", label: "Morning Digest", icon: Sunrise },
   { id: "danger",        label: "Danger Zone",    icon: AlertTriangle },
 ];
 
@@ -1478,6 +1479,7 @@ function AutoPostTab() {
   const [timezone,      setTimezone]      = useState("Asia/Kolkata");
   const [autoPublish,   setAutoPublish]   = useState(false);
   const [publishToYouTube, setPublishToYouTube] = useState(false);
+  const [publishToFacebook, setPublishToFacebook] = useState(false);
   const [dailySchedule, setDailySchedule] = useState<DayScheduleEntry[]>([]);
   const [customScheduleOnly, setCustomScheduleOnly] = useState(false);
   const [newTopic,      setNewTopic]      = useState("");
@@ -1499,6 +1501,7 @@ function AutoPostTab() {
           setTimezone(cfg.timezone ?? "Asia/Kolkata");
           setAutoPublish(cfg.autoPublish ?? false);
           setPublishToYouTube(cfg.publishToYouTube ?? false);
+          setPublishToFacebook(cfg.publishToFacebook ?? false);
           setDailySchedule(Array.isArray(cfg.dailySchedule) ? cfg.dailySchedule : []);
           setCustomScheduleOnly(cfg.customScheduleOnly ?? false);
         }
@@ -1514,7 +1517,7 @@ function AutoPostTab() {
       const res  = await fetch(withBrand("/api/settings/auto-post", brandId), {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ enabled, postsPerDay, postTypes, topics, scheduleDays, scheduleTimes, timezone, autoPublish, publishToYouTube, dailySchedule, customScheduleOnly }),
+        body:    JSON.stringify({ enabled, postsPerDay, postTypes, topics, scheduleDays, scheduleTimes, timezone, autoPublish, publishToYouTube, publishToFacebook, dailySchedule, customScheduleOnly }),
       });
       const data = await res.json();
       if (data.success) toast.success("Auto-post settings saved ✅", { id: tid });
@@ -1816,6 +1819,15 @@ function AutoPostTab() {
             YouTube doesn&apos;t support image/community posts via its API, so Instagram posts stay on Instagram.
             Use the YouTube tab to auto-publish Shorts.
           </p>
+        </div>
+
+        <div className="rounded-xl p-4 border border-white/[0.07] bg-white/[0.01]">
+          <Toggle
+            label="Also publish to Facebook Page"
+            description="When a post publishes to Instagram, also cross-post the same media + caption to your connected Facebook Page feed (photos & Reels)."
+            value={publishToFacebook}
+            onChange={setPublishToFacebook}
+          />
         </div>
 
       </div>
@@ -2198,6 +2210,122 @@ function NotificationsTab() {
           <Toggle label="Post Published (coming soon)"  description="Browser push when post goes live"        value={notifs.pushPublish}      onChange={set("pushPublish")}      disabled />
           <Toggle label="New Comments (coming soon)"    description="When you receive Instagram comments"     value={notifs.pushComments}     onChange={set("pushComments")}     disabled />
           <Toggle label="Weekly Report (coming soon)"   description="Summary every Monday morning"           value={notifs.pushWeeklyReport} onChange={set("pushWeeklyReport")} disabled />
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-2">
+        <SaveButton onClick={handleSave} loading={saving} />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MORNING DIGEST TAB — pick exactly what goes into the once-a-day 24h summary email
+// ─────────────────────────────────────────────────────────────────────────────
+function MorningDigestTab() {
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [cfg, setCfg] = useState({
+    enabled: false, sendTime: "08:00",
+    igInsights: true, igComments: true, igPublished: true, igFollowers: true,
+    ytInsights: true, ytComments: true, ytPublished: true, ytSubscribers: true,
+    topContent: true, engagement: true, upcomingToday: true, failures: true,
+    systemHealth: true, growthDeltas: true, aiUsage: false,
+  });
+
+  useEffect(() => {
+    fetch("/api/settings/morning-digest")
+      .then((r) => r.json())
+      .then((d) => { if (d.success && d.data) setCfg((p) => ({ ...p, ...d.data })); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const set = (key: keyof typeof cfg) => (v: boolean) => setCfg((p) => ({ ...p, [key]: v }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    const tid = toast.loading("Saving morning digest…");
+    try {
+      const res  = await fetch("/api/settings/morning-digest", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg),
+      });
+      const data = await res.json();
+      if (data.success) toast.success("Morning digest saved ✅", { id: tid });
+      else              toast.error(data.error ?? "Save failed", { id: tid });
+    } catch { toast.error("Network error", { id: tid }); }
+    finally { setSaving(false); }
+  };
+
+  if (loading) return <SkeletonBlock rows={5} />;
+
+  const card = "rounded-xl border border-white/[0.06] px-4";
+  const cardBg = { background: "rgba(255,255,255,0.02)" };
+
+  return (
+    <div className="space-y-5">
+      <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Morning Digest</h3>
+      <p className="text-xs text-white/40 leading-relaxed -mt-2">
+        One email each morning summarising the <strong className="text-white/60">last 24 hours</strong> across Instagram & YouTube. Turn it on, pick a send time, and choose exactly what to include.
+      </p>
+
+      {/* Master + time */}
+      <div className={card} style={cardBg}>
+        <Toggle
+          label="Send the Morning Digest"
+          description="Master switch. When off, no digest email is sent."
+          value={cfg.enabled}
+          onChange={set("enabled")}
+        />
+        <div className="flex items-center justify-between py-3 border-t border-white/[0.04]">
+          <div>
+            <p className="text-sm text-white/80 font-medium">Send time (IST)</p>
+            <p className="text-xs text-white/35 mt-0.5">Delivered once daily, in this hour.</p>
+          </div>
+          <input
+            type="time"
+            value={cfg.sendTime}
+            onChange={(e) => setCfg((p) => ({ ...p, sendTime: e.target.value || "08:00" }))}
+            className="px-3 py-2 rounded-lg text-sm text-white outline-none"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+          />
+        </div>
+      </div>
+
+      {/* Instagram items */}
+      <div>
+        <p className="text-sm font-semibold text-white/50 mb-3">📸 Instagram</p>
+        <div className={card} style={cardBg}>
+          <Toggle label="Insights (24h)"   description="Likes, comments, reach, saves, shares on posts from the last 24h" value={cfg.igInsights}  onChange={set("igInsights")} />
+          <Toggle label="New comments"      description="The actual comment text + author from the last 24h"               value={cfg.igComments}  onChange={set("igComments")} />
+          <Toggle label="Published posts"   description="What went live on Instagram in the last 24h"                       value={cfg.igPublished} onChange={set("igPublished")} />
+          <Toggle label="Followers"         description="Current follower count"                                           value={cfg.igFollowers} onChange={set("igFollowers")} />
+        </div>
+      </div>
+
+      {/* YouTube items */}
+      <div>
+        <p className="text-sm font-semibold text-white/50 mb-3">▶️ YouTube</p>
+        <div className={card} style={cardBg}>
+          <Toggle label="Insights (24h)"   description="Views, likes, comments on videos from the last 24h" value={cfg.ytInsights}    onChange={set("ytInsights")} />
+          <Toggle label="New comments"      description="The actual comment text + author from the last 24h"  value={cfg.ytComments}    onChange={set("ytComments")} />
+          <Toggle label="Published videos"  description="Shorts/videos that went live in the last 24h"        value={cfg.ytPublished}   onChange={set("ytPublished")} />
+          <Toggle label="Subscribers"       description="Current subscriber count"                            value={cfg.ytSubscribers} onChange={set("ytSubscribers")} />
+        </div>
+      </div>
+
+      {/* Cross-cutting items */}
+      <div>
+        <p className="text-sm font-semibold text-white/50 mb-3">✨ More</p>
+        <div className={card} style={cardBg}>
+          <Toggle label="Top performer"        description="Best post/video of the last 24h"                value={cfg.topContent}    onChange={set("topContent")} />
+          <Toggle label="Auto-engagement"      description="How many comments & DMs the bot replied to"      value={cfg.engagement}    onChange={set("engagement")} />
+          <Toggle label="Scheduled for today"  description="What's queued to publish today"                  value={cfg.upcomingToday} onChange={set("upcomingToday")} />
+          <Toggle label="Failures"             description="Any failed publishes/errors in the last 24h"     value={cfg.failures}      onChange={set("failures")} />
+          <Toggle label="Growth vs prior day"  description="Follower/subscriber change"                      value={cfg.growthDeltas}  onChange={set("growthDeltas")} />
+          <Toggle label="System health"        description="API / webhook / quota status"                    value={cfg.systemHealth}  onChange={set("systemHealth")} />
+          <Toggle label="AI usage"             description="AI generations + tokens used in the last 24h"    value={cfg.aiUsage}       onChange={set("aiUsage")} />
         </div>
       </div>
 
@@ -3805,6 +3933,7 @@ export default function SettingsPage() {
             {activeTab === "youtube"       && <YouTubeTab />}
             {activeTab === "webhook"       && <WebhookTab />}
             {activeTab === "notifications" && <NotificationsTab />}
+            {activeTab === "morning-digest" && <MorningDigestTab />}
             {activeTab === "danger"        && <DangerTab />}
           </motion.div>
         </AnimatePresence>

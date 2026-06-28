@@ -128,6 +128,20 @@ export async function register() {
       await runDailyCheck(); // run immediately on startup in case it's already 9 AM
       setInterval(runDailyCheck, DAILY_CHECK_INTERVAL);
       console.log("[Instrumentation] Daily health check (9 AM IST) polling every 10 minutes.");
+
+      // Morning Digest — polls every 10 minutes; self-gates to the user's configured
+      // IST send-hour, once per day, and only when the digest is enabled in Settings.
+      const runDigest = async () => {
+        try {
+          const { runMorningDigest } = await import("@/lib/morningDigest");
+          await runMorningDigest();
+        } catch (err) {
+          console.error("[MorningDigest] Timer error:", err);
+        }
+      };
+      await runDigest();
+      setInterval(runDigest, DAILY_CHECK_INTERVAL);
+      console.log("[Instrumentation] Morning digest polling every 10 minutes.");
     }, STARTUP_DELAY_MS);
   }
 }

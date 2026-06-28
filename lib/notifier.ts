@@ -1177,6 +1177,81 @@ export async function sendDailyHealthReport(opts: {
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
+// MORNING DIGEST  — once-a-day "last 24h" summary across Instagram + YouTube.
+// Each section is optional; only included sections (per the user's Settings toggles)
+// are passed in, and only non-empty ones render.
+// ════════════════════════════════════════════════════════════════════════════════
+
+export interface MorningDigestPayload {
+  dateLabel:     string;
+  ig?:           { posts24h: number; likes: number; comments: number; reach: number; saves: number; shares: number } | null;
+  igFollowers?:  { count: number; delta: number | null } | null;
+  igComments?:   Array<{ author: string; text: string; sentiment?: string | null }> | null;
+  igPublished?:  Array<{ title: string; url?: string | null }> | null;
+  yt?:           { videos24h: number; views: number; likes: number; comments: number } | null;
+  ytSubscribers?:{ count: number; delta: number | null } | null;
+  ytComments?:   Array<{ author: string; text: string; videoTitle?: string }> | null;
+  ytPublished?:  Array<{ title: string; url: string }> | null;
+  topContent?:   { platform: string; title: string; metric: string } | null;
+  engagement?:   { commentsReplied: number; dmsReplied: number } | null;
+  upcoming?:     Array<{ title: string; platform: string; when: string }> | null;
+  failures?:     Array<{ title: string; error: string }> | null;
+  health?:       Array<{ label: string; ok: boolean }> | null;
+  growth?:       Array<{ label: string; value: string }> | null;
+  aiUsage?:      { generations: number; tokens: number } | null;
+}
+
+const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+export async function sendMorningDigestEmail(p: MorningDigestPayload): Promise<void> {
+  const sec = (title: string, inner: string) =>
+    `<div style="margin:0 0 22px"><div style="font-size:13px;font-weight:700;color:#FF6b78;letter-spacing:.4px;text-transform:uppercase;margin:0 0 10px">${esc(title)}</div>${inner}</div>`;
+  const stat = (label: string, value: string) =>
+    `<td style="padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#fff">${esc(value)}</div><div style="font-size:11px;color:#9aa7b8;margin-top:2px">${esc(label)}</div></td>`;
+  const statRow = (cells: string[]) =>
+    `<table width="100%" cellspacing="8" cellpadding="0" style="border-collapse:separate"><tr>${cells.join("")}</tr></table>`;
+  const li = (s: string) => `<div style="font-size:13px;color:#d6deea;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">${s}</div>`;
+  const commentLi = (author: string, text: string, tag?: string) =>
+    li(`<strong style="color:#fff">@${esc(author)}</strong>${tag ? ` <span style="color:#9aa7b8;font-size:11px">· ${esc(tag)}</span>` : ""}<br><span style="color:#c2ccd9">${esc(text).slice(0, 280)}</span>`);
+
+  const blocks: string[] = [];
+
+  if (p.ig) blocks.push(sec("📸 Instagram — last 24h", statRow([
+    stat("Posts", String(p.ig.posts24h)), stat("Likes", String(p.ig.likes)), stat("Comments", String(p.ig.comments)),
+  ]) + statRow([ stat("Reach", String(p.ig.reach)), stat("Saves", String(p.ig.saves)), stat("Shares", String(p.ig.shares)) ])));
+  if (p.igFollowers) blocks.push(sec("👥 Instagram followers", statRow([ stat("Followers", String(p.igFollowers.count)), stat("Change (24h)", p.igFollowers.delta == null ? "—" : (p.igFollowers.delta >= 0 ? `+${p.igFollowers.delta}` : String(p.igFollowers.delta))) ])));
+  if (p.igPublished?.length) blocks.push(sec("🆕 Published to Instagram", p.igPublished.map((x) => li(x.url ? `<a href="${esc(x.url)}" style="color:#8ab4ff;text-decoration:none">${esc(x.title)}</a>` : esc(x.title))).join("")));
+  if (p.igComments?.length) blocks.push(sec(`💬 New Instagram comments (${p.igComments.length})`, p.igComments.slice(0, 15).map((c) => commentLi(c.author, c.text, c.sentiment ?? undefined)).join("")));
+
+  if (p.yt) blocks.push(sec("▶️ YouTube — last 24h", statRow([
+    stat("New videos", String(p.yt.videos24h)), stat("Views", String(p.yt.views)), stat("Likes", String(p.yt.likes)),
+  ]) + statRow([ stat("Comments", String(p.yt.comments)), "", "" ])));
+  if (p.ytSubscribers) blocks.push(sec("👥 YouTube subscribers", statRow([ stat("Subscribers", String(p.ytSubscribers.count)), stat("Change (24h)", p.ytSubscribers.delta == null ? "—" : (p.ytSubscribers.delta >= 0 ? `+${p.ytSubscribers.delta}` : String(p.ytSubscribers.delta))) ])));
+  if (p.ytPublished?.length) blocks.push(sec("🆕 Published to YouTube", p.ytPublished.map((x) => li(`<a href="${esc(x.url)}" style="color:#8ab4ff;text-decoration:none">${esc(x.title)}</a>`)).join("")));
+  if (p.ytComments?.length) blocks.push(sec(`💬 New YouTube comments (${p.ytComments.length})`, p.ytComments.slice(0, 15).map((c) => commentLi(c.author, c.text, c.videoTitle)).join("")));
+
+  if (p.topContent) blocks.push(sec("🏆 Top performer (24h)", li(`<strong style="color:#fff">${esc(p.topContent.title)}</strong> <span style="color:#9aa7b8">· ${esc(p.topContent.platform)}</span><br><span style="color:#c2ccd9">${esc(p.topContent.metric)}</span>`)));
+  if (p.engagement) blocks.push(sec("↩️ Auto-engagement (24h)", statRow([ stat("Comments replied", String(p.engagement.commentsReplied)), stat("DMs replied", String(p.engagement.dmsReplied)) ])));
+  if (p.upcoming?.length) blocks.push(sec("📅 Scheduled for today", p.upcoming.map((x) => li(`<span style="color:#9aa7b8">${esc(x.when)} · ${esc(x.platform)}</span> — ${esc(x.title)}`)).join("")));
+  if (p.failures?.length) blocks.push(sec(`⚠️ Failures (24h) — ${p.failures.length}`, p.failures.slice(0, 10).map((x) => li(`<strong style="color:#ffb4b4">${esc(x.title)}</strong><br><span style="color:#c2ccd9">${esc(x.error).slice(0, 200)}</span>`)).join("")));
+  if (p.growth?.length) blocks.push(sec("📈 Growth vs prior day", p.growth.map((g) => li(`${esc(g.label)}: <strong style="color:#fff">${esc(g.value)}</strong>`)).join("")));
+  if (p.health?.length) blocks.push(sec("🛡️ System health", p.health.map((h) => li(`${h.ok ? "🟢" : "🔴"} ${esc(h.label)}`)).join("")));
+  if (p.aiUsage) blocks.push(sec("🧠 AI usage (24h)", statRow([ stat("Generations", String(p.aiUsage.generations)), stat("Tokens", String(p.aiUsage.tokens)) ])));
+
+  const body = blocks.length ? blocks.join("") : `<div style="color:#9aa7b8">No activity to report.</div>`;
+  const html = emailWrapper({
+    accentColor: "#FF3b47",
+    icon:        "☀️",
+    heading:     "Your Morning Digest",
+    subheading:  `${BRAND_NAME} · Last 24 hours · ${esc(p.dateLabel)}`,
+    body,
+    ctaLabel:    "Open Dashboard",
+    ctaUrl:      APP_URL,
+  });
+  await sendEmail("Morning Digest", html, "morning_digest", true /* skip rate limit */);
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
 // TEST EMAIL
 // ════════════════════════════════════════════════════════════════════════════════
 

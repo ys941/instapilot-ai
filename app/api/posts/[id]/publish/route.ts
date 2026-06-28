@@ -10,6 +10,8 @@ import { publishPostToYouTubeShort } from "@/lib/youtubePublish";
 import { isYouTubeConfigured, type YouTubeCreds } from "@/lib/youtube";
 import { readPreferencesForBrand, getBrand } from "@/lib/preferences";
 import { getBrandCredentials, resolveBrandId } from "@/lib/brands";
+import { getPageToken } from "@/lib/catchup";
+import { crossPostToFacebookPage } from "@/lib/facebook";
 import { brandFromQuery, brandFromBody } from "@/lib/brandRequest";
 
 const GRAPH_API_VERSION = "v25.0";
@@ -860,6 +862,28 @@ export async function POST(
     // is now redundant. We await deletion so it actually completes, then clear
     // mediaUrls from the DB (prevents a broken-image link in the dashboard).
     const cloudinaryUrls = mediaUrls.filter((u) => u.includes("res.cloudinary.com"));
+
+    // ── Facebook Page cross-post (Settings → "Also publish to Facebook Page") ──
+    // Must run BEFORE the Cloudinary cleanup below — it reuses the same public media
+    // URL. Best-effort: never fails the (already successful) Instagram publish.
+    try {
+      const fbPrefs = await readPreferencesForBrand(brandId ?? null);
+      if (fbPrefs.autoPost?.publishToFacebook && cloudinaryUrls.length > 0) {
+        const creds        = await getBrandCredentials(brandId ?? null);
+        const fbPageId     = (process.env.FACEBOOK_PAGE_ID?.trim()) || (creds as any)?.fbPageId || "";
+        const isPrimaryBrand = (brandId ?? null) === null || brandId === primaryId;
+        if (fbPageId && instagramToken) {
+          const pageToken = await getPageToken(instagramToken, fbPageId, isPrimaryBrand);
+          if (pageToken) {
+            const fbUrl = cloudinaryUrls[0];
+            await crossPostToFacebookPage({ pageId: fbPageId, pageToken, mediaUrl: fbUrl, isVideo: isVideoUrl(fbUrl), caption });
+          }
+        }
+      }
+    } catch (fbErr: any) {
+      console.warn("[Publish] Facebook cross-post failed:", fbErr?.message ?? fbErr);
+    }
+
     if (cloudinaryUrls.length > 0) {
       const deleteResults = await Promise.allSettled(
         cloudinaryUrls.map((url) => deleteFromCloudinary(url))

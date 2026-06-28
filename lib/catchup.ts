@@ -18,6 +18,7 @@ import { getAIClient, generateJSONResilient } from "@/lib/ai-factory";
 // renderPostToJpeg and renderStoryToJpeg are imported dynamically at call sites
 // to prevent Turbopack from bundling Node.js-only modules (satori/sharp) for the edge runtime.
 import { uploadBufferToStableCdn, uploadVideoToStableCdn, deleteFromCloudinary, generateCarouselImages } from "@/lib/imageGenerator";
+import { crossPostToFacebookPage } from "@/lib/facebook";
 import { withRenderLock } from "@/lib/renderLock";
 import { buildBeautifulCaption, capIgCaption } from "@/lib/captionBuilder";
 import { readPreferences, readPreferencesForBrand, resolveDaySchedule, getBrand } from "@/lib/preferences";
@@ -1539,6 +1540,21 @@ export async function publishOverdueScheduled(
       // (driven by Auto-Post / Story → "Also publish to YouTube"). BEFORE Cloudinary cleanup.
       if (platform === "both") {
         await forceYouTubeShort({ ctx, sp, post: routedPost });
+      }
+
+      // Facebook Page cross-post — when Settings → "Also publish to Facebook Page" is on.
+      // Reuses the SAME Cloudinary media (must run BEFORE the cleanup below). Stories are
+      // skipped (no equivalent Page surface). Best-effort: never fails the IG publish.
+      if (!isStory && ctx.prefs.autoPost?.publishToFacebook && ctx.fbPageId && igToken) {
+        try {
+          const pageToken = await getPageToken(igToken, ctx.fbPageId, ctx.isPrimary);
+          if (pageToken) {
+            const fbIsVideo = /\.(mp4|mov|webm)(\?|$)/i.test(resolvedMediaUrl) || sp.postType === "REEL";
+            await crossPostToFacebookPage({ pageId: ctx.fbPageId, pageToken, mediaUrl: resolvedMediaUrl, isVideo: fbIsVideo, caption });
+          }
+        } catch (fbErr: any) {
+          console.warn("[Catchup] Facebook cross-post failed:", fbErr?.message ?? fbErr);
+        }
       }
 
       // Delete from Cloudinary after successful publish -- Instagram already cached it

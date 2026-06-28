@@ -293,19 +293,70 @@ export default function MediaFolderPage() {
     }
 
     update(item.id, { status: "uploading" });
-    const form = new FormData();
-    form.append("file",     item.file);
-    form.append("title",    item.title    || item.file.name);
-    form.append("caption",  finalCaption);
-    form.append("hashtags", finalHashtags);
-    form.append("postType", item.postType);
-    form.append("platform", platform);
-    if (brand) form.append("brand", brand);
-    if (scheduledFor) form.append("scheduledFor", new Date(scheduledFor).toISOString());
-    // Quiz answer (optional — stored internally, never shown in Instagram caption)
-    if (item.quizAnswer?.trim()) form.append("quizAnswer", item.quizAnswer.trim());
     try {
-      const res  = await fetch("/api/upload", { method: "POST", body: form });
+      // 1) Upload the file DIRECTLY to Cloudinary from the browser when possible.
+      //    This bypasses the server's multipart body limit, so large videos
+      //    (100 MB+) upload reliably instead of failing with
+      //    "Failed to parse body as FormData".
+      let mediaUrl: string | null = null;
+      try {
+        const cfg = await fetch("/api/upload").then((r) => r.json());
+        if (cfg?.cloudName && cfg?.uploadPreset) {
+          const isVideo = item.file.type.startsWith("video/");
+          const cForm = new FormData();
+          cForm.append("file", item.file);
+          cForm.append("upload_preset", cfg.uploadPreset);
+          cForm.append("folder", cfg.folder || "uploads");
+          const cRes  = await fetch(
+            `https://api.cloudinary.com/v1_1/${cfg.cloudName}/${isVideo ? "video" : "image"}/upload`,
+            { method: "POST", body: cForm }
+          );
+          const cData = await cRes.json();
+          if (cData.secure_url) mediaUrl = cData.secure_url as string;
+          else throw new Error(cData.error?.message || "Cloud upload failed");
+        }
+      } catch (cloudErr: any) {
+        // No Cloudinary config (or it errored) → fall back to the server multipart path.
+        console.warn("Direct Cloudinary upload failed, falling back to server:", cloudErr?.message);
+      }
+
+      // 2) Register the post with our server.
+      let res: Response;
+      if (mediaUrl) {
+        // Direct path: send ONLY the URL + metadata as small JSON.
+        res = await fetch("/api/upload", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mediaUrl,
+            fileName: item.file.name,
+            fileType: item.file.type,
+            title:    item.title || item.file.name,
+            caption:  finalCaption,
+            hashtags: finalHashtags,
+            postType: item.postType,
+            platform,
+            ...(brand ? { brand } : {}),
+            ...(scheduledFor ? { scheduledFor: new Date(scheduledFor).toISOString() } : {}),
+            ...(item.quizAnswer?.trim() ? { quizAnswer: item.quizAnswer.trim() } : {}),
+          }),
+        });
+      } else {
+        // Legacy fallback: stream the file through the server (small files only).
+        const form = new FormData();
+        form.append("file",     item.file);
+        form.append("title",    item.title    || item.file.name);
+        form.append("caption",  finalCaption);
+        form.append("hashtags", finalHashtags);
+        form.append("postType", item.postType);
+        form.append("platform", platform);
+        if (brand) form.append("brand", brand);
+        if (scheduledFor) form.append("scheduledFor", new Date(scheduledFor).toISOString());
+        // Quiz answer (optional — stored internally, never shown in the post caption)
+        if (item.quizAnswer?.trim()) form.append("quizAnswer", item.quizAnswer.trim());
+        res = await fetch("/api/upload", { method: "POST", body: form });
+      }
+
       const data = await res.json();
       if (data.success) {
         update(item.id, {

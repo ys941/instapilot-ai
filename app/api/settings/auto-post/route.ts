@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
         timezone:      typeof body.timezone     === "string"   ? body.timezone     : "Asia/Kolkata",
         autoPublish:   typeof body.autoPublish  === "boolean"  ? body.autoPublish  : false,
         publishToYouTube: typeof body.publishToYouTube === "boolean" ? body.publishToYouTube : false,
+        publishToFacebook: typeof body.publishToFacebook === "boolean" ? body.publishToFacebook : false,
         // Per-day timing/post-count overrides (validated: day 0-6, postsPerDay 1-5, HH:MM times).
         dailySchedule: sanitizeDailySchedule(body.dailySchedule),
         // Master toggle: only post on custom days (ignore global Publishing Days/Times for days with no custom entry).
