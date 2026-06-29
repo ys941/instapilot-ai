@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { readPreferencesForBrand } from "@/lib/preferences";
 import { getAIClient } from "@/lib/ai-factory";
+import { DEFAULT_GROK_MODEL } from "@/lib/grok";
 import { resolveBrandId } from "@/lib/brands";
 import { brandFromQuery, brandFromBody } from "@/lib/brandRequest";
 import { getBrand } from "@/lib/preferences";
@@ -641,7 +642,11 @@ async function callAI(
     const userMsg   = messages.filter((m) => m.role !== "system").map((m) => m.content).join("\n\n");
     const fullPrompt = `${userMsg}\n\nIMPORTANT: Respond with valid JSON only.`;
     const content = await ai.generateContent(fullPrompt, systemMsg, maxTokens);
-    return { content, tokensUsed: 0 }; // Gemini SDK doesn't expose token count easily
+    // tokensUsed stays 0 for Gemini: generateContent returns only the text string,
+    // and usageMetadata is only on the raw SDK response. Surfacing it would require
+    // changing the shared client return signature (which lib/catchup.ts depends on),
+    // so we intentionally leave 0 here rather than break that contract.
+    return { content, tokensUsed: 0 };
   }
 
   // Grok / Groq path
@@ -657,7 +662,7 @@ async function callAI(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: process.env.AI_MODEL_MAIN || "llama-3.3-70b-versatile",
+      model: process.env.AI_MODEL_MAIN || DEFAULT_GROK_MODEL,
       messages,
       max_tokens: maxTokens,
       temperature: 0.8,
@@ -912,7 +917,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         prompt: JSON.stringify({ systemPrompt, userMessage: messages[1].content }),
         result: result as any,
         tokensUsed,
-        model: process.env.AI_MODEL_MAIN || "llama-3.3-70b-versatile",
+        model: process.env.AI_MODEL_MAIN || DEFAULT_GROK_MODEL,
         duration,
       },
     });

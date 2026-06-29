@@ -19,15 +19,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body) return NextResponse.json({ success: false, error: "Invalid request body" }, { status: 400 });
     const brand = brandFromBody(body, brandFromQuery(request));
+
+    // Whitelist the provider; fall back to "grok" on anything unrecognised.
+    const aiProvider = ["grok", "gemini"].includes(body.aiProvider) ? body.aiProvider : "grok";
 
     const updated = await writePreferencesForBrand(brand, {
       ai: {
         defaultTone:  body.defaultTone  ?? "Professional",
         defaultType:  body.defaultType  ?? "Educational",
         language:     body.language     ?? "English",
-        aiProvider:   body.aiProvider   ?? "grok",
+        aiProvider,
         geminiApiKey: body.geminiApiKey ?? "",
       },
     });

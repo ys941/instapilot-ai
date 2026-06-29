@@ -10,5 +10,7 @@ export const prisma =
     log: ["error"], // query logging removed  -  was adding ~10-30ms overhead per request in dev
   });
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Cache on globalThis in ALL environments to avoid duplicate clients / connection
+// exhaustion if this module is ever re-evaluated (e.g. HMR or serverless reload).
+globalForPrisma.prisma = prisma;
 

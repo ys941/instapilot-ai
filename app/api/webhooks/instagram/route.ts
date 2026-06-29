@@ -27,6 +27,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { markWebhookActive } from "@/lib/webhookCounter";
 import { claimCommentForReply, releaseCommentClaim, markCommentReplied } from "@/lib/commentClaim";
+import { claimDMForReply, releaseDMClaim } from "@/lib/dmClaim";
 import { transcribeAudio, synthesizeVoiceUrl } from "@/lib/audioReply";
 import crypto from "crypto";
 
@@ -62,35 +63,30 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  console.log(`[Webhook] Verify attempt — mode: ${mode}, token: "${token}", envToken: "${verifyToken}", challenge: "${challenge}"`);
+  // Never log the actual tokens in plaintext — log only presence/length + match.
+  console.log(`[Webhook] Verify attempt — mode: ${mode}, tokenPresent: ${!!token}, tokenLen: ${token?.length ?? 0}, tokenMatches: ${token === verifyToken}, challengePresent: ${!!challenge}`);
 
   if (mode === "subscribe" && token === verifyToken && challenge) {
     console.log("[Webhook] Instagram webhook verified ✅");
     return new NextResponse(challenge, { status: 200 });
   }
 
-  console.warn("[Webhook] Verification failed — received:", token, "| expected:", verifyToken);
+  console.warn(`[Webhook] Verification failed — tokenPresent: ${!!token}, tokenMatches: ${token === verifyToken}, mode: ${mode}`);
   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 }
 
 // ── POST: Real-time event handler ─────────────────────────────────────────────
 //
-// DELIBERATE "VERIFY-BUT-DON'T-DROP" POSTURE
-// ------------------------------------------
-// A previous fail-closed HMAC check rejected EVERY real Meta webhook (likely a
-// FACEBOOK_APP_SECRET mismatch on Railway, or a differently-named/encoded
-// signature header), which silently killed instant comment/DM auto-replies and
-// forced a ~35-min polling fallback. Dropping genuine events because of a stale
-// secret is far worse than briefly processing an unverified-but-signed payload.
-//
-// So we VERIFY the signature and LOG a diagnostic on every POST, but we only
-// HARD-REJECT (401) when NO signature header is present at all (this still
-// blocks dumb empty-body scanners/bots). If a signature IS present but does not
-// match, we WARN and PROCESS ANYWAY so real replies keep working. If the secret
-// isn't configured we can't verify, so we process with a warning.
-//
-// Once the diagnostic log confirms the secret is correct and signatures match
-// on real events, this can be tightened back to hard-reject on mismatch.
+// FAIL-CLOSED HMAC POSTURE (with a misconfig escape hatch)
+// --------------------------------------------------------
+// When FACEBOOK_APP_SECRET is set we trust ONLY signed-and-matching payloads:
+//   • signature present + matches  → process normally.
+//   • signature present + mismatch → DO NOT process; ack 200 (to avoid Meta
+//     retry storms) and log the rejection.
+//   • signature missing            → DO NOT process; reject.
+// If FACEBOOK_APP_SECRET is NOT set we cannot verify at all — rather than brick
+// production replies we PROCESS with a LOUD warning (misconfig escape hatch).
+// We always return 200 on a signed-but-bad payload so Meta doesn't hammer us.
 export async function POST(request: NextRequest) {
   try {
     // Read the RAW bytes (needed for byte-accurate HMAC) before parsing.
@@ -121,22 +117,26 @@ export async function POST(request: NextRequest) {
       `matched=${matched}`
     );
 
-    if (!headerPresent) {
-      // No signature at all → almost certainly a scanner/bot, not Meta. Reject.
-      console.warn("[Webhook] Rejected POST — no X-Hub-Signature header present");
-      return NextResponse.json({ error: "Missing signature" }, { status: 401 });
-    }
-
-    if (!appSecretSet) {
-      // Can't verify without the secret — process anyway, warn once per event.
-      console.warn("[Webhook] FACEBOOK_APP_SECRET not set — cannot verify signature; processing anyway");
-    } else if (!matched) {
-      // Signed but mismatched → likely a stale/wrong secret. Do NOT drop the
-      // event (that's the regression we're fixing) — warn and process.
-      console.warn(
-        "[Webhook] X-Hub-Signature present but did NOT match FACEBOOK_APP_SECRET — " +
-        "processing anyway (verify-but-don't-drop). Check the sig-check diagnostic above."
-      );
+    if (appSecretSet) {
+      // Secret configured → fail closed. Only signed-and-matching payloads pass.
+      if (!headerPresent) {
+        // No signature at all → almost certainly a scanner/bot, not Meta. Reject.
+        console.warn("[Webhook] Rejected POST — FACEBOOK_APP_SECRET set but no X-Hub-Signature header present; skipping processing");
+        return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+      }
+      if (!matched) {
+        // Signed but mismatched → spoofed or wrong secret. Skip processing.
+        // Ack 200 (not 4xx) so Meta does not enter a retry storm against us.
+        console.warn(
+          "[Webhook] X-Hub-Signature present but did NOT match FACEBOOK_APP_SECRET — " +
+          "skipping processing (fail-closed). Check the sig-check diagnostic above."
+        );
+        return NextResponse.json({ received: true }, { status: 200 });
+      }
+    } else {
+      // Misconfig escape hatch: can't verify without the secret. Process anyway
+      // so production replies don't break, but warn LOUDLY on every event.
+      console.warn("[Webhook] ⚠️  FACEBOOK_APP_SECRET NOT SET — signature CANNOT be verified; processing UNVERIFIED payload. Set FACEBOOK_APP_SECRET to enable fail-closed verification.");
     }
 
     const body = JSON.parse(rawBody);
@@ -256,10 +256,18 @@ async function handleDMEvent(msg: any, igToken: string, igAcctId: string) {
     return;
   }
 
-  // Skip our own outbound messages (echo suppression)
-  // Only compare against igAcctId — using recipientId would incorrectly block real user DMs
-  // because recipientId is our own account IGSID and senderId could equal it for platform echos
-  if (senderId === igAcctId) {
+  // Skip our own outbound messages (echo suppression). Multi-signal, like the
+  // comment path: an echo can carry our IG business account id, our Facebook
+  // Page id, or our own handle as the sender (incl. voice-note echoes). We do
+  // NOT compare against recipientId — that's our own IGSID on inbound DMs and
+  // would incorrectly block real users.
+  const PAGE_ID      = process.env.FACEBOOK_PAGE_ID ?? "";
+  const OWN_USERNAME = (process.env.INSTAGRAM_USERNAME ?? "").toLowerCase();
+  const senderUname  = (msg?.sender?.username ?? "").toLowerCase().trim();
+  const isOwnDM =
+    (!!senderId && ((!!igAcctId && senderId === igAcctId) || (!!PAGE_ID && senderId === PAGE_ID))) ||
+    (!!senderUname && !!OWN_USERNAME && senderUname === OWN_USERNAME);
+  if (isOwnDM) {
     console.log(`[Webhook DM] Skipping — echo of our own message`);
     return;
   }
@@ -268,27 +276,21 @@ async function handleDMEvent(msg: any, igToken: string, igAcctId: string) {
   // can throttle its Instagram API calls.
   markWebhookActive();
 
-  // Dedup by message ID — in-memory fast-path first.
+  // Dedup by message ID — in-memory fast-path first (cheap same-process filter).
   if (msgId && _repliedMsgIds.has(msgId)) {
     console.log(`[Webhook DM] Skipping — already processed msgId ${msgId}`);
     return;
   }
-  // Authoritative DB-backed dedup: a DM_AUTO_REPLIED row keyed on this incoming
-  // message id means we already replied (survives process restart / redelivery).
-  if (msgId) {
-    try {
-      const already = await prisma.activityLog.findFirst({
-        where:  { action: "DM_AUTO_REPLIED", entityId: msgId },
-        select: { id: true },
-      });
-      if (already) {
-        console.log(`[Webhook DM] Skipping — DB shows msgId ${msgId} already replied`);
-        _repliedMsgIds.add(msgId);
-        return;
-      }
-    } catch (dedupErr: any) {
-      console.warn(`[Webhook DM] DB dedup check failed (non-fatal): ${dedupErr?.message}`);
-    }
+
+  // Authoritative ATOMIC claim keyed on the inbound mid. Unlike the previous
+  // check-then-act (findFirst across an await), this flips a unique row's
+  // replied:false→true in one statement, so on Meta retries / concurrent
+  // deliveries exactly ONE caller wins and sends a reply. Survives restarts.
+  const claimed = await claimDMForReply(msgId, { senderId, text });
+  if (!claimed) {
+    console.log(`[Webhook DM] Skipping — msgId ${msgId} already claimed by another path`);
+    if (msgId) _repliedMsgIds.add(msgId);
+    return;
   }
   if (msgId) _repliedMsgIds.add(msgId);
   setTimeout(() => msgId && _repliedMsgIds.delete(msgId), 24 * 60 * 60 * 1000);
@@ -337,7 +339,12 @@ async function handleDMEvent(msg: any, igToken: string, igAcctId: string) {
     console.log(`[Webhook DM] Replying with ${messages.length} message(s) of context`);
 
     const reply = await generateAIDMReply(messages, senderUsername);
-    if (!reply) return;
+    if (!reply) {
+      // No reply produced — release the claim so a redelivery can retry.
+      await releaseDMClaim(msgId);
+      if (msgId) _repliedMsgIds.delete(msgId);
+      return;
+    }
 
     // If they sent a VOICE note, reply with a VOICE note too (fall back to text).
     let voiceUrl: string | null = null;
@@ -382,6 +389,9 @@ async function handleDMEvent(msg: any, igToken: string, igAcctId: string) {
 
     if (sendData.error) {
       console.warn(`[Webhook] DM send failed: ${sendData.error.message} (code ${sendData.error.code}) — sender: ${senderUsername}`);
+      // Send failed — release the claim so a redelivery can retry this mid.
+      await releaseDMClaim(msgId);
+      if (msgId) _repliedMsgIds.delete(msgId);
     } else {
       console.log(`[Webhook] ✅ Instant DM reply sent to ${senderUsername} (msgId: ${sendData.message_id ?? "?"})`);
 
@@ -414,6 +424,9 @@ async function handleDMEvent(msg: any, igToken: string, igAcctId: string) {
     }
   } catch (err: any) {
     console.error(`[Webhook] DM reply error for ${senderId}:`, err?.message);
+    // Unexpected error — release the claim so the mid isn't permanently blocked.
+    await releaseDMClaim(msgId);
+    if (msgId) _repliedMsgIds.delete(msgId);
   }
 }
 

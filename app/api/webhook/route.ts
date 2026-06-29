@@ -6,11 +6,13 @@ import { getAIClient } from "@/lib/ai-factory";
 import { incrementWebhookCounter, notifEmitter, LiveNotif, markWebhookActive } from "@/lib/webhookCounter";
 import { resolveQuizAnswer } from "@/lib/catchup";
 import { claimCommentForReply, releaseCommentClaim, markCommentReplied } from "@/lib/commentClaim";
+import { claimDMForReply, releaseDMClaim } from "@/lib/dmClaim";
 import { notifyWebhookIssue, notifySystemError } from "@/lib/notifier";
 import { getBrand } from "@/lib/preferences";
 
-const WEBHOOK_VERIFY_TOKEN =
-  process.env.WEBHOOK_VERIFY_TOKEN ?? "instapilot_webhook_token";
+// Require the verify token from env — never embed a guessable default in source.
+// If unset, verification will fail (handled in GET) and we log an error there.
+const WEBHOOK_VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN ?? "";
 const APP_SECRET    = process.env.FACEBOOK_APP_SECRET ?? "";
 const GRAPH_BASE    = "https://graph.facebook.com/v25.0";
 const PAGE_ID       = process.env.FACEBOOK_PAGE_ID ?? "";
@@ -164,7 +166,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const token     = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
 
-  console.log("[Webhook GET] mode:", mode, "| token matches:", token === WEBHOOK_VERIFY_TOKEN);
+  // Never log the token value — only presence/length + whether it matched.
+  console.log(`[Webhook GET] mode: ${mode} | tokenPresent: ${!!token} | tokenLen: ${token?.length ?? 0} | tokenMatches: ${!!WEBHOOK_VERIFY_TOKEN && token === WEBHOOK_VERIFY_TOKEN}`);
+
+  if (!WEBHOOK_VERIFY_TOKEN) {
+    console.error("[Webhook GET] WEBHOOK_VERIFY_TOKEN is not set — cannot verify webhook. Set it in env.");
+    return NextResponse.json({ success: false, error: "Verification not configured" }, { status: 403 });
+  }
 
   if (mode === "subscribe" && token === WEBHOOK_VERIFY_TOKEN) {
     return new NextResponse(challenge ?? "", { status: 200 });
@@ -724,6 +732,17 @@ async function processWebhookEvent(body: {
       // Skip redundant safeLog/emit here to avoid duplicates.
       console.log(`[Webhook] DM from @${senderUsername} (${senderId}): "${text.slice(0, 60)}"`);
 
+      // ATOMIC dedup keyed on the inbound mid — without this, a Meta retry of the
+      // same delivery would forward to Make.com (or direct-reply) a SECOND time.
+      // Exactly ONE caller wins the claim; the rest skip. Survives restarts.
+      const dmMid    = msg.message.mid ?? null;
+      const dmClaimed = await claimDMForReply(dmMid, { senderId, username: senderUsername, text });
+      if (!dmClaimed) {
+        console.log(`[Webhook] DM mid ${dmMid} already claimed by another path — skipping reply`);
+        incrementWebhookCounter();
+        continue;
+      }
+
       // -- Forward to Make.com webhook for AI reply (no API credit cost) --------
       const makeWebhookUrl = process.env.MAKE_DM_WEBHOOK_URL ?? "";
       if (makeWebhookUrl) {
@@ -740,7 +759,11 @@ async function processWebhookEvent(body: {
             // Make.com calls this URL back after replying so we can log DM_AUTO_REPLIED
             callbackUrl: `${appUrl}/api/instagram/dms/callback`,
           }),
-        }).catch((err) => console.warn("[Webhook] Make.com forward failed:", err));
+        }).catch((err) => {
+          console.warn("[Webhook] Make.com forward failed:", err);
+          // Forward failed — release the claim so a redelivery can retry.
+          releaseDMClaim(dmMid).catch(() => {});
+        });
         console.log(`[Webhook] DM forwarded to Make.com for @${senderUsername}`);
       } else {
         // -- Fallback: direct Grok reply if Make.com not configured ------------
@@ -758,7 +781,12 @@ async function processWebhookEvent(body: {
             }).catch(() => {});
           } else {
             console.warn(`[Webhook] Direct DM reply failed to @${senderUsername}`);
+            // Send failed — release the claim so a redelivery can retry.
+            await releaseDMClaim(dmMid);
           }
+        } else {
+          // No reply produced — release the claim so a redelivery can retry.
+          await releaseDMClaim(dmMid);
         }
       }
 
@@ -772,6 +800,9 @@ async function processWebhookEvent(body: {
 // Use ONLY during local dev when you cannot get the correct App Secret.
 // NEVER set this in production -- it allows anyone to spoof events.
 const DISABLE_SIG_CHECK = process.env.WEBHOOK_DISABLE_SIGNATURE_CHECK === "true";
+if (DISABLE_SIG_CHECK) {
+  console.warn("[Webhook] ⚠️  WEBHOOK_DISABLE_SIGNATURE_CHECK=true is ACTIVE — HMAC verification is bypassed for ALL events. This is UNSAFE for production (anyone can spoof events). Unset it as soon as the App Secret is fixed.");
+}
 
 // --- POST: Receive events -- acknowledge Meta INSTANTLY, process in background
 export async function POST(request: NextRequest): Promise<NextResponse> {

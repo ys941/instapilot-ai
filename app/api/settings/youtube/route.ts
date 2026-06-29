@@ -8,6 +8,18 @@ import { checkYouTubeHealth } from "@/lib/youtube";
 import { getBrandCredentials } from "@/lib/brands";
 import { brandFromQuery, brandFromBody } from "@/lib/brandRequest";
 
+// Probes the YouTube API on every load — never let upstream cache it.
+export const dynamic = "force-dynamic";
+
+// Bound the outbound health probe so a hung upstream can't block the settings tab.
+// (checkYouTubeHealth goes through googleapis, not fetch, so wrap it with a race.)
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const brand  = brandFromQuery(request);
@@ -15,9 +27,13 @@ export async function GET(request: NextRequest) {
     // Primary/no-brand → env creds (pass none, identical to legacy).
     // Non-primary brand → that brand's stored YouTube OAuth creds.
     const c = brand ? await getBrandCredentials(brand) : null;
-    const health = c
-      ? await checkYouTubeHealth({ clientId: c.ytClientId, clientSecret: c.ytClientSecret, refreshToken: c.ytRefreshToken })
-      : await checkYouTubeHealth();
+    const health = await withTimeout(
+      c
+        ? checkYouTubeHealth({ clientId: c.ytClientId, clientSecret: c.ytClientSecret, refreshToken: c.ytRefreshToken })
+        : checkYouTubeHealth(),
+      8000,
+      { configured: false, ok: false, error: "YouTube health check timed out" } as any
+    );
     return NextResponse.json({ success: true, data: prefs.youtube, status: health });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message }, { status: 500 });
@@ -26,7 +42,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body) return NextResponse.json({ success: false, error: "Invalid request body" }, { status: 400 });
     const brand = brandFromBody(body, brandFromQuery(request));
     const allowedPrivacy = ["public", "unlisted", "private"];
     const secs = Number(body.secondsPerImage);

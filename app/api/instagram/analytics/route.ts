@@ -81,20 +81,48 @@ export async function GET(request: NextRequest) {
       : 0;
 
     // -- 5. Persist snapshot ------------------------------------------------
-    await prisma.accountAnalytics.create({
-      data: {
-        followers,
-        following:    profile.follows_count ?? 0,
-        posts:        profile.media_count   ?? 0,
-        reach:        insights["reach"]         ?? 0,
-        impressions:  insights["impressions"]   ?? 0,
-        profileVisits:insights["profile_views"] ?? 0,
-        websiteClicks:insights["website_clicks"]?? 0,
-        engagementRate: Math.round(avgEngagement * 100) / 100,
-        // Stamp brandId: NULL for the primary brand (unchanged), the brand id otherwise.
-        brandId: isPrimaryBrand ? null : resolvedBrandId,
+    // Write at most ONE row per day per brand (mirrors app/api/analytics/sync/route.ts):
+    // the dashboard polls this every 5 min per tab, so an unconditional create()
+    // floods AccountAnalytics with minute-apart rows and breaks day-over-day deltas.
+    const snapshotData = {
+      followers,
+      following:    profile.follows_count ?? 0,
+      posts:        profile.media_count   ?? 0,
+      reach:        insights["reach"]         ?? 0,
+      impressions:  insights["impressions"]   ?? 0,
+      profileVisits:insights["profile_views"] ?? 0,
+      websiteClicks:insights["website_clicks"]?? 0,
+      engagementRate: Math.round(avgEngagement * 100) / 100,
+      // Stamp brandId: NULL for the primary brand (unchanged), the brand id otherwise.
+      brandId: isPrimaryBrand ? null : resolvedBrandId,
+    };
+
+    // Today-window logic identical to the sync route. The primary brand matches rows
+    // where brandId IS NULL OR == primaryId; non-primary brands match exactly.
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const brandWhere = isPrimaryBrand
+      ? { OR: [{ brandId: null }, { brandId: primaryId }] }
+      : { brandId: resolvedBrandId };
+
+    const existingRow = await prisma.accountAnalytics.findFirst({
+      where: {
+        date: {
+          gte: today,
+          lt: new Date(today.getTime() + 24 * 60 * 60 * 1000),
+        },
+        ...brandWhere,
       } as any,
     });
+
+    if (existingRow) {
+      await prisma.accountAnalytics.update({
+        where: { id: existingRow.id },
+        data: snapshotData as any,
+      });
+    } else {
+      await prisma.accountAnalytics.create({ data: snapshotData as any });
+    }
 
     return NextResponse.json({
       success: true,

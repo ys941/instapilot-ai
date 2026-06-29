@@ -9,17 +9,21 @@ import { prisma } from "@/lib/prisma";
 
 const GRAPH_BASE = "https://graph.facebook.com/v25.0";
 
+// Probes the Graph API on every load — never let upstream cache it.
+export const dynamic = "force-dynamic";
+
 // -- Helper: probe a token and return health info ------------------------------
 async function probeToken(token: string) {
   try {
-    const res  = await fetch(`${GRAPH_BASE}/me?fields=id,name&access_token=${token}`);
+    // Bound outbound Graph calls so a hung upstream can't block the settings tab.
+    const res  = await fetch(`${GRAPH_BASE}/me?fields=id,name&access_token=${token}`, { signal: AbortSignal.timeout(8000) });
     const data = await res.json();
     if (data.error) return { valid: false, error: data.error.message as string, name: null, id: null };
 
     // Also get expiry from debug_token
     let expiresAt: string | null = null;
     try {
-      const dbRes  = await fetch(`${GRAPH_BASE}/debug_token?input_token=${token}&access_token=${token}`);
+      const dbRes  = await fetch(`${GRAPH_BASE}/debug_token?input_token=${token}&access_token=${token}`, { signal: AbortSignal.timeout(8000) });
       const dbData = await dbRes.json();
       const exp    = dbData?.data?.expires_at;
       if (exp && exp !== 0) {
@@ -82,7 +86,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body) return NextResponse.json({ success: false, error: "Invalid request body" }, { status: 400 });
     const token = (body.accessToken ?? "").trim();
     const igId  = (body.accountId   ?? "").trim();
 

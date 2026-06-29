@@ -1002,6 +1002,14 @@ export async function publishOverdueScheduled(
   const brand = ctx.prefs.brand;
   let published = 0, failed = 0;
 
+  // Bounded retry for transiently-FAILED posts. retryCount is incremented on every
+  // failure (see the catch blocks below); once it hits MAX the row stays FAILED
+  // (terminal) so we never loop forever. A simple per-retry backoff (gated on time
+  // since scheduledFor, since ScheduledPost has no updatedAt) keeps a row from being
+  // retried on every 30s tick.
+  const MAX_PUBLISH_RETRIES = 3;
+  const RETRY_BACKOFF_MINUTES = 10;
+
   // NOTE: We no longer bail out when IG credentials are missing — youtube-only
   // scheduled posts must still publish. The Instagram publish branches below stay
   // gated on igToken/igAcctId; only the YouTube branch runs without them.
@@ -1042,14 +1050,47 @@ export async function publishOverdueScheduled(
     }
   }
 
-  const overdue = await prisma.scheduledPost.findMany({
+  const now = new Date();
+  const pending = await prisma.scheduledPost.findMany({
     where: {
       status:       "PENDING",
-      scheduledFor: { lte: new Date() },
+      scheduledFor: { lte: now },
       ...brandFilter(ctx),
     },
     orderBy: { scheduledFor: "asc" },
   });
+
+  // ── Second pass: retry transiently-FAILED posts (bounded) ──────────────────────
+  // A FAILED row is retried only while retryCount < MAX, it's due, and its error is
+  // NOT the transient claim sentinel (those are owned by the claim/self-heal path
+  // above). A per-retry backoff gates how often we re-attempt: since ScheduledPost
+  // has no updatedAt, we require the row to be at least retryCount*BACKOFF minutes
+  // past its scheduledFor before each retry — older failures back off progressively.
+  const failedRetryable = await prisma.scheduledPost.findMany({
+    where: {
+      status:       "FAILED",
+      scheduledFor: { lte: now },
+      retryCount:   { lt: MAX_PUBLISH_RETRIES },
+      NOT:          { error: { startsWith: "__CLAIMING__" } },
+      ...brandFilter(ctx),
+    },
+    orderBy: { scheduledFor: "asc" },
+  }).then((rows) =>
+    rows.filter((r) => {
+      // Backoff: wait retryCount*BACKOFF minutes (from scheduledFor) before each retry.
+      const readyAt = r.scheduledFor.getTime() + r.retryCount * RETRY_BACKOFF_MINUTES * 60 * 1000;
+      return now.getTime() >= readyAt;
+    }),
+  ).catch((e: any) => {
+    console.warn("[Catchup] FAILED-retry read failed (failed posts may not be retried):", e?.message ?? e);
+    return [] as typeof pending;
+  });
+
+  if (failedRetryable.length > 0) {
+    console.log(`[Catchup] Retrying ${failedRetryable.length} transiently-FAILED post(s) (retryCount < ${MAX_PUBLISH_RETRIES})`);
+  }
+
+  const overdue = [...pending, ...failedRetryable];
 
   for (const sp of overdue) {
     try {
@@ -1103,8 +1144,22 @@ export async function publishOverdueScheduled(
       // actively-publishing claim from a genuinely stuck one by CLAIM AGE — not by the
       // row's createdAt (which would instantly reap any post older than 10 min while
       // it's mid-publish, causing a re-claim and a DUPLICATE Instagram post).
+      // PENDING rows claim from PENDING; FAILED-retry rows claim from their EXACT
+      // failed snapshot (same retryCount + still NOT a claim sentinel) so the same
+      // atomic guard applies — a concurrent run that already claimed/changed the row
+      // gets count=0 and skips. Both paths converge on the FAILED("__CLAIMING__:<ts>")
+      // lock used by the publish flow, the self-heal reaper, and the catch block.
+      const claimWhere =
+        sp.status === "FAILED"
+          ? {
+              id:         sp.id,
+              status:     "FAILED" as const,
+              retryCount: sp.retryCount,
+              NOT:        { error: { startsWith: "__CLAIMING__" } },
+            }
+          : { id: sp.id, status: "PENDING" as const };
       const claimed = await prisma.scheduledPost.updateMany({
-        where: { id: sp.id, status: "PENDING" },
+        where: claimWhere,
         data:  { status: "FAILED", error: `__CLAIMING__:${Date.now()}` },
       }).catch(() => ({ count: 0 }));
       if (claimed.count === 0) {

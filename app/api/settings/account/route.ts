@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body) return NextResponse.json({ success: false, error: "Invalid request body" }, { status: 400 });
     const name    = (body.name    ?? "").trim();
     const email   = (body.email   ?? "").trim();
     const currentPassword = (body.currentPassword ?? "").trim();

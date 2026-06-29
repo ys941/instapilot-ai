@@ -18,14 +18,25 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body) return NextResponse.json({ success: false, error: "Invalid request body" }, { status: 400 });
     const brand = brandFromBody(body, brandFromQuery(request));
+
+    // Element-validate arrays (mirror the youtube route): scheduleDays → ints 0-6,
+    // topics → non-empty trimmed strings.
+    const scheduleDays = Array.isArray(body.scheduleDays)
+      ? body.scheduleDays.filter((d: unknown) => Number.isInteger(d) && (d as number) >= 0 && (d as number) <= 6) as number[]
+      : [0, 1, 2, 3, 4, 5, 6];
+    const topics = Array.isArray(body.topics)
+      ? body.topics.filter((t: unknown) => typeof t === "string" && t.trim()).map((t: string) => t.trim()) as string[]
+      : [];
+
     const updated = await writePreferencesForBrand(brand, {
       stories: {
         enabled:           typeof body.enabled           === "boolean" ? body.enabled           : true,
         postTime:          typeof body.postTime          === "string"  ? body.postTime          : "09:00",
-        scheduleDays:      Array.isArray(body.scheduleDays)            ? body.scheduleDays      : [0,1,2,3,4,5,6],
-        topics:            Array.isArray(body.topics)                  ? body.topics            : [],
+        scheduleDays,
+        topics,
         customPromptExtra: typeof body.customPromptExtra === "string"  ? body.customPromptExtra : "",
         publishToYouTube:  typeof body.publishToYouTube  === "boolean" ? body.publishToYouTube  : false,
       },

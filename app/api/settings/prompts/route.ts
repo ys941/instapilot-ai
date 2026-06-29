@@ -44,13 +44,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body     = await request.json();
+    const body     = await request.json().catch(() => null);
+    if (!body) return NextResponse.json({ success: false, error: "Invalid request body" }, { status: 400 });
     const brand    = brandFromBody(body, brandFromQuery(request));
-    const incoming: Record<string, string> = body.prompts ?? {};
+    const incoming: Record<string, unknown> = body.prompts ?? {};
 
     const current = (await readPreferencesForBrand(brand)).prompts ?? {};
     const merged: Record<string, string> = { ...current };
     for (const [type, text] of Object.entries(incoming)) {
+      // Skip non-string values so a malformed prompts map can't 500 the save.
+      if (typeof text !== "string") continue;
       if (text.trim() === "") {
         delete merged[type];
       } else {

@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readPreferences, writePreferences } from "@/lib/preferences";
 
+const bool = (v: unknown, d: boolean) => (typeof v === "boolean" ? v : d);
+
 export async function GET() {
   try {
     const prefs = await readPreferences();
@@ -16,16 +18,17 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body) return NextResponse.json({ success: false, error: "Invalid request body" }, { status: 400 });
     const updated = await writePreferences({
       notifications: {
-        emailPublish:      body.emailPublish      ?? true,
-        emailAnalytics:    body.emailAnalytics    ?? true,
-        emailFails:        body.emailFails        ?? true,
-        pushPublish:       body.pushPublish       ?? false,
-        pushComments:      body.pushComments      ?? false,
-        pushWeeklyReport:  body.pushWeeklyReport  ?? true,
-        notificationEmail: body.notificationEmail ?? "",
+        emailPublish:      bool(body.emailPublish, true),
+        emailAnalytics:    bool(body.emailAnalytics, true),
+        emailFails:        bool(body.emailFails, true),
+        pushPublish:       bool(body.pushPublish, false),
+        pushComments:      bool(body.pushComments, false),
+        pushWeeklyReport:  bool(body.pushWeeklyReport, true),
+        notificationEmail: typeof body.notificationEmail === "string" ? body.notificationEmail.trim() : "",
       },
     });
     return NextResponse.json({ success: true, data: updated.notifications });

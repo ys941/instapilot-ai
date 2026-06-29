@@ -248,6 +248,15 @@ export class GeminiClient {
         return result;
       } catch (err: unknown) {
         if (isRateLimitError(err)) {
+          // Surface stale / invalid model IDs explicitly. isRateLimitError also
+          // matches 404 / not-found / unsupported, which previously got silently
+          // lumped in with rate limits — making a deprecated model ID invisible.
+          const emsg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+          if (emsg.includes("404") || emsg.includes("not found") || emsg.includes("model not found") ||
+              emsg.includes("is not supported for generatecontent") || emsg.includes("does not support") ||
+              emsg.includes("unsupported")) {
+            console.warn(`[Gemini/${label}] Model "${model}" skipped — not found / unsupported (possible stale model ID): ${err instanceof Error ? err.message : err}`);
+          }
           const next = advanceModel(model);
           const nextName = next ?? "none";
           console.warn(`[Gemini/${label}] Rate limit on ${model} — switching to ${nextName}`);
@@ -346,6 +355,14 @@ export class GeminiClient {
         }
       } catch (err) {
         lastErr = err;
+        // Surface stale / invalid model IDs (404 / not-found / unsupported) which
+        // would otherwise be silently skipped within this tier.
+        const emsg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+        if (emsg.includes("404") || emsg.includes("not found") || emsg.includes("model not found") ||
+            emsg.includes("is not supported for generatecontent") || emsg.includes("does not support") ||
+            emsg.includes("unsupported")) {
+          console.warn(`[Gemini] tier model "${model}" skipped — not found / unsupported (possible stale model ID): ${err instanceof Error ? err.message : err}`);
+        }
         // Best-effort tier: on ANY error (rate-limit, 503, unsupported, etc.) move
         // to the next model in this tier.
         continue;
