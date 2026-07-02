@@ -163,17 +163,17 @@ export default function ChatWidget() {
       <motion.button
         className="fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full flex items-center justify-center cursor-pointer"
         style={{
-          background: "linear-gradient(135deg, #ef4444 0%, #db2777 60%, #9333ea 100%)",
-          boxShadow: "0 0 0 0 rgba(239,68,68,0.4)",
+          background: "linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-2-rgb)) 60%, #9333ea 100%)",
+          boxShadow: "0 0 0 0 rgb(var(--accent-rgb) / 0.4)",
         }}
         animate={
           isOpen
             ? {}
             : {
                 boxShadow: [
-                  "0 0 0 0 rgba(239,68,68,0.5), 0 4px 24px rgba(239,68,68,0.4)",
-                  "0 0 0 18px rgba(239,68,68,0), 0 4px 24px rgba(239,68,68,0.4)",
-                  "0 0 0 0 rgba(239,68,68,0), 0 4px 24px rgba(239,68,68,0.4)",
+                  "0 0 0 0 rgb(var(--accent-rgb) / 0.5), 0 4px 24px rgb(var(--accent-rgb) / 0.4)",
+                  "0 0 0 18px rgb(var(--accent-rgb) / 0), 0 4px 24px rgb(var(--accent-rgb) / 0.4)",
+                  "0 0 0 0 rgb(var(--accent-rgb) / 0), 0 4px 24px rgb(var(--accent-rgb) / 0.4)",
                 ],
               }
         }
@@ -251,7 +251,7 @@ export default function ChatWidget() {
                 className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
                 style={{
                   background:
-                    "linear-gradient(135deg, #ef4444 0%, #db2777 60%, #9333ea 100%)",
+                    "linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-2-rgb)) 60%, #9333ea 100%)",
                   boxShadow: "0 0 16px rgba(239,68,68,0.4)",
                 }}
               >

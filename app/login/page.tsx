@@ -36,7 +36,7 @@ export default function LoginPage() {
 
   return (
     <div style={{
-      minHeight: "100vh", background: "#0A0A0F",
+      minHeight: "100vh", background: "rgb(var(--bg-rgb))",
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: "var(--font-inter, Inter, sans-serif)", position: "relative", overflow: "hidden",
     }}>
@@ -44,7 +44,7 @@ export default function LoginPage() {
       <div style={{
         position: "absolute", top: "30%", left: "50%", transform: "translate(-50%,-50%)",
         width: 600, height: 600, borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(230,57,70,0.08) 0%, transparent 70%)",
+        background: "radial-gradient(circle, rgb(var(--accent-rgb) / 0.08) 0%, transparent 70%)",
         pointerEvents: "none",
       }} />
 
@@ -52,7 +52,7 @@ export default function LoginPage() {
       <svg style={{ position: "absolute", top: "50%", left: 0, right: 0, width: "100%", opacity: 0.07, transform: "translateY(-50%)" }} viewBox="0 0 1440 80" preserveAspectRatio="none">
         <polyline
           points="0,40 160,40 200,40 220,8 240,72 260,40 360,40 480,40 520,40 540,4 560,76 580,40 680,40 800,40 840,40 860,10 880,70 900,40 1000,40 1120,40 1160,40 1180,6 1200,74 1220,40 1440,40"
-          fill="none" stroke="#e63946" strokeWidth="2.5" strokeLinecap="round"
+          fill="none" stroke="rgb(var(--accent-rgb))" strokeWidth="2.5" strokeLinecap="round"
         />
       </svg>
 
@@ -67,21 +67,21 @@ export default function LoginPage() {
         }}
       >
         <div style={{
-          background: "rgba(17,17,26,0.92)", backdropFilter: "blur(20px)",
+          background: "rgb(var(--surface-rgb) / 0.92)", backdropFilter: "blur(20px)",
           border: "1px solid rgba(255,255,255,0.08)", borderRadius: 24,
           padding: "44px 40px 40px",
-          boxShadow: "0 32px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(230,57,70,0.08)",
+          boxShadow: "0 32px 64px rgba(0,0,0,0.6), 0 0 0 1px rgb(var(--accent-rgb) / 0.08)",
         }}>
           {/* Logo */}
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <div style={{
               display: "inline-flex", alignItems: "center", justifyContent: "center",
               width: 64, height: 64, borderRadius: 18,
-              background: "linear-gradient(135deg, rgba(230,57,70,0.2), rgba(255,107,53,0.1))",
-              border: "1.5px solid rgba(230,57,70,0.3)", marginBottom: 16,
+              background: "linear-gradient(135deg, rgb(var(--accent-rgb) / 0.2), rgb(var(--accent-2-rgb) / 0.1))",
+              border: "1.5px solid rgb(var(--accent-rgb) / 0.3)", marginBottom: 16,
             }}>
               <svg viewBox="0 0 40 40" width={32} height={32}>
-                <path d="M20 34C10 26 4 20 4 13 4 7.5 8.5 4 13 5c3.5.8 5.5 3 7 6 1.5-3 3.5-5.2 7-6 4.5-1 9 2.5 9 8 0 7-6 13-16 21z" fill="none" stroke="#e63946" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M20 34C10 26 4 20 4 13 4 7.5 8.5 4 13 5c3.5.8 5.5 3 7 6 1.5-3 3.5-5.2 7-6 4.5-1 9 2.5 9 8 0 7-6 13-16 21z" fill="none" stroke="rgb(var(--accent-rgb))" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </div>
             <h1 style={{
@@ -112,7 +112,7 @@ export default function LoginPage() {
                   transition: "border-color 0.2s",
                   fontFamily: "inherit",
                 }}
-                onFocus={e => { e.target.style.borderColor = "rgba(230,57,70,0.5)"; }}
+                onFocus={e => { e.target.style.borderColor = "rgb(var(--accent-rgb) / 0.5)"; }}
                 onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.10)"; }}
               />
             </div>
@@ -137,7 +137,7 @@ export default function LoginPage() {
                 width: "100%", padding: "13px 16px", borderRadius: 12, border: "none",
                 background: loading || !key
                   ? "rgba(255,255,255,0.06)"
-                  : "linear-gradient(135deg, #e63946, #ff6b35)",
+                  : "linear-gradient(135deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)))",
                 color: loading || !key ? "rgba(255,255,255,0.25)" : "#fff",
                 fontSize: 15, fontWeight: 600, cursor: loading || !key ? "not-allowed" : "pointer",
                 transition: "all 0.2s", letterSpacing: "0.01em",

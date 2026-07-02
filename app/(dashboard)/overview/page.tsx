@@ -55,8 +55,8 @@ const quickActions = [
     icon: Sparkles,
     label: "Generate Post",
     desc: "AI content in seconds",
-    gradient: "from-red-500 to-pink-600",
-    glow: "rgba(239,68,68,0.3)",
+    gradient: "from-brand to-brand-light",
+    glow: "rgb(var(--accent-rgb) / 0.3)",
   },
   {
     href: "/scheduler",
@@ -79,7 +79,7 @@ const quickActions = [
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl p-5 animate-pulse" style={{ background: "rgba(17,17,24,0.8)", border: "1px solid rgba(255,255,255,0.07)" }}>
+    <div className="rounded-2xl p-5 animate-pulse" style={{ background: "rgb(var(--surface-rgb) / 0.8)", border: "1px solid rgba(255,255,255,0.07)" }}>
       <div className="h-3 bg-white/5 rounded-xl w-1/3 mb-3" />
       <div className="h-7 bg-white/5 rounded-xl w-2/3 mb-2" />
       <div className="h-2 bg-white/5 rounded-xl w-1/4" />
@@ -89,7 +89,7 @@ function SkeletonCard() {
 
 function SkeletonChart() {
   return (
-    <div className="rounded-2xl p-5 animate-pulse h-64" style={{ background: "rgba(17,17,24,0.8)", border: "1px solid rgba(255,255,255,0.07)" }}>
+    <div className="rounded-2xl p-5 animate-pulse h-64" style={{ background: "rgb(var(--surface-rgb) / 0.8)", border: "1px solid rgba(255,255,255,0.07)" }}>
       <div className="h-3 bg-white/5 rounded-xl w-1/4 mb-4" />
       <div className="h-full bg-white/[0.02] rounded-xl" />
     </div>
@@ -100,7 +100,7 @@ function SkeletonChart() {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl px-4 py-3 border border-white/10 text-xs" style={{ background: "rgba(17,17,24,0.98)", backdropFilter: "blur(20px)" }}>
+    <div className="rounded-xl px-4 py-3 border border-white/10 text-xs" style={{ background: "rgb(var(--surface-rgb) / 0.98)", backdropFilter: "blur(20px)" }}>
       <p className="text-white/50 mb-2">{label}</p>
       {payload.map((e: any) => (
         <div key={e.name} className="flex items-center gap-2 mb-1">
@@ -532,7 +532,7 @@ export default function OverviewPage() {
           /* Not connected — subtle CTA card */
           <div
             className="rounded-2xl p-5 flex items-center gap-4"
-            style={{ background: "rgba(17,17,24,0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
+            style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
           >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600/20 to-red-500/5 flex items-center justify-center flex-shrink-0">
               <Youtube size={18} className="text-red-500/70" />
@@ -563,7 +563,7 @@ export default function OverviewPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.06 }}
                   className="rounded-2xl p-5"
-                  style={{ background: "rgba(17,17,24,0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(239,68,68,0.18)" }}
+                  style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(239,68,68,0.18)" }}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs text-white/40">{tile.label}</span>
@@ -581,7 +581,7 @@ export default function OverviewPage() {
             {/* Recent videos */}
             <div
               className="mt-4 rounded-2xl overflow-hidden"
-              style={{ background: "rgba(17,17,24,0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
+              style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
             >
               <div className="px-5 py-4 border-b border-white/[0.06]">
                 <h4 className="text-sm font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
@@ -651,7 +651,7 @@ export default function OverviewPage() {
           <>
             <div
               className="rounded-2xl p-5"
-              style={{ background: "rgba(17,17,24,0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
+              style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
             >
               <h3 className="text-sm font-semibold text-white mb-4" style={{ fontFamily: "Sora, sans-serif" }}>
                 Weekly Engagement
@@ -687,7 +687,7 @@ export default function OverviewPage() {
             {/* Reach trend */}
             <div
               className="rounded-2xl p-5"
-              style={{ background: "rgba(17,17,24,0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
+              style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
             >
               <h3 className="text-sm font-semibold text-white mb-4" style={{ fontFamily: "Sora, sans-serif" }}>
                 Weekly Reach
@@ -723,7 +723,7 @@ export default function OverviewPage() {
         {/* AI Insights */}
         <div
           className="lg:col-span-2 rounded-2xl p-5"
-          style={{ background: "rgba(17,17,24,0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
+          style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
         >
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/10 flex items-center justify-center">
@@ -760,8 +760,8 @@ export default function OverviewPage() {
                     transition={{ delay: i * 0.08 }}
                     className="flex gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors"
                   >
-                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-red-500/30 to-pink-500/20 flex items-center justify-center mt-0.5">
-                      <Zap size={10} className="text-red-400" />
+                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-brand/30 to-brand-light/20 flex items-center justify-center mt-0.5">
+                      <Zap size={10} className="text-brand" />
                     </div>
                     <p className="text-xs text-white/65 leading-relaxed">{insight}</p>
                   </motion.div>
@@ -789,7 +789,7 @@ export default function OverviewPage() {
               <Link
                 href={action.href}
                 className="flex items-center gap-4 p-4 rounded-2xl border border-white/[0.07] hover:border-white/[0.12] transition-all group"
-                style={{ background: "rgba(17,17,24,0.8)", backdropFilter: "blur(20px)" }}
+                style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)" }}
               >
                 <div
                   className={`w-10 h-10 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center flex-shrink-0`}
@@ -815,7 +815,7 @@ export default function OverviewPage() {
       <motion.div variants={itemVariants}>
         <div
           className="rounded-2xl overflow-hidden"
-          style={{ background: "rgba(17,17,24,0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
+          style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
         >
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
             <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
@@ -854,7 +854,7 @@ export default function OverviewPage() {
             </div>
           ) : (
             <div className="py-10 text-center text-white/30 text-sm">
-              No posts yet  -  <Link href="/generator" className="text-red-400 hover:text-red-300 underline underline-offset-2">generate your first</Link>
+              No posts yet  -  <Link href="/generator" className="text-brand hover:text-brand-light underline underline-offset-2">generate your first</Link>
             </div>
           )}
         </div>

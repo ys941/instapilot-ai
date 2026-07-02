@@ -28,7 +28,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     <div
       className="rounded-xl px-4 py-3 border border-white/10 text-sm"
       style={{
-        background: "rgba(17,17,24,0.98)",
+        background: "rgb(var(--surface-rgb) / 0.98)",
         backdropFilter: "blur(20px)",
         boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
       }}
@@ -63,7 +63,7 @@ export default function EngagementChart() {
       transition={{ delay: 0.3 }}
       className="rounded-2xl p-5"
       style={{
-        background: "rgba(17,17,24,0.8)",
+        background: "rgb(var(--surface-rgb) / 0.8)",
         backdropFilter: "blur(20px)",
         border: "1px solid rgba(255,255,255,0.07)",
       }}
@@ -84,7 +84,7 @@ export default function EngagementChart() {
               key={t}
               className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
                 t === "7D"
-                  ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                  ? "bg-brand/20 text-brand border border-brand/30"
                   : "text-white/30 hover:text-white/60"
               }`}
             >

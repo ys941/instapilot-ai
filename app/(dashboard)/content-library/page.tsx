@@ -73,16 +73,16 @@ const statusConfig: Record<PostStatus, { label: string; icon: React.ElementType;
 // ─── Type colors ──────────────────────────────────────────────
 const typeColors: Record<string, string> = {
   CLINICAL_PEARL: "text-purple-400 bg-purple-500/10",
-  ECG_QUIZ: "text-red-400 bg-red-500/10",
+  ECG_QUIZ: "text-brand bg-brand/10",
   MYTH_FACT: "text-yellow-400 bg-yellow-500/10",
-  CASE_STUDY: "text-pink-400 bg-pink-500/10",
+  CASE_STUDY: "text-brand-light bg-brand-light/10",
   EDUCATIONAL: "text-blue-400 bg-blue-500/10",
   CAROUSEL: "text-orange-400 bg-orange-500/10",
   ANGIOGRAPHY_QUIZ: "text-cyan-400 bg-cyan-500/10",
   PREVENTIVE: "text-teal-400 bg-teal-500/10",
   REEL: "text-indigo-400 bg-indigo-500/10",
   QUIZ: "text-amber-400 bg-amber-500/10",
-  CTA: "text-rose-400 bg-rose-500/10",
+  CTA: "text-brand-light bg-brand-light/10",
 };
 
 // Neutral, niche-agnostic labels for the internal post-type enum ids. KEEPS the
@@ -141,10 +141,10 @@ function EmptyState({ isFiltered }: { isFiltered: boolean }) {
       {isFiltered ? (
         <>
           <svg width="100" height="100" viewBox="0 0 120 120" fill="none" className="mb-5 opacity-30">
-            <circle cx="60" cy="60" r="50" stroke="rgba(239,68,68,0.4)" strokeWidth="2" strokeDasharray="8 4" />
+            <circle cx="60" cy="60" r="50" stroke="rgb(var(--accent-rgb) / 0.4)" strokeWidth="2" strokeDasharray="8 4" />
             <motion.path
               d="M40 60 L52 72 L80 44"
-              stroke="#ef4444"
+              stroke="rgb(var(--accent-rgb))"
               strokeWidth="3"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -165,10 +165,10 @@ function EmptyState({ isFiltered }: { isFiltered: boolean }) {
           >
             <div
               className="w-20 h-32 rounded-2xl border-2 flex flex-col items-center justify-center gap-3"
-              style={{ borderColor: "rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.05)" }}
+              style={{ borderColor: "rgb(var(--accent-rgb) / 0.3)", background: "rgb(var(--accent-rgb) / 0.05)" }}
             >
-              <Sparkles size={20} className="text-red-400" />
-              <Heart size={16} className="text-red-500/50" fill="rgba(239,68,68,0.3)" />
+              <Sparkles size={20} className="text-brand" />
+              <Heart size={16} className="text-brand/50" fill="rgb(var(--accent-rgb) / 0.3)" />
             </div>
           </motion.div>
           <p className="text-white/40 font-medium">No posts yet</p>
@@ -267,7 +267,7 @@ function PreviewModal({ post, onClose, onDelete, onPublish, onSchedule, isPublis
             {post.hook && (
               <div>
                 <label className="text-[10px] text-white/30 uppercase tracking-wider font-medium">Hook</label>
-                <p className="text-sm text-white/80 mt-1 italic border-l-2 border-red-500/40 pl-3 leading-relaxed">
+                <p className="text-sm text-white/80 mt-1 italic border-l-2 border-brand/40 pl-3 leading-relaxed">
                   {post.hook}
                 </p>
               </div>
@@ -301,7 +301,7 @@ function PreviewModal({ post, onClose, onDelete, onPublish, onSchedule, isPublis
                       key={tag}
                       onClick={() => { navigator.clipboard.writeText(tag); toast.success(`${tag} copied!`); }}
                       className="px-2 py-0.5 rounded-full text-[11px] font-medium cursor-pointer"
-                      style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "rgba(252,165,165,0.9)" }}
+                      style={{ background: "rgb(var(--accent-rgb) / 0.1)", border: "1px solid rgb(var(--accent-rgb) / 0.2)", color: "rgb(var(--accent-2-rgb) / 0.9)" }}
                     >
                       {tag}
                     </span>
@@ -342,12 +342,12 @@ function PreviewModal({ post, onClose, onDelete, onPublish, onSchedule, isPublis
           <button
             onClick={async () => { await onPublish(post.id); onClose(); }}
             disabled={isPublishing || post.status === "PUBLISHED"}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-white bg-gradient-to-r from-red-500 to-pink-600 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-white bg-gradient-to-r from-brand to-brand-light hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
           >
             {isPublishing ? (
               <>
                 {/* Colorful spinning ring */}
-                <span className="inline-block w-3 h-3 rounded-full border-2 border-transparent border-t-white border-r-pink-300 animate-spin" />
+                <span className="inline-block w-3 h-3 rounded-full border-2 border-transparent border-t-white border-r-brand-light animate-spin" />
                 Publishing...
                 {/* shimmer sweep */}
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_1.2s_infinite]" style={{ backgroundSize: "200% 100%" }} />
@@ -628,7 +628,7 @@ export default function ContentLibraryPage() {
             placeholder="Search posts..."
             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-all"
             style={{ background: "rgba(17,17,24,0.8)", border: "1px solid rgba(255,255,255,0.08)" }}
-            onFocus={(e) => { e.target.style.borderColor = "rgba(239,68,68,0.4)"; }}
+            onFocus={(e) => { e.target.style.borderColor = "rgb(var(--accent-rgb) / 0.4)"; }}
             onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.08)"; }}
           />
         </div>
@@ -641,7 +641,7 @@ export default function ContentLibraryPage() {
               onClick={() => { setStatusFilter(s); setPage(1); }}
               className={cn(
                 "px-3 py-2 text-xs font-medium capitalize transition-all",
-                statusFilter === s ? "bg-red-500/20 text-white" : "text-white/30 hover:text-white/60"
+                statusFilter === s ? "bg-brand/20 text-white" : "text-white/30 hover:text-white/60"
               )}
             >
               {s === "ALL" ? "All" : (statusConfig[s as PostStatus]?.label ?? s)}
@@ -659,9 +659,9 @@ export default function ContentLibraryPage() {
             onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
             className="bg-transparent text-xs text-white/60 outline-none cursor-pointer"
           >
-            <option value="ALL" style={{ background: "#111118" }}>All Types</option>
+            <option value="ALL" style={{ background: "rgb(var(--surface-rgb))" }}>All Types</option>
             {Object.keys(typeColors).map((t) => (
-              <option key={t} value={t} style={{ background: "#111118" }}>
+              <option key={t} value={t} style={{ background: "rgb(var(--surface-rgb))" }}>
                 {typeLabel(t)}
               </option>
             ))}
@@ -683,13 +683,13 @@ export default function ContentLibraryPage() {
         <div className="flex rounded-xl overflow-hidden border border-white/[0.08]" style={{ background: "rgba(17,17,24,0.8)" }}>
           <button
             onClick={() => setViewMode("grid")}
-            className={cn("p-2.5 transition-all", viewMode === "grid" ? "bg-red-500/20 text-white" : "text-white/30 hover:text-white/60")}
+            className={cn("p-2.5 transition-all", viewMode === "grid" ? "bg-brand/20 text-white" : "text-white/30 hover:text-white/60")}
           >
             <Grid size={14} />
           </button>
           <button
             onClick={() => setViewMode("list")}
-            className={cn("p-2.5 transition-all", viewMode === "list" ? "bg-red-500/20 text-white" : "text-white/30 hover:text-white/60")}
+            className={cn("p-2.5 transition-all", viewMode === "list" ? "bg-brand/20 text-white" : "text-white/30 hover:text-white/60")}
           >
             <List size={14} />
           </button>
@@ -887,14 +887,14 @@ export default function ContentLibraryPage() {
                         post.status === "PUBLISHED"
                           ? "bg-emerald-500/10 text-emerald-400"
                           : publishingIds.has(post.id)
-                          ? "bg-red-500/20 text-white"
+                          ? "bg-brand/20 text-white"
                           : (post.mediaUrls ?? []).length === 0
                           ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400/60 hover:text-purple-400"
                           : "bg-white/[0.04] hover:bg-green-500/20 text-white/40 hover:text-green-400"
                       }`}
                     >
                       {publishingIds.has(post.id)
-                        ? <span className="w-3 h-3 rounded-full border-2 border-transparent border-t-white border-r-pink-300 animate-spin inline-block" />
+                        ? <span className="w-3 h-3 rounded-full border-2 border-transparent border-t-white border-r-brand-light animate-spin inline-block" />
                         : post.status === "PUBLISHED"
                         ? <CheckCircle size={12} />
                         : <Send size={12} />
@@ -944,7 +944,7 @@ export default function ContentLibraryPage() {
                 className={cn(
                   "w-8 h-8 rounded-lg text-xs font-medium transition-all",
                   page === p
-                    ? "bg-gradient-to-r from-red-500 to-pink-500 text-white"
+                    ? "bg-gradient-to-r from-brand to-brand-light text-white"
                     : "border border-white/[0.08] text-white/40 hover:text-white"
                 )}
               >

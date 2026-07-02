@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
 import { useState } from "react";
 import { BrandProvider } from "@/components/BrandContext";
+import { THEME_IDS, DEFAULT_THEME } from "@/lib/themes";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -29,8 +30,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
-        attribute="class"
-        defaultTheme="dark"
+        attribute="data-theme"
+        defaultTheme={DEFAULT_THEME}
+        themes={THEME_IDS}
         enableSystem={false}
         disableTransitionOnChange
       >

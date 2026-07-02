@@ -190,8 +190,8 @@ export default function NotificationPanel() {
         whileTap={{ scale: 0.94 }}
         className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
         style={{
-          background: isOpen ? "rgba(239,68,68,0.12)" : "rgba(255,255,255,0.06)",
-          border: `1px solid ${isOpen ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.1)"}`,
+          background: isOpen ? "rgb(var(--accent-rgb) / 0.12)" : "rgba(255,255,255,0.06)",
+          border: `1px solid ${isOpen ? "rgb(var(--accent-rgb) / 0.3)" : "rgba(255,255,255,0.1)"}`,
         }}
       >
         <Bell className="w-4 h-4 text-white/70" />
@@ -203,7 +203,7 @@ export default function NotificationPanel() {
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
               className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
-              style={{ background: "linear-gradient(135deg, #ef4444, #db2777)" }}
+              style={{ background: "linear-gradient(135deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)))" }}
             >
               {unreadCount > 9 ? "9+" : unreadCount}
             </motion.span>
@@ -225,7 +225,7 @@ export default function NotificationPanel() {
               backdropFilter:     "blur(24px)",
               WebkitBackdropFilter: "blur(24px)",
               border:             "1px solid rgba(255,255,255,0.1)",
-              boxShadow:          "0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(239,68,68,0.1)",
+              boxShadow:          "0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgb(var(--accent-rgb) / 0.1)",
             }}
           >
             {/* Header */}
@@ -234,12 +234,12 @@ export default function NotificationPanel() {
               style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
             >
               <div className="flex items-center gap-2">
-                <Bell className="w-3.5 h-3.5 text-red-400" />
+                <Bell className="w-3.5 h-3.5 text-brand" />
                 <span className="text-sm font-semibold text-white">Notifications</span>
                 {unreadCount > 0 && (
                   <span
-                    className="text-[10px] font-medium px-1.5 py-0.5 rounded-full text-red-300"
-                    style={{ background: "rgba(239,68,68,0.15)" }}
+                    className="text-[10px] font-medium px-1.5 py-0.5 rounded-full text-brand-light"
+                    style={{ background: "rgb(var(--accent-rgb) / 0.15)" }}
                   >
                     {unreadCount} new
                   </span>

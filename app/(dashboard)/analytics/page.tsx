@@ -41,8 +41,8 @@ const itemVariants = {
 
 // ─── Color config ─────────────────────────────────────────────────────────────
 const colorMap: Record<string, { bg: string; text: string }> = {
-  red:    { bg: "rgba(239,68,68,0.1)",   text: "text-red-400" },
-  pink:   { bg: "rgba(236,72,153,0.1)",  text: "text-pink-400" },
+  red:    { bg: "rgb(var(--accent-rgb) / 0.1)",   text: "text-brand" },
+  pink:   { bg: "rgb(var(--accent-2-rgb) / 0.1)",  text: "text-brand-light" },
   purple: { bg: "rgba(147,51,234,0.1)",  text: "text-purple-400" },
   blue:   { bg: "rgba(59,130,246,0.1)",  text: "text-blue-400" },
   green:  { bg: "rgba(16,185,129,0.1)",  text: "text-emerald-400" },
@@ -143,7 +143,7 @@ function PostDetailDrawer({
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]" style={{ background: "rgba(13,13,20,0.98)", backdropFilter: "blur(20px)" }}>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 font-medium">{post.type}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20 font-medium">{post.type}</span>
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
               post.status === "PUBLISHED"
                 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
@@ -200,8 +200,8 @@ function PostDetailDrawer({
               )}
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <StatChip icon={Eye}           label="Reach"       value={hasStats ? formatNumber(post.reach)       : " - "} color="red-400" />
-              <StatChip icon={Heart}         label="Likes"       value={hasStats ? formatNumber(post.likes)       : " - "} color="pink-400" />
+              <StatChip icon={Eye}           label="Reach"       value={hasStats ? formatNumber(post.reach)       : " - "} color="brand" />
+              <StatChip icon={Heart}         label="Likes"       value={hasStats ? formatNumber(post.likes)       : " - "} color="brand-light" />
               <StatChip icon={MessageCircle} label="Comments"    value={hasStats ? formatNumber(post.comments)    : " - "} color="blue-400" />
               <StatChip icon={Bookmark}      label="Saves"       value={hasStats ? formatNumber(post.saves)       : " - "} color="purple-400" />
               <StatChip icon={TrendingUp}    label="Impressions" value={hasStats ? formatNumber(post.impressions) : " - "} color="orange-400" />
@@ -264,7 +264,7 @@ function PostDetailDrawer({
                     {/* Top-level comment */}
                     <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-semibold text-red-400">@{c.username ?? "user"}</span>
+                        <span className="text-[11px] font-semibold text-brand">@{c.username ?? "user"}</span>
                         <span className="text-[10px] text-white/25">{c.createdAt ? formatRelativeTime(c.createdAt) : ""}</span>
                       </div>
                       <p className="text-xs text-white/60 leading-relaxed">{c.text ?? ""}</p>
@@ -286,12 +286,12 @@ function PostDetailDrawer({
                               key={r.id ?? ri}
                               className="rounded-lg px-2.5 py-2"
                               style={{
-                                background: isOurs ? "rgba(239,68,68,0.06)" : "rgba(255,255,255,0.02)",
-                                border: isOurs ? "1px solid rgba(239,68,68,0.15)" : "1px solid rgba(255,255,255,0.04)",
+                                background: isOurs ? "rgb(var(--accent-rgb) / 0.06)" : "rgba(255,255,255,0.02)",
+                                border: isOurs ? "1px solid rgb(var(--accent-rgb) / 0.15)" : "1px solid rgba(255,255,255,0.04)",
                               }}
                             >
                               <div className="flex items-center justify-between mb-0.5">
-                                <span className={`text-[10px] font-semibold ${isOurs ? "text-red-400/80" : "text-white/50"}`}>
+                                <span className={`text-[10px] font-semibold ${isOurs ? "text-brand/80" : "text-white/50"}`}>
                                   @{r.username ?? "user"}{isOurs ? " · AI" : ""}
                                 </span>
                                 <span className="text-[9px] text-white/20">{r.timestamp ? formatRelativeTime(r.timestamp) : ""}</span>
@@ -861,7 +861,7 @@ export default function AnalyticsPage() {
                   <button
                     key={s}
                     onClick={() => setSortBy(s)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-medium capitalize transition-all ${sortBy === s ? "bg-red-500/20 text-red-400" : "text-white/30 hover:text-white/60"}`}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-medium capitalize transition-all ${sortBy === s ? "bg-brand/20 text-brand" : "text-white/30 hover:text-white/60"}`}
                   >
                     {s === "engagementRate" ? "Eng" : s.charAt(0).toUpperCase() + s.slice(1)}
                   </button>
@@ -930,7 +930,7 @@ export default function AnalyticsPage() {
                                 <p className="text-xs text-white/80 font-medium truncate group-hover:text-white transition-colors">{p.title ?? p.caption ?? " - "}</p>
                                 {permalink && (
                                   <a href={permalink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                                    className="text-[9px] text-white/20 hover:text-red-400 transition-colors flex items-center gap-0.5 mt-0.5">
+                                    className="text-[9px] text-white/20 hover:text-brand transition-colors flex items-center gap-0.5 mt-0.5">
                                     View on Instagram ↗
                                   </a>
                                 )}
@@ -938,7 +938,7 @@ export default function AnalyticsPage() {
                             </div>
                           </td>
                           <td className="px-5 py-3">
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">{p.type ?? "Post"}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">{p.type ?? "Post"}</span>
                           </td>
                           <td className="px-5 py-3 text-xs tabular-nums">
                             {hasLiveData ? (
@@ -947,7 +947,7 @@ export default function AnalyticsPage() {
                           </td>
                           <td className="px-5 py-3 text-xs tabular-nums">
                             {hasLiveData ? (
-                              <span className={p.likes > 0 ? "text-pink-400" : "text-white/30"}>{formatNumber(p.likes)}</span>
+                              <span className={p.likes > 0 ? "text-brand-light" : "text-white/30"}>{formatNumber(p.likes)}</span>
                             ) : <span className="text-white/20"> - </span>}
                           </td>
                           <td className="px-5 py-3 text-xs tabular-nums">
@@ -995,14 +995,14 @@ export default function AnalyticsPage() {
                 onClick={() => setActivePanel("comments")}
                 className={`flex items-center gap-1.5 px-4 py-3.5 text-xs font-medium border-b-2 transition-all ${
                   activePanel === "comments"
-                    ? "border-red-500 text-white"
+                    ? "border-brand text-white"
                     : "border-transparent text-white/40 hover:text-white/70"
                 }`}
               >
                 <MessageCircle size={13} />
                 Comments
                 {comments.length > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] bg-red-500/20 text-red-400">{comments.length}</span>
+                  <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] bg-brand/20 text-brand">{comments.length}</span>
                 )}
               </button>
               <button
@@ -1039,7 +1039,7 @@ export default function AnalyticsPage() {
                       >
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] font-semibold text-red-400">@{c.username ?? "user"}</span>
+                            <span className="text-[11px] font-semibold text-brand">@{c.username ?? "user"}</span>
                             <SentimentBadge sentiment={c.sentiment} />
                           </div>
                           <span className="text-[10px] text-white/25">{c.createdAt ? formatRelativeTime(c.createdAt) : ""}</span>
@@ -1061,7 +1061,7 @@ export default function AnalyticsPage() {
                         {c.id && (
                           <div className="flex items-center gap-3">
                             <button onClick={() => handleLike(c.id)} disabled={likedIds.has(c.id) || likingId === c.id}
-                              className={`flex items-center gap-1 text-[10px] transition-colors ${likedIds.has(c.id) ? "text-pink-400 cursor-default" : "text-white/30 hover:text-pink-400"}`}
+                              className={`flex items-center gap-1 text-[10px] transition-colors ${likedIds.has(c.id) ? "text-brand-light cursor-default" : "text-white/30 hover:text-brand-light"}`}
                             >
                               <ThumbsUp size={10} className={likingId === c.id ? "animate-pulse" : ""} />
                               {likedIds.has(c.id) ? "Liked" : "Like"}

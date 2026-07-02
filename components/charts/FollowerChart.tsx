@@ -36,7 +36,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     <div
       className="rounded-xl px-4 py-3 border border-white/10 text-sm"
       style={{
-        background: "rgba(17,17,24,0.98)",
+        background: "rgb(var(--surface-rgb) / 0.98)",
         backdropFilter: "blur(20px)",
         boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
       }}
@@ -61,7 +61,7 @@ export default function FollowerChart() {
       transition={{ delay: 0.35 }}
       className="rounded-2xl p-5"
       style={{
-        background: "rgba(17,17,24,0.8)",
+        background: "rgb(var(--surface-rgb) / 0.8)",
         backdropFilter: "blur(20px)",
         border: "1px solid rgba(255,255,255,0.07)",
       }}

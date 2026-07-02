@@ -222,7 +222,7 @@ export default function ActivityPage() {
         <button
           onClick={() => setFilter("all")}
           className={cn("px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
-            filter === "all" ? "bg-red-500/20 text-red-300 border-red-500/30" : "border-white/[0.06] text-white/40 hover:text-white/70"
+            filter === "all" ? "bg-brand/20 text-brand-light border-brand/30" : "border-white/[0.06] text-white/40 hover:text-white/70"
           )}
         >
           All
@@ -307,7 +307,7 @@ export default function ActivityPage() {
                     <motion.div
                       whileHover={{ x: 2 }}
                       className="flex-1 rounded-2xl p-4 border border-white/[0.05] hover:border-white/[0.1] transition-all"
-                      style={{ background: "rgba(17,17,24,0.8)", backdropFilter: "blur(20px)" }}
+                      style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)" }}
                     >
                       <div className="flex items-center justify-between gap-3 mb-1">
                         <p className="text-sm font-semibold text-white">{activity._title}</p>
@@ -323,7 +323,7 @@ export default function ActivityPage() {
                           href={activity._detail}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-red-400 hover:text-red-300 underline underline-offset-2 leading-relaxed break-all"
+                          className="text-xs text-brand hover:text-brand-light underline underline-offset-2 leading-relaxed break-all"
                         >
                           {activity._detail}
                         </a>

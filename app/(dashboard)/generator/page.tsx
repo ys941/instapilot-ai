@@ -90,7 +90,7 @@ function LoadingSkeleton() {
           animate={{ scale: [1, 1.15, 1] }}
           transition={{ duration: 1, repeat: Infinity }}
         >
-          <Heart size={20} className="text-red-500" fill="#ef4444" />
+          <Heart size={20} className="text-brand" fill="rgb(var(--accent-rgb))" />
         </motion.div>
         <span className="text-sm text-white/60">Generating content with AI...</span>
       </div>
@@ -124,22 +124,22 @@ function EmptyState() {
         <div
           className="w-24 h-40 rounded-2xl border-2 flex flex-col items-center justify-center gap-2"
           style={{
-            borderColor: "rgba(239,68,68,0.3)",
-            background: "rgba(239,68,68,0.05)",
+            borderColor: "rgb(var(--accent-rgb) / 0.3)",
+            background: "rgb(var(--accent-rgb) / 0.05)",
           }}
         >
           <motion.div
             animate={{ scale: [1, 1.2, 1] }}
             transition={{ duration: 1.5, repeat: Infinity }}
           >
-            <Heart size={24} className="text-red-500" fill="#ef4444" />
+            <Heart size={24} className="text-brand" fill="rgb(var(--accent-rgb))" />
           </motion.div>
           <div className="space-y-1 w-full px-3">
             {[70, 100, 85].map((w, i) => (
               <div
                 key={i}
                 className="h-1 rounded-full"
-                style={{ width: `${w}%`, background: "rgba(239,68,68,0.25)" }}
+                style={{ width: `${w}%`, background: "rgb(var(--accent-rgb) / 0.25)" }}
               />
             ))}
           </div>
@@ -152,7 +152,7 @@ function EmptyState() {
             animate={{ opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity, delay: i * 0.7 }}
           >
-            <Sparkles size={14} className="text-pink-400" />
+            <Sparkles size={14} className="text-brand-light" />
           </motion.div>
         ))}
       </motion.div>
@@ -231,7 +231,7 @@ function CarouselPreview({
       {/* Slide viewer */}
       <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: "1/1", background: "#0d0d12", border: "1px solid rgba(255,255,255,0.08)" }}>
         {/* Red top accent bar */}
-        <div className="absolute top-0 left-0 right-0 h-1" style={{ background: "linear-gradient(90deg, #ef4444, #ec4899, #9333ea)" }} />
+        <div className="absolute top-0 left-0 right-0 h-1" style={{ background: "linear-gradient(90deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)), #9333ea)" }} />
 
         {hasImage && (
           <img src={hasImage} alt={`Slide ${slide.slide}`} className="absolute inset-0 w-full h-full object-cover opacity-20" />
@@ -243,7 +243,7 @@ function CarouselPreview({
             <span className="text-[10px] font-mono text-white/30 uppercase tracking-widest">SLIDE {slide.slide} / {slides.length}</span>
             <div className="flex gap-1">
               {slides.map((_, i) => (
-                <div key={i} className={`h-1 rounded-full transition-all ${i === currentSlide ? "w-6 bg-red-500" : "w-2 bg-white/20"}`} />
+                <div key={i} className={`h-1 rounded-full transition-all ${i === currentSlide ? "w-6 bg-brand" : "w-2 bg-white/20"}`} />
               ))}
             </div>
           </div>
@@ -258,7 +258,7 @@ function CarouselPreview({
 
           {/* Footer brand */}
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, #ef4444, #ec4899)" }}>
+            <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)))" }}>
               <Heart size={12} className="text-white fill-white" />
             </div>
             <span className="text-[10px] text-white/30 font-medium">{`@${brand.handle}`}</span>
@@ -283,7 +283,7 @@ function CarouselPreview({
       <div className="flex gap-2 overflow-x-auto pb-2">
         {slides.map((s, i) => (
           <button key={i} onClick={() => setCurrentSlide(i)}
-            className={`flex-shrink-0 w-16 h-16 rounded-lg border p-2 text-left transition-all ${i === currentSlide ? "border-red-500/50 bg-red-500/10" : "border-white/[0.06] bg-white/[0.02] hover:border-white/20"}`}>
+            className={`flex-shrink-0 w-16 h-16 rounded-lg border p-2 text-left transition-all ${i === currentSlide ? "border-brand/50 bg-brand/10" : "border-white/[0.06] bg-white/[0.02] hover:border-white/20"}`}>
             <p className="text-[8px] text-white/30 mb-0.5">#{s.slide}</p>
             <p className="text-[9px] text-white/60 line-clamp-2 leading-tight">{s.headline}</p>
           </button>
@@ -296,7 +296,7 @@ function CarouselPreview({
         onClick={onGenerateImages}
         disabled={generatingImages}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-        style={{ background: "linear-gradient(135deg, rgba(239,68,68,0.3), rgba(147,51,234,0.3))", border: "1px solid rgba(239,68,68,0.3)" }}
+        style={{ background: "linear-gradient(135deg, rgb(var(--accent-rgb) / 0.3), rgba(147,51,234,0.3))", border: "1px solid rgb(var(--accent-rgb) / 0.3)" }}
       >
         {generatingImages ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
         {generatingImages ? "Generating slide images..." : `Generate Images for All ${slides.length} Slides`}
@@ -712,7 +712,7 @@ export default function GeneratorPage() {
                   onClick={() => setPostType(type.id)}
                   className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border text-xs font-medium transition-all ${
                     postType === type.id
-                      ? "bg-gradient-to-br from-red-500/20 to-pink-500/10 border-red-500/30 text-white"
+                      ? "bg-gradient-to-br from-brand/20 to-brand-light/10 border-brand/30 text-white"
                       : "border-white/[0.06] text-white/40 hover:text-white/70 hover:border-white/[0.12]"
                   }`}
                 >
@@ -737,7 +737,7 @@ export default function GeneratorPage() {
                     onClick={() => setTone(t.id)}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                       tone === t.id
-                        ? "bg-gradient-to-r from-red-500/20 to-pink-500/10 border-red-500/30 text-red-300"
+                        ? "bg-gradient-to-r from-brand/20 to-brand-light/10 border-brand/30 text-brand-light"
                         : "border-white/[0.08] text-white/40 hover:text-white/70"
                     }`}
                   >
@@ -760,8 +760,8 @@ export default function GeneratorPage() {
                 className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-all"
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = "rgba(239,68,68,0.5)";
-                  e.target.style.boxShadow = "0 0 0 3px rgba(239,68,68,0.1)";
+                  e.target.style.borderColor = "rgb(var(--accent-rgb) / 0.5)";
+                  e.target.style.boxShadow = "0 0 0 3px rgb(var(--accent-rgb) / 0.1)";
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = "rgba(255,255,255,0.08)";
@@ -794,7 +794,7 @@ export default function GeneratorPage() {
                       rows={4}
                       className="mt-2 w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/25 outline-none resize-none transition-all"
                       style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-                      onFocus={(e) => { e.target.style.borderColor = "rgba(239,68,68,0.5)"; }}
+                      onFocus={(e) => { e.target.style.borderColor = "rgb(var(--accent-rgb) / 0.5)"; }}
                       onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.08)"; }}
                     />
                   </motion.div>
@@ -811,7 +811,7 @@ export default function GeneratorPage() {
               whileHover={{ scale: isGenerating ? 1 : 1.02 }}
               whileTap={{ scale: isGenerating ? 1 : 0.98 }}
               className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-semibold text-white relative overflow-hidden pulse-glow disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: "linear-gradient(135deg, #ef4444, #ec4899, #9333ea)" }}
+              style={{ background: "linear-gradient(135deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)), #9333ea)" }}
             >
               {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
               {isGenerating ? "Generating..." : "Generate with AI ⚡"}
@@ -866,7 +866,7 @@ export default function GeneratorPage() {
                     onClick={() => setActiveTab(tab as any)}
                     className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all capitalize ${
                       activeTab === tab
-                        ? "bg-gradient-to-r from-red-500/20 to-pink-500/10 text-white"
+                        ? "bg-gradient-to-r from-brand/20 to-brand-light/10 text-white"
                         : "text-white/40 hover:text-white/70"
                     }`}
                   >
@@ -896,7 +896,7 @@ export default function GeneratorPage() {
 
                     {/* Hook */}
                     <Section label="Hook" copyText={generatedContent.hook}>
-                      <p className="text-sm text-white/80 leading-relaxed italic border-l-2 border-red-500/40 pl-3">
+                      <p className="text-sm text-white/80 leading-relaxed italic border-l-2 border-brand/40 pl-3">
                         {generatedContent.hook}
                       </p>
                     </Section>
@@ -912,7 +912,7 @@ export default function GeneratorPage() {
                           background: "rgba(255,255,255,0.02)",
                           border: "1px solid rgba(255,255,255,0.06)",
                         }}
-                        onFocus={(e) => { e.target.style.borderColor = "rgba(239,68,68,0.4)"; }}
+                        onFocus={(e) => { e.target.style.borderColor = "rgb(var(--accent-rgb) / 0.4)"; }}
                         onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.06)"; }}
                       />
                     </Section>
@@ -932,9 +932,9 @@ export default function GeneratorPage() {
                             onClick={() => { navigator.clipboard.writeText(tag); toast.success(`${tag} copied!`); }}
                             className="px-2.5 py-1 rounded-full text-[11px] font-medium cursor-pointer transition-colors"
                             style={{
-                              background: "rgba(239,68,68,0.1)",
-                              border: "1px solid rgba(239,68,68,0.2)",
-                              color: "rgba(252,165,165,0.9)",
+                              background: "rgb(var(--accent-rgb) / 0.1)",
+                              border: "1px solid rgb(var(--accent-rgb) / 0.2)",
+                              color: "rgb(var(--accent-2-rgb) / 0.9)",
                             }}
                           >
                             {tag}
@@ -1046,11 +1046,11 @@ export default function GeneratorPage() {
                       <button
                         onClick={handlePublish}
                         disabled={isPublishing || isAlreadyPublished}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-white bg-gradient-to-r from-red-500 to-pink-600 hover:opacity-90 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-white bg-gradient-to-r from-brand to-brand-light hover:opacity-90 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                       >
                         {isPublishing ? (
                           <>
-                            <span className="inline-block w-3 h-3 rounded-full border-2 border-transparent border-t-white border-r-pink-300 animate-spin" />
+                            <span className="inline-block w-3 h-3 rounded-full border-2 border-transparent border-t-white border-r-brand-light animate-spin" />
                             Publishing...
                           </>
                         ) : isAlreadyPublished ? (
@@ -1155,11 +1155,11 @@ export default function GeneratorPage() {
                       <button
                         onClick={handlePublish}
                         disabled={isPublishing || isAlreadyPublished}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-white bg-gradient-to-r from-red-500 to-pink-600 hover:opacity-90 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-white bg-gradient-to-r from-brand to-brand-light hover:opacity-90 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                       >
                         {isPublishing ? (
                           <>
-                            <span className="inline-block w-3 h-3 rounded-full border-2 border-transparent border-t-white border-r-pink-300 animate-spin" />
+                            <span className="inline-block w-3 h-3 rounded-full border-2 border-transparent border-t-white border-r-brand-light animate-spin" />
                             Publishing...
                           </>
                         ) : isAlreadyPublished ? (
@@ -1195,7 +1195,7 @@ export default function GeneratorPage() {
             exit={{ scale: 0.92, y: 20 }}
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-sm rounded-2xl p-6 space-y-5"
-            style={{ background: "rgba(14,14,22,0.98)", border: "1px solid rgba(239,68,68,0.25)" }}
+            style={{ background: "rgba(14,14,22,0.98)", border: "1px solid rgb(var(--accent-rgb) / 0.25)" }}
           >
             <div>
               <h3 className="text-base font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
@@ -1230,7 +1230,7 @@ export default function GeneratorPage() {
               <button
                 onClick={handleScheduleConfirm}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
-                style={{ background: "linear-gradient(135deg,#ef4444,#db2777)" }}
+                style={{ background: "linear-gradient(135deg,rgb(var(--accent-rgb)),rgb(var(--accent-2-rgb)))" }}
               >
                 Confirm Schedule
               </button>
@@ -1257,7 +1257,7 @@ export default function GeneratorPage() {
             exit={{ scale: 0.92, y: 20 }}
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-sm rounded-2xl p-6 space-y-5"
-            style={{ background: "rgba(14,14,22,0.98)", border: "1px solid rgba(239,68,68,0.25)" }}
+            style={{ background: "rgba(14,14,22,0.98)", border: "1px solid rgb(var(--accent-rgb) / 0.25)" }}
           >
             <div>
               <h3 className="text-base font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
@@ -1303,7 +1303,7 @@ export default function GeneratorPage() {
               <button
                 onClick={() => handlePublishConfirm(publishTarget)}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
-                style={{ background: "linear-gradient(135deg,#ef4444,#db2777)" }}
+                style={{ background: "linear-gradient(135deg,rgb(var(--accent-rgb)),rgb(var(--accent-2-rgb)))" }}
               >
                 Publish to {platformLabelFor(publishTarget)}
               </button>

@@ -53,7 +53,7 @@ export default function ChatMessage({ message, index }: ChatMessageProps) {
     >
       {/* Avatar  -  only for assistant */}
       {!isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-red-500 via-pink-600 to-purple-700 flex items-center justify-center shadow-lg mb-1">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-brand via-brand-light to-purple-700 flex items-center justify-center shadow-lg mb-1">
           <span className="text-white text-xs font-bold select-none">CF</span>
         </div>
       )}
@@ -64,8 +64,8 @@ export default function ChatMessage({ message, index }: ChatMessageProps) {
           <motion.div
             className="px-4 py-2.5 rounded-2xl rounded-br-sm text-white text-sm leading-relaxed"
             style={{
-              background: "linear-gradient(135deg, #ef4444 0%, #db2777 100%)",
-              boxShadow: "0 4px 20px rgba(239,68,68,0.35)",
+              background: "linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-2-rgb)) 100%)",
+              boxShadow: "0 4px 20px rgb(var(--accent-rgb) / 0.35)",
             }}
             whileHover={{ scale: 1.01 }}
           >
@@ -98,13 +98,13 @@ export default function ChatMessage({ message, index }: ChatMessageProps) {
                     <p className="mb-2 last:mb-0 whitespace-pre-wrap break-words">{children}</p>
                   ),
                   strong: ({ children }) => (
-                    <strong className="font-semibold text-pink-300">{children}</strong>
+                    <strong className="font-semibold text-brand-light">{children}</strong>
                   ),
                   em: ({ children }) => (
                     <em className="italic text-purple-300">{children}</em>
                   ),
                   code: ({ children }) => (
-                    <code className="bg-white/10 px-1 py-0.5 rounded text-xs font-mono text-red-300">
+                    <code className="bg-white/10 px-1 py-0.5 rounded text-xs font-mono text-brand-light">
                       {children}
                     </code>
                   ),
@@ -122,13 +122,13 @@ export default function ChatMessage({ message, index }: ChatMessageProps) {
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-pink-400 underline hover:text-pink-300 transition-colors"
+                      className="text-brand-light underline hover:text-brand-light transition-colors"
                     >
                       {children}
                     </a>
                   ),
                   blockquote: ({ children }) => (
-                    <blockquote className="border-l-2 border-pink-500 pl-3 my-2 text-white/70 italic">
+                    <blockquote className="border-l-2 border-brand-light pl-3 my-2 text-white/70 italic">
                       {children}
                     </blockquote>
                   ),

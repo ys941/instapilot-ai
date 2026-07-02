@@ -18,11 +18,22 @@ const config: Config = {
     },
     extend: {
       colors: {
-        'cardio-red': '#E53E3E',
-        'cardio-pink': '#FC8181',
-        'cardio-dark': '#0A0A0F',
-        'cardio-surface': '#111118',
-        'cardio-border': '#1E1E2E',
+        // Legacy names kept, now THEME-AWARE so existing usages auto-follow the theme.
+        'cardio-red':     'rgb(var(--accent-rgb) / <alpha-value>)',
+        'cardio-pink':    'rgb(var(--accent-2-rgb) / <alpha-value>)',
+        'cardio-dark':    'rgb(var(--bg-rgb) / <alpha-value>)',
+        'cardio-surface': 'rgb(var(--surface-rgb) / <alpha-value>)',
+        'cardio-border':  '#1E1E2E',
+        // ── Theme-aware semantic colors (driven by globals.css [data-theme]) ──
+        // Use these instead of hardcoded red/pink so every page follows the theme.
+        brand: {
+          DEFAULT: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          light:   'rgb(var(--accent-2-rgb) / <alpha-value>)',
+          deep:    'rgb(var(--accent-3-rgb) / <alpha-value>)',
+        },
+        surface:  'rgb(var(--surface-rgb) / <alpha-value>)',
+        surface2: 'rgb(var(--surface-2-rgb) / <alpha-value>)',
+        appbg:    'rgb(var(--bg-rgb) / <alpha-value>)',
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -84,12 +95,12 @@ const config: Config = {
           '50%': { transform: 'translateY(-20px)' },
         },
         glow: {
-          '0%': { boxShadow: '0 0 20px rgba(229, 62, 62, 0.3)' },
-          '100%': { boxShadow: '0 0 40px rgba(229, 62, 62, 0.7), 0 0 80px rgba(229, 62, 62, 0.3)' },
+          '0%': { boxShadow: '0 0 20px rgb(var(--accent-rgb) / 0.3)' },
+          '100%': { boxShadow: '0 0 40px rgb(var(--accent-rgb) / 0.7), 0 0 80px rgb(var(--accent-rgb) / 0.3)' },
         },
         'pulse-glow': {
-          '0%, 100%': { opacity: '1', boxShadow: '0 0 15px rgba(229, 62, 62, 0.4)' },
-          '50%': { opacity: '0.8', boxShadow: '0 0 30px rgba(229, 62, 62, 0.8)' },
+          '0%, 100%': { opacity: '1', boxShadow: '0 0 15px rgb(var(--accent-rgb) / 0.4)' },
+          '50%': { opacity: '0.8', boxShadow: '0 0 30px rgb(var(--accent-rgb) / 0.8)' },
         },
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
@@ -116,15 +127,15 @@ const config: Config = {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
         'glass-gradient': 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-        'cardio-gradient': 'linear-gradient(135deg, #E53E3E 0%, #FC8181 50%, #9B2C2C 100%)',
+        'cardio-gradient': 'linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-2-rgb)) 50%, rgb(var(--accent-3-rgb)) 100%)',
         shimmer: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
       },
       backdropBlur: {
         xs: '2px',
       },
       boxShadow: {
-        'glow-red': '0 0 20px rgba(229, 62, 62, 0.4)',
-        'glow-pink': '0 0 20px rgba(252, 129, 129, 0.4)',
+        'glow-red': '0 0 20px rgb(var(--accent-rgb) / 0.4)',
+        'glow-pink': '0 0 20px rgb(var(--accent-2-rgb) / 0.4)',
         glass: '0 8px 32px rgba(0, 0, 0, 0.37)',
         'inner-glow': 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
       },

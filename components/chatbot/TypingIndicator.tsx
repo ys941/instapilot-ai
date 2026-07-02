@@ -28,7 +28,7 @@ export default function TypingIndicator() {
   return (
     <div className="flex items-start gap-3 mb-4">
       {/* Avatar */}
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-red-500 via-pink-600 to-purple-700 flex items-center justify-center shadow-lg">
+      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-brand via-brand-light to-purple-700 flex items-center justify-center shadow-lg">
         <span className="text-white text-xs font-bold">CF</span>
       </div>
 
@@ -56,7 +56,7 @@ export default function TypingIndicator() {
           {[0, 1, 2].map((i) => (
             <motion.span
               key={i}
-              className="block w-2 h-2 rounded-full bg-gradient-to-br from-red-400 to-pink-500"
+              className="block w-2 h-2 rounded-full bg-gradient-to-br from-brand to-brand-light"
               variants={dotVariants}
               transition={{
                 duration: 0.45,

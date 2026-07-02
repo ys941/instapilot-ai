@@ -282,7 +282,7 @@ export default function DashboardLayout({
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-[#0A0A0F] flex overflow-hidden">
+    <div className="relative min-h-screen bg-appbg flex overflow-hidden">
       {/* Background radial gradients */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div

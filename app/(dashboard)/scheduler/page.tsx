@@ -35,14 +35,14 @@ interface DraftPost {
 // ─── Design constants ─────────────────────────────────────────────────────────
 const TYPE_COLORS: Record<string, string> = {
   EDUCATIONAL:      "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  QUIZ:             "bg-red-500/20 text-red-300 border-red-500/30",
+  QUIZ:             "bg-brand/20 text-brand-light border-brand/30",
   CLINICAL_PEARL:   "bg-purple-500/20 text-purple-300 border-purple-500/30",
   MYTH_FACT:        "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-  CASE_STUDY:       "bg-pink-500/20 text-pink-300 border-pink-500/30",
+  CASE_STUDY:       "bg-brand-light/20 text-brand-light border-brand-light/30",
   CAROUSEL:         "bg-orange-500/20 text-orange-300 border-orange-500/30",
   REEL:             "bg-teal-500/20 text-teal-300 border-teal-500/30",
-  ECG_QUIZ:         "bg-red-500/20 text-red-300 border-red-500/30",
-  ANGIOGRAPHY_QUIZ: "bg-pink-500/20 text-pink-300 border-pink-500/30",
+  ECG_QUIZ:         "bg-brand/20 text-brand-light border-brand/30",
+  ANGIOGRAPHY_QUIZ: "bg-brand-light/20 text-brand-light border-brand-light/30",
   PREVENTIVE:       "bg-green-500/20 text-green-300 border-green-500/30",
   CTA:              "bg-amber-500/20 text-amber-300 border-amber-500/30",
   STORY:            "bg-gradient-to-r from-fuchsia-500/20 to-orange-500/20 text-fuchsia-300 border-fuchsia-500/30",
@@ -123,8 +123,8 @@ function CalendarCell({
       onClick={onClick}
       className={cn(
         "min-h-[88px] p-2 rounded-xl border cursor-pointer transition-all",
-        isToday     ? "border-red-500/40 bg-red-500/5"   : "border-white/[0.05] bg-white/[0.01]",
-        selected    ? "ring-1 ring-red-500/60"            : "",
+        isToday     ? "border-brand/40 bg-brand/5"   : "border-white/[0.05] bg-white/[0.01]",
+        selected    ? "ring-1 ring-brand/60"            : "",
         !isCurrentMonth ? "opacity-25 pointer-events-none" : "",
         "hover:border-white/[0.12] hover:bg-white/[0.025]"
       )}
@@ -134,7 +134,7 @@ function CalendarCell({
         <span className={cn(
           "text-xs font-semibold leading-none",
           isToday
-            ? "w-5 h-5 rounded-full bg-gradient-to-br from-red-500 to-pink-500 text-white flex items-center justify-center text-[10px]"
+            ? "w-5 h-5 rounded-full bg-gradient-to-br from-brand to-brand-light text-white flex items-center justify-center text-[10px]"
             : "text-white/40"
         )}>
           {day}
@@ -342,11 +342,11 @@ function ScheduleModal({
                       type === opt.value
                         ? opt.value === "STORY"
                           ? "border-fuchsia-500/50 bg-fuchsia-500/10"
-                          : "border-red-500/50 bg-red-500/10"
+                          : "border-brand/50 bg-brand/10"
                         : "border-white/[0.08] hover:border-white/20"
                     )}
                   >
-                    <div className={cn("text-sm font-semibold", type === opt.value ? (opt.value === "STORY" ? "text-fuchsia-300" : "text-red-300") : "text-white/70")}>
+                    <div className={cn("text-sm font-semibold", type === opt.value ? (opt.value === "STORY" ? "text-fuchsia-300" : "text-brand-light") : "text-white/70")}>
                       {opt.label}
                     </div>
                     <div className="text-[10px] text-white/30 mt-0.5">{opt.desc}</div>
@@ -394,7 +394,7 @@ function ScheduleModal({
               placeholder={type === "STORY" ? "Short punchy headline (max 10 words)..." : "Enter post title..."}
               className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/25 outline-none"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
-              onFocus={(e)  => { e.target.style.borderColor = type === "STORY" ? "rgba(217,70,239,0.5)" : "rgba(239,68,68,0.5)"; }}
+              onFocus={(e)  => { e.target.style.borderColor = type === "STORY" ? "rgba(217,70,239,0.5)" : "rgb(var(--accent-rgb) / 0.5)"; }}
               onBlur={(e)   => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}
             />
           </div>
@@ -503,7 +503,7 @@ function ScheduleModal({
               onClick={handleSave}
               disabled={saving}
               className="flex-1 py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg, #ef4444, #ec4899)" }}
+              style={{ background: "linear-gradient(135deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)))" }}
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Calendar size={14} />}
               {saving ? "Saving..." : isEdit ? "Update" : "Schedule"}
@@ -769,7 +769,7 @@ export default function SchedulerPage() {
             whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
             onClick={() => { setEditPost(null); setShowModal(true); }}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-            style={{ background: "linear-gradient(135deg, #ef4444, #ec4899)", boxShadow: "0 0 20px rgba(239,68,68,0.3)" }}
+            style={{ background: "linear-gradient(135deg, rgb(var(--accent-rgb)), rgb(var(--accent-2-rgb)))", boxShadow: "0 0 20px rgb(var(--accent-rgb) / 0.3)" }}
           >
             <Plus size={14} />
             Schedule Post
@@ -873,7 +873,7 @@ export default function SchedulerPage() {
                   <p className="text-xs text-white/25">No posts scheduled</p>
                   <button
                     onClick={() => { setEditPost(null); setShowModal(true); }}
-                    className="text-xs text-red-400/70 hover:text-red-400 transition-colors underline underline-offset-2"
+                    className="text-xs text-brand/70 hover:text-brand transition-colors underline underline-offset-2"
                   >
                     Schedule one
                   </button>

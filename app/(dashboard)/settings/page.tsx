@@ -9,10 +9,12 @@ import {
   ShieldCheck, Clock, Database, Globe, Calendar,
   Activity, Sparkles, Zap, FileText, Plus, X,
   ChevronDown, ChevronUp, RotateCw, BookImage, Radio, LogOut, Youtube,
-  Building2, Layers, Sunrise,
+  Building2, Layers, Sunrise, Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
+import { useTheme } from "next-themes";
+import { THEMES } from "@/lib/themes";
 import {
   useSelectedBrand, withBrand, ALL_BRANDS, type BrandRecord,
 } from "@/components/dashboard/useSelectedBrand";
@@ -29,6 +31,7 @@ const tabs = [
   { id: "brand",         label: "Brand",         icon: Sparkles },
   { id: "content-types", label: "Content Types", icon: FileText },
   { id: "account",       label: "Account",       icon: User },
+  { id: "appearance",    label: "Appearance",    icon: Palette },
   { id: "accounts",      label: "Accounts",      icon: Layers },
   { id: "instagram",     label: "Instagram",      icon: Instagram },
   { id: "ai",            label: "AI Config",      icon: Cpu },
@@ -66,7 +69,7 @@ function GlassInput({
             readOnly && "opacity-60 cursor-default",
           )}
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-          onFocus={(e) => { if (!readOnly) { e.target.style.borderColor = "rgba(239,68,68,0.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(239,68,68,0.08)"; } }}
+          onFocus={(e) => { if (!readOnly) { e.target.style.borderColor = "rgb(var(--accent-rgb) / 0.5)"; e.target.style.boxShadow = "0 0 0 3px rgb(var(--accent-rgb) / 0.08)"; } }}
           onBlur={(e)  => { e.target.style.borderColor = "rgba(255,255,255,0.08)"; e.target.style.boxShadow = "none"; }}
         />
         {masked && !readOnly && (
@@ -93,7 +96,7 @@ function GlassSelect({ label, value, onChange, options }: {
         className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none transition-all"
         style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
       >
-        {options.map((o) => <option key={o} value={o} style={{ background: "#111118" }}>{o}</option>)}
+        {options.map((o) => <option key={o} value={o} style={{ background: "rgb(var(--surface-rgb))" }}>{o}</option>)}
       </select>
     </div>
   );
@@ -112,8 +115,8 @@ function Toggle({ label, description, value, onChange, disabled = false }: {
         onClick={() => { if (!disabled) onChange(!value); }}
         disabled={disabled}
         aria-disabled={disabled}
-        className={cn("relative w-11 h-6 rounded-full transition-all flex-shrink-0 ml-4", value ? "bg-gradient-to-r from-red-500 to-pink-500" : "bg-white/10", disabled && "cursor-not-allowed")}
-        style={value ? { boxShadow: "0 0 12px rgba(239,68,68,0.4)" } : {}}
+        className={cn("relative w-11 h-6 rounded-full transition-all flex-shrink-0 ml-4", value ? "bg-gradient-to-r from-brand to-brand-light" : "bg-white/10", disabled && "cursor-not-allowed")}
+        style={value ? { boxShadow: "0 0 12px rgb(var(--accent-rgb) / 0.4)" } : {}}
       >
         <motion.div
           animate={{ x: value ? 20 : 2 }}
@@ -134,7 +137,7 @@ function SaveButton({ onClick, loading, label = "Save Changes" }: {
       onClick={onClick}
       disabled={loading}
       className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-      style={{ background: "linear-gradient(135deg, #ef4444, #ec4899)" }}
+      style={{ background: "var(--gradient-accent)" }}
     >
       {loading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
       {loading ? "Saving..." : label}
@@ -302,7 +305,7 @@ function BrandForm({
           onClick={() => { if (!form.label.trim()) { toast.error("Account label is required"); return; } onSubmit(form); }}
           disabled={submitting}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, #ef4444, #ec4899)" }}
+          style={{ background: "var(--gradient-accent)" }}
         >
           {submitting ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
           {mode === "add" ? "Add Account" : "Save Changes"}
@@ -451,7 +454,7 @@ function AccountsTab() {
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
             onClick={() => { setEditId(null); setAdding(true); }}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-            style={{ background: "linear-gradient(135deg, #ef4444, #ec4899)" }}
+            style={{ background: "var(--gradient-accent)" }}
           >
             <Plus size={15} /> Add Account
           </motion.button>
@@ -2382,6 +2385,57 @@ function NotificationsTab() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// APPEARANCE TAB — pick one of 10 app-wide themes (persists via next-themes)
+// ─────────────────────────────────────────────────────────────────────────────
+function AppearanceTab() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const active = mounted ? (theme ?? "crimson") : "crimson";
+
+  return (
+    <div className="space-y-5">
+      <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Appearance</h3>
+      <p className="text-xs text-white/40 -mt-2">Pick a theme — it applies across the whole app instantly and is remembered on this device.</p>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {THEMES.map((t) => {
+          const selected = active === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTheme(t.id)}
+              className={cn(
+                "relative rounded-xl p-3 text-left border transition-all",
+                selected ? "border-white/40 ring-1 ring-white/30" : "border-white/[0.08] hover:border-white/20"
+              )}
+              style={{ background: t.bg }}
+            >
+              <div className="flex items-center gap-1.5 mb-2">
+                {t.swatch.map((c, i) => (
+                  <span key={i} className="h-5 w-5 rounded-full" style={{ background: c, boxShadow: i === 0 ? `0 0 10px ${c}88` : undefined }} />
+                ))}
+              </div>
+              <div className="text-xs font-semibold text-white/90">{t.label}</div>
+              {selected && <span className="absolute top-2 right-2 text-[10px] text-white/80">✓</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="rounded-xl p-4 border border-white/[0.06]" style={{ background: "rgb(var(--surface-rgb))" }}>
+        <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Live preview</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="px-3 py-1.5 rounded-full text-xs font-semibold text-white" style={{ background: "var(--gradient-accent)" }}>Accent button</span>
+          <span className="px-3 py-1.5 rounded-full text-xs font-semibold" style={{ background: "rgb(var(--accent-rgb) / 0.15)", color: "rgb(var(--accent-2-rgb))", border: "1px solid rgb(var(--accent-rgb) / 0.3)" }}>Badge</span>
+          <span className="text-sm font-bold" style={{ background: "var(--gradient-accent)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent" }}>Gradient text</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MORNING DIGEST TAB — pick exactly what goes into the once-a-day 24h summary email
 // ─────────────────────────────────────────────────────────────────────────────
 function MorningDigestTab() {
@@ -2805,7 +2859,7 @@ function YouTubeTab() {
                   "px-4 py-2 rounded-xl text-sm font-medium capitalize transition-all",
                   privacy === p ? "text-white" : "text-white/40 bg-white/[0.03] hover:bg-white/[0.06]"
                 )}
-                style={privacy === p ? { background: "linear-gradient(135deg, #ef4444, #ec4899)" } : {}}
+                style={privacy === p ? { background: "var(--gradient-accent)" } : {}}
               >
                 {p}
               </button>
@@ -2826,7 +2880,7 @@ function YouTubeTab() {
                   "px-4 py-2 rounded-xl text-sm font-semibold border transition-all",
                   targetShortSeconds === n ? "text-white border-transparent" : "text-white/40 bg-white/[0.03] border-white/[0.08] hover:text-white hover:border-white/20"
                 )}
-                style={targetShortSeconds === n ? { background: "linear-gradient(135deg, #ef4444, #ec4899)" } : {}}
+                style={targetShortSeconds === n ? { background: "var(--gradient-accent)" } : {}}
               >
                 {n}s
               </motion.button>
@@ -2978,15 +3032,15 @@ function YouTubeTab() {
                   className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none transition-all"
                   style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
                 >
-                  <optgroup label="Male" style={{ background: "#111118" }}>
-                    <option value="daniel" style={{ background: "#111118" }}>Daniel — warm, natural (recommended)</option>
-                    <option value="austin" style={{ background: "#111118" }}>Austin — bright, energetic</option>
-                    <option value="troy"   style={{ background: "#111118" }}>Troy — deep, authoritative</option>
+                  <optgroup label="Male" style={{ background: "rgb(var(--surface-rgb))" }}>
+                    <option value="daniel" style={{ background: "rgb(var(--surface-rgb))" }}>Daniel — warm, natural (recommended)</option>
+                    <option value="austin" style={{ background: "rgb(var(--surface-rgb))" }}>Austin — bright, energetic</option>
+                    <option value="troy"   style={{ background: "rgb(var(--surface-rgb))" }}>Troy — deep, authoritative</option>
                   </optgroup>
-                  <optgroup label="Female" style={{ background: "#111118" }}>
-                    <option value="autumn" style={{ background: "#111118" }}>Autumn — warm, friendly</option>
-                    <option value="diana"  style={{ background: "#111118" }}>Diana — calm, clear</option>
-                    <option value="hannah" style={{ background: "#111118" }}>Hannah — soft, youthful</option>
+                  <optgroup label="Female" style={{ background: "rgb(var(--surface-rgb))" }}>
+                    <option value="autumn" style={{ background: "rgb(var(--surface-rgb))" }}>Autumn — warm, friendly</option>
+                    <option value="diana"  style={{ background: "rgb(var(--surface-rgb))" }}>Diana — calm, clear</option>
+                    <option value="hannah" style={{ background: "rgb(var(--surface-rgb))" }}>Hannah — soft, youthful</option>
                   </optgroup>
                 </select>
                 <p className="text-[11px] text-white/35 mt-2 leading-relaxed">
@@ -3450,7 +3504,7 @@ function WebhookTab() {
           onClick={handleAutoSubscribe}
           disabled={subscribing || allFieldsOk}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-          style={{ background: "linear-gradient(135deg, #ef4444, #ec4899)" }}
+          style={{ background: "var(--gradient-accent)" }}
         >
           {subscribing ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
           {subscribing ? "Subscribing..." : allFieldsOk ? "All Fields Active ✅" : "Auto-Subscribe Fields"}
@@ -4031,7 +4085,7 @@ export default function SettingsPage() {
                 activeTab === tab.id
                   ? tab.id === "danger"
                     ? "bg-red-500/20 text-red-300 border border-red-500/20"
-                    : "bg-gradient-to-r from-red-500/20 to-pink-500/10 text-white border border-red-500/20"
+                    : "bg-gradient-to-r from-brand/20 to-brand-light/10 text-white border border-red-500/20"
                   : tab.id === "danger"
                   ? "text-red-400/60 hover:text-red-400 hover:bg-red-500/5"
                   : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
@@ -4102,6 +4156,7 @@ export default function SettingsPage() {
             {activeTab === "youtube"       && <YouTubeTab />}
             {activeTab === "webhook"       && <WebhookTab />}
             {activeTab === "notifications" && <NotificationsTab />}
+            {activeTab === "appearance" && <AppearanceTab />}
             {activeTab === "morning-digest" && <MorningDigestTab />}
             {activeTab === "danger"        && <DangerTab />}
           </motion.div>
