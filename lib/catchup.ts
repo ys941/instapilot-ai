@@ -52,6 +52,7 @@ import {
 } from "@/lib/youtube";
 import { renderCardsToShortMp4 } from "@/lib/videoGenerator";
 import { publishPostToYouTubeShort, buildRichCaption } from "@/lib/youtubePublish";
+import { shortPlan, DEFAULT_SHORT_SECONDS } from "@/lib/shortLength";
 
 const GRAPH_BASE   = "https://graph.facebook.com/v25.0";
 const PAGE_ID      = process.env.FACEBOOK_PAGE_ID ?? "";
@@ -723,6 +724,7 @@ async function forceYouTubeShort(args: {
     const { videoId } = await publishPostToYouTubeShort(ytPost as any, {
       privacy:           yt?.privacy ?? "public",
       secondsPerImage:   yt?.secondsPerImage ?? 5,
+      targetShortSeconds: yt?.targetShortSeconds ?? DEFAULT_SHORT_SECONDS,
       descriptionSuffix: yt?.descriptionSuffix ?? "",
       voiceover:         yt?.voiceover ?? false,
       voiceoverVoice:    yt?.voiceoverVoice ?? "daniel",
@@ -3899,6 +3901,12 @@ export async function runAutoGenerateYouTube(ctxArg?: BrandContext): Promise<Gen
 
     const customExtra = (yt.customPromptExtra ?? "").trim();
 
+    // ── Target-length plan (Short duration sizing) ─────────────────────────
+    // Derive the narration/word budget for the user's chosen Short length so the
+    // AI writes a script that actually fits the target seconds. `targetShortSeconds`
+    // is undefined-tolerant → shortPlan falls back to DEFAULT_SHORT_SECONDS.
+    const plan = shortPlan(yt.targetShortSeconds ?? DEFAULT_SHORT_SECONDS);
+
     for (let i = 0; i < toGenerate; i++) {
       const type  = YT_TYPES[(dayNumber + i) % YT_TYPES.length];
       const topic = (await pickNextTopic("post", yt.topics, usedThisRun, ctx.prefs.brand))
@@ -3926,6 +3934,21 @@ export async function runAutoGenerateYouTube(ctxArg?: BrandContext): Promise<Gen
         : `\n\nCONTENT ANGLE — ACCESSIBLE (this is one of the ~90% accessible posts, framed for the general public, NOT specialists): frame the topic in plain, relatable, everyday language. Focus entirely on what it means for the VIEWER's daily life — practical, actionable advice they can use today. Lead with the personal "what does this mean for me" angle. AVOID heavy jargon and insider terminology; if a technical term is unavoidable, explain it in one plain phrase. Keep it warm, accessible, and motivating for an everyday viewer.\nTITLE RULE: the "title" MUST be a plain-language CURIOSITY hook the average person would click — NEVER jargon. Follow the WINNING PATTERN: a concrete everyday noun + a specific curiosity or benefit (a number ONLY if it is truthful — NEVER invent a statistic). GOOD: concrete, specific, names the actual thing. BANNED (these flop — abstract, vague, no concrete picture): generic "...your <thing>" patterns, "How X causes silent Y", "Why X is killing your <thing>", with no specific noun or number. Make the viewer NEED to know the answer.`;
 
       const cardSpec = cardSpecFor(brand)[type] ?? cardSpecFor(brand).EDUCATIONAL;
+
+      // ── DURATION directive (sizes the NARRATED card content to the target) ──
+      // The card `content` field is what gets read aloud in the Short, so its
+      // length drives the runtime. Size it to `plan` so the finished Short lands
+      // near the user's chosen target seconds. This OVERRIDES any point count
+      // baked into the IMAGE-CARD REQUIREMENT above. Soft target — a rich point
+      // may run slightly long, but do not pad.
+      const durationBlock =
+        `\n\nDURATION — SIZE THE NARRATED CONTENT TO ≈${plan.target} SECONDS (critical):
+This Short must run about ${plan.target} seconds when the "content" card text is read aloud.
+- Write EXACTLY ${plan.points} content point(s) in the "content" field — no more, no fewer. This point count OVERRIDES any point count (e.g. "~5-7 points" or similar) mentioned in the IMAGE-CARD REQUIREMENT above.
+- Each point is ONE punchy, high-impact spoken line of ≤ ${plan.wordsPerPoint} spoken words.
+- The WHOLE narration (hook + the ${plan.points} points + CTA) should total ≈ ${plan.totalWords} words.
+- A shorter target means FEWER, PUNCHIER points — keep every line tight, concrete, and worth saying. This is a SOFT target: a genuinely rich point may run slightly over, but do NOT pad or add filler to hit the number.
+- This duration budget applies ONLY to the narrated card "content". The "caption" field can stay rich, long, and detailed as specified below — do NOT shorten the caption to fit the duration.`;
 
       try {
         const typeLabel = type.replace(/_/g, " ").toLowerCase();
@@ -3956,7 +3979,7 @@ Return ONLY a valid JSON object with EXACTLY these fields:
 RULES:
 - "content" = ONLY the image-card text, following the IMAGE-CARD REQUIREMENT above. Plain lines, no prose.
 - "caption" = ONLY prose with emojis. Must be DIFFERENT from the card content.
-- hashtags: EXACTLY 3. Mix 1 high-volume (>500k) + 1 medium (50k-500k) + 1 niche (<50k).${toneDirective}${angleBlock}${ytExtra}${avoidBlock}${languageDirective}`;
+- hashtags: EXACTLY 3. Mix 1 high-volume (>500k) + 1 medium (50k-500k) + 1 niche (<50k).${durationBlock}${toneDirective}${angleBlock}${ytExtra}${avoidBlock}${languageDirective}`;
 
         const ytSystem =
           buildBrandSystemPrompt(brand) + " This is for a YouTube channel — optimize hooks to grab a broad audience. Return ONLY valid JSON — no markdown, no preamble. Every post you write must be distinct from previous ones — never repeat the same facts, angle, or wording." + languageDirective;

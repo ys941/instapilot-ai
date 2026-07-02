@@ -7,6 +7,7 @@ import { readPreferencesForBrand, writePreferencesForBrand, sanitizeDailySchedul
 import { checkYouTubeHealth } from "@/lib/youtube";
 import { getBrandCredentials } from "@/lib/brands";
 import { brandFromQuery, brandFromBody } from "@/lib/brandRequest";
+import { normalizeShortSeconds } from "@/lib/shortLength";
 
 // Probes the YouTube API on every load — never let upstream cache it.
 export const dynamic = "force-dynamic";
@@ -74,6 +75,8 @@ export async function POST(request: NextRequest) {
         enabled:           typeof body.enabled        === "boolean" ? body.enabled        : false,
         privacy:           allowedPrivacy.includes(body.privacy)    ? body.privacy        : "public",
         secondsPerImage:   Number.isFinite(secs) ? Math.min(15, Math.max(2, Math.round(secs))) : 5,
+        // Soft target length for each Short — the generator sizes script + voiceover to fit.
+        targetShortSeconds: normalizeShortSeconds(body.targetShortSeconds),
         postsPerDay:       Number.isFinite(ppd) ? Math.min(5, Math.max(1, Math.round(ppd))) : 1,
         descriptionSuffix: typeof body.descriptionSuffix === "string" ? body.descriptionSuffix : "",
         replyToComments:   typeof body.replyToComments === "boolean" ? body.replyToComments : true,

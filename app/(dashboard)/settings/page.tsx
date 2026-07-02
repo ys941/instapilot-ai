@@ -17,6 +17,7 @@ import {
   useSelectedBrand, withBrand, ALL_BRANDS, type BrandRecord,
 } from "@/components/dashboard/useSelectedBrand";
 import { useBrandContext } from "@/components/BrandContext";
+import { SHORT_LENGTH_OPTIONS, normalizeShortSeconds, DEFAULT_SHORT_SECONDS } from "@/lib/shortLength";
 
 const tabs = [
   { id: "brand",         label: "Brand",         icon: Sparkles },
@@ -2481,6 +2482,7 @@ function YouTubeTab() {
   const [enabled,           setEnabled]           = useState(false);
   const [privacy,           setPrivacy]           = useState("public");
   const [secondsPerImage,   setSecondsPerImage]   = useState(5);
+  const [targetShortSeconds, setTargetShortSeconds] = useState<number>(DEFAULT_SHORT_SECONDS);
   const [postsPerDay,       setPostsPerDay]       = useState(1);
   const [descriptionSuffix, setDescriptionSuffix] = useState("");
   const [replyToComments,   setReplyToComments]   = useState(true);
@@ -2511,6 +2513,7 @@ function YouTubeTab() {
           setEnabled(cfg.enabled ?? false);
           setPrivacy(cfg.privacy ?? "public");
           setSecondsPerImage(cfg.secondsPerImage ?? 5);
+          setTargetShortSeconds(normalizeShortSeconds(cfg.targetShortSeconds));
           setPostsPerDay(cfg.postsPerDay ?? 1);
           setDescriptionSuffix(cfg.descriptionSuffix ?? "");
           setReplyToComments(cfg.replyToComments ?? true);
@@ -2563,7 +2566,7 @@ function YouTubeTab() {
       const res  = await fetch(withBrand("/api/settings/youtube", brandId), {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ enabled, privacy, secondsPerImage, postsPerDay, descriptionSuffix, replyToComments, topics, postTypes, customPromptExtra, postTimes, scheduleDays, publishToInstagram, voiceover, voiceoverVoice, burnCaptions, dailySchedule, customScheduleOnly, reelPublishTimes }),
+        body:    JSON.stringify({ enabled, privacy, secondsPerImage, targetShortSeconds, postsPerDay, descriptionSuffix, replyToComments, topics, postTypes, customPromptExtra, postTimes, scheduleDays, publishToInstagram, voiceover, voiceoverVoice, burnCaptions, dailySchedule, customScheduleOnly, reelPublishTimes }),
       });
       const data = await res.json();
       if (data.success) toast.success("YouTube settings saved ✅", { id: tid });
@@ -2650,21 +2653,27 @@ function YouTubeTab() {
           </div>
         </div>
 
-        {/* Seconds per image */}
+        {/* Target Short length — the single pacing control */}
         <div>
-          <label className="text-xs font-medium text-white/40 block mb-3 uppercase tracking-wider">
-            Seconds per card ({secondsPerImage}s)
-          </label>
-          <input
-            type="range" min={2} max={15} step={1}
-            value={secondsPerImage}
-            onChange={(e) => setSecondsPerImage(Number(e.target.value))}
-            className="w-full max-w-md accent-red-500"
-          />
+          <label className="text-xs font-medium text-white/40 block mb-3 uppercase tracking-wider">Target Short length</label>
+          <div className="flex gap-2 flex-wrap">
+            {SHORT_LENGTH_OPTIONS.map((n) => (
+              <motion.button
+                key={n}
+                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}
+                onClick={() => setTargetShortSeconds(n)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-semibold border transition-all",
+                  targetShortSeconds === n ? "text-white border-transparent" : "text-white/40 bg-white/[0.03] border-white/[0.08] hover:text-white hover:border-white/20"
+                )}
+                style={targetShortSeconds === n ? { background: "linear-gradient(135deg, #ef4444, #ec4899)" } : {}}
+              >
+                {n}s
+              </motion.button>
+            ))}
+          </div>
           <p className="text-xs text-white/30 mt-2">
-            How long each card stays on screen (capped at ~58s total). With AI voiceover ON, this is the
-            <strong className="text-white/45"> minimum</strong> hold per card — a card always stays at least this long,
-            and if its narration is longer it stays for the full narration, so the voice stays in sync.
+            The AI sizes each Short&apos;s script and voiceover to fit this length (soft target).
           </p>
         </div>
 

@@ -17,6 +17,7 @@ import { uploadShort, setVideoThumbnail, type YouTubeCreds } from "@/lib/youtube
 import { renderHookCard, renderOutroCard, THEMES, type Theme } from "@/lib/hookCard";
 import { buildBeautifulCaption } from "@/lib/captionBuilder";
 import { selectMusicForCard } from "@/lib/music";
+import { shortPlan } from "@/lib/shortLength";
 import { getBrand, type YouTubeSettings } from "@/lib/preferences";
 import type { BrandConfig } from "@/lib/brandConfig";
 import { atHandle, ytHandle, ytChannelName, dualFollowCTA } from "@/lib/brandConfig";
@@ -863,7 +864,7 @@ function pickRotatingShortTheme(postId?: string): Theme {
  */
 export async function buildShortForPost(
   post: YtPostInput,
-  yt: Pick<YouTubeSettings, "secondsPerImage" | "descriptionSuffix" | "voiceover" | "voiceoverVoice" | "burnCaptions">,
+  yt: Pick<YouTubeSettings, "secondsPerImage" | "targetShortSeconds" | "descriptionSuffix" | "voiceover" | "voiceoverVoice" | "burnCaptions">,
 ): Promise<BuiltShort> {
   // Serialize the ENTIRE build (slide + hook/outro render + music + ffmpeg) PROCESS-WIDE
   // so only ONE memory-heavy Short renders at a time. The publish triggers (30s scheduler
@@ -890,7 +891,9 @@ export async function buildShortForPost(
     const imgBuf = await fetchUrlToBuffer(uploadedUrl);
     const music  = await selectMusicForCardSafe(imgBuf);
     const mp4    = await renderCardsToShortMp4([imgBuf], {
-      secondsPerImage: yt.secondsPerImage ?? 5,
+      // Single uploaded still image → show it for the whole target Short length
+      // (the "Target Short length" setting is now the single pacing control).
+      secondsPerImage: shortPlan(yt.targetShortSeconds).target,
       audio:           music?.buffer ?? null,
     });
     if (!mp4) throw new Error("ffmpeg failed to render the Short MP4 from the uploaded image");
@@ -940,18 +943,20 @@ export async function buildShortForPost(
     ...(hasOutro ? [outroCard] : []),
   ];
 
-  // ── Per-card durations: FRONT-LOAD THE HOOK ──────────────────────────────────
+  // ── Per-card durations: PACE TO THE TARGET LENGTH, FRONT-LOAD THE HOOK ────────
+  // All pacing derives from shortPlan(targetShortSeconds) — the SINGLE source of
+  // truth shared with the content generator (which sizes the script to fit) — so a
+  // Short actually lands near the chosen target (15|20|30|45|60s, soft target).
   // Live data showed 70–90% of viewers swipe away in the first ~2s, so the hook
-  // cover must flash by FAST (≈2s) to get viewers into the value before they bounce;
-  // content slides hold for the configured per-card duration, and the subscribe outro
-  // is brief (≈3s). The renderer hard-caps the grand total at the ~3-min Shorts ceiling.
-  // Content-card seconds come from the YouTube "Seconds per card" SETTING so the owner
-  // can actually control Short length/pacing (clamped to the UI's 2–15s range). Previously
-  // this was a fixed ~50s target that ignored the setting entirely. (These are the
-  // SILENT-Short durations; with voiceover ON each card is timed to its narration below.)
-  const HOOK_SECS = 2, OUTRO_SECS = 3;
+  // cover FLASHES by fast (plan.hookSecs) to get viewers into the value before they
+  // bounce; content slides hold for plan.perCardSecs; the subscribe outro is brief
+  // (plan.outroSecs). The grand total is soft-capped at plan.maxSecs (≈target+30%,
+  // never past YouTube's ~178s Shorts ceiling). These are the SILENT-Short durations;
+  // with voiceover ON each card is timed to its narration below (min hold = perCardSecs).
+  const plan = shortPlan(yt.targetShortSeconds);
+  const HOOK_SECS = plan.hookSecs, OUTRO_SECS = plan.outroSecs;
   const contentCount = Math.max(1, cardBuffers.length);
-  const contentSecs = Math.max(2, Math.min(15, Math.round(yt.secondsPerImage ?? 6)));
+  const contentSecs = plan.perCardSecs;
   const durations = [
     ...(hasHook ? [HOOK_SECS] : []),
     ...cardBuffers.map(() => contentSecs),
@@ -974,7 +979,22 @@ export async function buildShortForPost(
   let voDurations = durations;
   if (yt.voiceover && isTtsConfigured()) {
     const niche = (brand.niche ?? "").trim();
-    const strip = (s: string) => (s || "").replace(/[*_#`>~]/g, "").replace(/\s+/g, " ").trim();
+    // Clean text for narration. Story/post content is internally encoded with
+    // labels (TIP:/TAGLINE:) and may carry bullets, hashtags, emoji and markdown —
+    // none of which should be SPOKEN. Strip them so the TTS never reads "TIP",
+    // "TAGLINE", "hashtag…", bullet symbols or stray punctuation aloud.
+    const strip = (s: string) =>
+      (s || "")
+        .replace(/https?:\/\/\S+/gi, " ")                              // URLs
+        .replace(/^\s*(?:TIP|TAGLINE|HOOK|CTA|NOTE|FACT|HEADLINE|BODY)\s*[:\-]\s*/gim, "") // internal labels
+        .replace(/(^|\s)#[\p{L}\p{N}_]+/gu, " ")                       // #hashtag tokens
+        .replace(/(^|\s)@[\p{L}\p{N}_.]+/gu, " ")                      // @mentions
+        .replace(/^\s*(?:\d+[.)]|[-–—•*‣◦⁃►▪·])\s+/gm, "")             // leading bullets / numbering
+        .replace(/[\p{Extended_Pictographic}\u{FE00}-\u{FE0F}\u{200D}\u{1F1E6}-\u{1F1FF}]/gu, "") // emoji / pictographs / variation selectors / ZWJ
+        .replace(/[*_`>~|#]/g, "")                                     // markdown residue
+        .replace(/\s{2,}/g, " ")
+        .replace(/\s+([.,!?;:])/g, "$1")                               // tidy space before punctuation
+        .trim();
     // #4 engagement loop: the SPOKEN outro is a SUBSCRIBE ask (this is YouTube), varied
     // per-Short so it never sounds templated across the feed. Niche-neutral copy.
     const nicheLabel = niche || "tips";
@@ -991,7 +1011,23 @@ export async function buildShortForPost(
 
     // PER-CARD PATH — one narration segment per card, paced by the seconds-per-card min.
     try {
-      const specsForVoice = buildContentSlideSpecs(post);
+      // A STORY renders as a SINGLE visual card (headline + tips + tagline all on one
+      // image). buildContentSlideSpecs would split its text into many specs that can't
+      // align to that one card, forcing the even-split fallback where the card drifts
+      // out of sync with the voice. So for a STORY we build ONE narration segment that
+      // speaks the whole card — it then aligns 1:1 with the single card and the per-card
+      // sync path holds the card for exactly its narration. Other post types unchanged.
+      const specsForVoice = post.type === "STORY"
+        ? (() => {
+            const ls = (post.content ?? "").split("\n").filter(Boolean);
+            const hl = post.title || ls[0] || "";
+            const bd = ls[1] && !/^(?:TIP|TAGLINE):/.test(ls[1]) ? ls[1] : "";
+            const tps = ls.filter((l) => l.startsWith("TIP:")).map((l) => l.slice(4).trim()).filter(Boolean).slice(0, 6);
+            const tg = (ls.find((l) => l.startsWith("TAGLINE:")) ?? "").replace(/^TAGLINE:/, "").trim();
+            const spoken = [hl, bd, ...tps, tg].filter(Boolean).join(". ");
+            return [{ slide: 1, headline: hl || "Story", body: spoken }];
+          })()
+        : buildContentSlideSpecs(post);
       const canAlign = specsForVoice.length > 0 && specsForVoice.length === cardBuffers.length;
       if (canAlign) {
         let segTexts = [
@@ -1001,8 +1037,10 @@ export async function buildShortForPost(
         ];
         // The Short's length ADAPTS to the content (long card text → longer card →
         // longer Short), so we narrate each card's FULL text. Only trim if the whole
-        // narration would approach YouTube's ~3-min Shorts ceiling (~380 words ≈ 170s).
-        const MAXW = 380;
+        // narration would exceed the soft ceiling for THIS target (plan.maxSecs,
+        // ≈target+30%, ≤178s). ≈2.5 words/sec → maxSecs*2.5 words. The generator now
+        // sizes content to fit, so this trim rarely fires.
+        const MAXW = Math.max(40, Math.round(plan.maxSecs * 2.5));
         let segW = segTexts.map((s) => s.split(/\s+/).filter(Boolean));
         const totW = segW.reduce((a, w) => a + w.length, 0);
         if (totW > MAXW) {
@@ -1029,15 +1067,21 @@ export async function buildShortForPost(
             const target = speech.map((d, i) => {
               const isHook  = hasHook  && i === 0;
               const isOutro = hasOutro && i === buffers.length - 1;
-              const floor = isHook ? 1.5 : isOutro ? 2 : contentSecs;
+              // Hook flashes fast; outro brief; content honours the per-card MINIMUM
+              // hold from the target plan (plan.perCardSecs) so voice stays in sync
+              // with the on-screen card without dragging the Short past its target.
+              const floor = isHook ? plan.hookSecs : isOutro ? plan.outroSecs : contentSecs;
               return Math.max(d, floor);
             });
             let pad = target.map((t, i) => Math.max(0, t - speech[i]));
 
-            // Keep within the ~3-min Shorts ceiling by trimming pads (never the speech).
+            // Soft-cap the grand total near the target (plan.maxSecs ≈ target+30%,
+            // ≤178s) by trimming PAD only — never the speech. If narration alone is
+            // already over the ceiling, drop all pad (the generator sizes content to
+            // fit, so speech rarely overruns; we never cut mid-word).
             const totSpeech = speech.reduce((a, b) => a + b, 0);
             const totPad = pad.reduce((a, b) => a + b, 0);
-            const budget = 178 - totSpeech;
+            const budget = plan.maxSecs - totSpeech;
             if (budget <= 0) pad = pad.map(() => 0);
             else if (totPad > budget) { const k = budget / totPad; pad = pad.map((p) => p * k); }
 
@@ -1053,7 +1097,7 @@ export async function buildShortForPost(
                   catch (e: any) { console.warn("[YouTube] caption build failed:", e?.message ?? e); }
                 }
               }
-              console.log(`[YouTube] Voiceover ON: per-card synced (${buffers.length} cards, min hold ${contentSecs}s), burnedCaptions=${assSubtitles ? "yes" : "no (YouTube auto-captions)"}`);
+              console.log(`[YouTube] Voiceover ON: per-card synced (${buffers.length} cards, target ${plan.target}s, min hold ${contentSecs}s, cap ${plan.maxSecs}s), burnedCaptions=${assSubtitles ? "yes" : "no (YouTube auto-captions)"}`);
             }
           }
         }
@@ -1076,7 +1120,8 @@ export async function buildShortForPost(
           voiceTrack = tts.audio;
           const dur = await probeAudioDurationSec(tts.audio);
           if (dur > 1) {
-            const totalV = Math.min(180, dur + 0.5);
+            // Soft-cap the fallback (even-split) Short at the target ceiling too.
+            const totalV = Math.min(plan.maxSecs, dur + 0.5);
             voDurations = buffers.map(() => Math.max(2, totalV / buffers.length));
           }
           if (yt.burnCaptions) {
@@ -1107,7 +1152,7 @@ export async function buildShortForPost(
   });
   if (!mp4) throw new Error("ffmpeg failed to render the Short MP4");
 
-  console.log(`[YouTube] Built carousel Short: ${buffers.length} cards${voiceTrack ? " + AI voiceover" : ` (hook ${HOOK_SECS}s + ${contentCount}×${contentSecs}s + outro ${OUTRO_SECS}s)`} ≈ ${voDurations.reduce((a,b)=>a+b,0).toFixed(0)}s`);
+  console.log(`[YouTube] Built carousel Short: ${buffers.length} cards${voiceTrack ? " + AI voiceover" : ` (hook ${HOOK_SECS}s + ${contentCount}×${contentSecs}s + outro ${OUTRO_SECS}s)`} → target ${plan.target}s (cap ${plan.maxSecs}s) ≈ ${voDurations.reduce((a,b)=>a+b,0).toFixed(0)}s`);
 
   // Build the ONE unified rich caption + suffix (shared identically with Instagram —
   // generated once and cached in-memory by post.id), then append the music attribution
@@ -1155,7 +1200,7 @@ async function selectMusicForCardSafe(
  */
 export async function publishPostToYouTubeShort(
   post: YtPostInput,
-  yt: Pick<YouTubeSettings, "privacy" | "secondsPerImage" | "descriptionSuffix" | "voiceover" | "voiceoverVoice" | "burnCaptions">,
+  yt: Pick<YouTubeSettings, "privacy" | "secondsPerImage" | "targetShortSeconds" | "descriptionSuffix" | "voiceover" | "voiceoverVoice" | "burnCaptions">,
   creds?: YouTubeCreds,
 ): Promise<PublishYtResult & { mp4: Buffer; description: string }> {
   const brand = await getBrand();

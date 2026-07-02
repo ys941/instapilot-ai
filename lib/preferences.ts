@@ -95,8 +95,12 @@ export interface YouTubeSettings {
   enabled:       boolean;
   /** Privacy of uploaded Shorts: "public" | "unlisted" | "private". */
   privacy:       string;
-  /** Seconds each card is shown in the Short (2–15). */
+  /** Seconds each card is shown in the Short (2–15). Legacy pacing knob; the
+   *  target-length feature (targetShortSeconds) supersedes it when set. */
   secondsPerImage: number;
+  /** Target Short length in seconds (15 | 20 | 30 | 45 | 60). The generator sizes
+   *  the script to fit and the renderer paces cards + voiceover to it (soft target). */
+  targetShortSeconds?: number;
   /** Append this text to every YouTube description (e.g. channel CTA). */
   descriptionSuffix: string;
   /** Grok auto-replies to YouTube comments. */
@@ -242,6 +246,7 @@ export const DEFAULTS: AllPreferences = {
     enabled:           false,
     privacy:           "public",
     secondsPerImage:   5,
+    targetShortSeconds: 30,   // default target Short length (soft target)
     descriptionSuffix: "",
     replyToComments:   true,
     postsPerDay:       1,
