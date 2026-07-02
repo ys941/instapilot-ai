@@ -489,7 +489,10 @@ function buildContentSlideSpecs(post: YtPostInput): Array<{ slide: number; headl
       (post.hook ?? "").trim() ||
       stemLines.find((l) => l.trim().endsWith("?")) ||
       "What's the right answer?";
-    const caseLines = stemLines.filter((l) => l !== questionLine);
+    // Drop ALL '?'-ending lines from the case — they belong to the question. When the
+    // hook is used as questionLine, a stem line ending in '?' would otherwise stay in
+    // caseLines and "The Case" slide would repeat (and speak) the question twice.
+    const caseLines = stemLines.filter((l) => l !== questionLine && !l.trim().endsWith("?"));
 
     if (caseLines.length) {
       specs.push({ headline: "The Case", body: caseLines.join("\n") });
@@ -1027,7 +1030,11 @@ export async function buildShortForPost(
             const spoken = [hl, bd, ...tps, tg].filter(Boolean).join(". ");
             return [{ slide: 1, headline: hl || "Story", body: spoken }];
           })()
-        : buildContentSlideSpecs(post);
+        // Cap to the SAME limit as cardBuffers above — the carousel generator can
+        // produce more specs (e.g. 9 slides) than the MAX_CONTENT_SLIDES visible
+        // cards, which would break the 1:1 alignment check below and force every
+        // carousel Short onto the unsynced single-track fallback.
+        : buildContentSlideSpecs(post).slice(0, MAX_CONTENT_SLIDES);
       const canAlign = specsForVoice.length > 0 && specsForVoice.length === cardBuffers.length;
       if (canAlign) {
         let segTexts = [

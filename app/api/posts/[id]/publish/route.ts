@@ -9,6 +9,7 @@ import { notifyPostFailed } from "@/lib/notifier";
 import { publishPostToYouTubeShort } from "@/lib/youtubePublish";
 import { isYouTubeConfigured, type YouTubeCreds } from "@/lib/youtube";
 import { readPreferencesForBrand, getBrand } from "@/lib/preferences";
+import { DEFAULT_SHORT_SECONDS } from "@/lib/shortLength";
 import { getBrandCredentials, resolveBrandId } from "@/lib/brands";
 import { getPageToken } from "@/lib/catchup";
 import { crossPostToFacebookPage } from "@/lib/facebook";
@@ -279,10 +280,17 @@ async function publishYouTubeShortForPost(post: {
       hashtags:       post.hashtags ?? [],
       carouselSlides: (post.carouselSlides as Array<{ slide: number; headline: string; body: string }> | null) ?? null,
     },
+    // Pass the FULL pacing/voiceover prefs (same defaults as the scheduler's
+    // forceYouTubeShort in lib/catchup.ts) — omitting them built silent,
+    // default-paced Shorts on manual "Publish Now".
     {
-      privacy:           yt.privacy,
-      secondsPerImage:   yt.secondsPerImage,
-      descriptionSuffix: yt.descriptionSuffix,
+      privacy:            yt.privacy,
+      secondsPerImage:    yt.secondsPerImage,
+      targetShortSeconds: yt?.targetShortSeconds ?? DEFAULT_SHORT_SECONDS,
+      descriptionSuffix:  yt.descriptionSuffix,
+      voiceover:          yt?.voiceover ?? false,
+      voiceoverVoice:     yt?.voiceoverVoice ?? "daniel",
+      burnCaptions:       yt?.burnCaptions ?? false,
     },
     // Omit creds for the primary brand → env/primary path (exact legacy behaviour).
     creds,

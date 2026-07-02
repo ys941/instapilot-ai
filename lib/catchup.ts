@@ -415,7 +415,10 @@ Return ONLY a JSON array of plain topic strings. No numbering, no commentary.`;
  *      (excluding everything used) and pick one.
  *   3. Absolute last resort (AI unavailable): least-recently used configured topic.
  * `extraUsed` lets a single multi-post run avoid picking the same topic twice.
- * The chosen topic is logged as used (unless dryLog=true) so it never repeats.
+ * NOTE: this function does NOT log the topic as used. The CALLER must call
+ * logTopicUsed(kind, topic) once the generated content is actually accepted
+ * (post/story persisted) — logging here burned the topic even when generation
+ * later failed to parse and the post was skipped, wasting it forever.
  */
 async function pickNextTopic(
   kind: "story" | "post",
@@ -450,7 +453,6 @@ async function pickNextTopic(
   }
 
   const topic = pool[Math.floor(Math.random() * pool.length)];
-  await logTopicUsed(kind, topic);
   return topic;
 }
 
@@ -581,14 +583,30 @@ function isVideoMediaUrl(url: string): boolean {
     url.includes("/video/upload/"); // Cloudinary video URL format
 }
 
+// --- Helper: last-chance idempotency re-read ----------------------------------
+// Returns a callback (for igPublish/igPublishCarousel below) that re-reads the
+// FRESHEST instagramPostId for a ScheduledPost from the DB. It runs AFTER the long
+// container/registration waits, immediately BEFORE the actual media_publish call —
+// the moment a duplicate would go live. If the claim reaper freed this row mid-wait
+// and a concurrent sweep already published it, we skip media_publish and reuse the
+// existing id (an unpublished container simply expires — harmless).
+const freshIgPostIdRecheck = (spId: string) => async (): Promise<string | null> => {
+  const row = await prisma.scheduledPost.findUnique({
+    where: { id: spId }, select: { instagramPostId: true },
+  }).catch(() => null);
+  return row?.instagramPostId ?? null;
+};
+
 // --- Helper: publish a single media container --------------------------------
 // isStory=true -> uses media_type=STORIES (no caption, vertical 9:16 format)
+// recheckPublished (optional): last-chance idempotency guard — see freshIgPostIdRecheck.
 async function igPublish(
   mediaUrl: string,
   caption: string,
   igToken: string,
   igAcctId: string,
   isStory = false,
+  recheckPublished?: () => Promise<string | null>,
 ): Promise<string> {
   caption = capIgCaption(caption);
   // Step 1 -- create container
@@ -618,6 +636,18 @@ async function igPublish(
   // Step 2 -- wait for Instagram to finish processing (videos need longer)
   await waitForContainer(d1.id, igToken, isVideoMedia);
 
+  // Idempotency (last-chance): the container wait above can take minutes (video
+  // processing especially). If another sweep re-claimed and published this post
+  // while we waited, SKIP media_publish — that's the call that makes a duplicate
+  // go live; our unpublished container just expires.
+  if (recheckPublished) {
+    const existing = await recheckPublished();
+    if (existing) {
+      console.log(`[Catchup/igPublish] Already published elsewhere as ${existing} — skipping media_publish, reusing it`);
+      return existing;
+    }
+  }
+
   // Step 3 -- publish
   const p2 = new URLSearchParams({ creation_id: d1.id, access_token: igToken });
   const r2 = await fetchWithRetry(`${GRAPH_BASE}/${igAcctId}/media_publish?${p2}`, { method: "POST" });
@@ -634,11 +664,13 @@ async function igPublish(
 // --- Helper: publish a multi-image CAROUSEL ----------------------------------
 // Creates one carousel-item container per slide image, then a CAROUSEL parent
 // container with all children, then publishes it.
+// recheckPublished (optional): last-chance idempotency guard — see freshIgPostIdRecheck.
 async function igPublishCarousel(
   slideUrls: string[],
   caption: string,
   igToken: string,
   igAcctId: string,
+  recheckPublished?: () => Promise<string | null>,
 ): Promise<string> {
   caption = capIgCaption(caption);
   // Instagram rejects duplicate images and caps carousels at 20 items
@@ -680,6 +712,17 @@ async function igPublishCarousel(
   console.log(`[Catchup/carousel] Container created with ${childIds.length} slides: ${dc.id}`);
 
   await waitForContainer(dc.id, igToken, false);
+
+  // Idempotency (last-chance): the serial item registration + container waits above
+  // take minutes for a full carousel. If another sweep re-claimed and published this
+  // post meanwhile, SKIP media_publish — the unpublished parent container just expires.
+  if (recheckPublished) {
+    const existing = await recheckPublished();
+    if (existing) {
+      console.log(`[Catchup/carousel] Already published elsewhere as ${existing} — skipping media_publish, reusing it`);
+      return existing;
+    }
+  }
 
   // 4. Publish
   const pp = new URLSearchParams({ creation_id: dc.id, access_token: igToken });
@@ -1019,12 +1062,22 @@ export async function publishOverdueScheduled(
   // -- Self-heal: reap stuck "__CLAIMING__" locks ---------------------------------
   // The claim guard below flips PENDING→FAILED("__CLAIMING__:<ts>") to lock an entry
   // while it publishes. If the process restarts mid-publish, the row stays locked
-  // forever and is never retried. Reset any such lock whose CLAIM is older than ~10
-  // min back to PENDING. CRITICAL: we measure the CLAIM age (the <ts> embedded in the
-  // sentinel), NOT the row's createdAt — keying on createdAt instantly reaped the
-  // active claim of any post older than 10 min mid-publish, which re-queued it for a
-  // concurrent sweep and produced DUPLICATE Instagram posts.
-  const claimCutoffMs = Date.now() - 10 * 60 * 1000;
+  // forever and is never retried. Reset any such lock whose CLAIM is older than
+  // CLAIM_MAX_AGE back to PENDING. CRITICAL: we measure the CLAIM age (the <ts>
+  // embedded in the sentinel), NOT the row's createdAt — keying on createdAt instantly
+  // reaped the active claim of any post older than the cutoff mid-publish, which
+  // re-queued it for a concurrent sweep and produced DUPLICATE Instagram posts.
+  //
+  // Why 45 min (was 10): the age must exceed the WORST-CASE legitimate publish, not
+  // the typical one. A claimed Short/carousel first QUEUES behind the process-wide
+  // serialized render lock (every other in-flight video/carousel render finishes
+  // first), then runs its own ffmpeg render + TTS + upload — back-to-back builds can
+  // legitimately hold a claim well past 10 min. The old 10-min cutoff reaped such
+  // ACTIVE claims, letting a second sweep re-claim the row and DOUBLE-PUBLISH.
+  // 45 min covers a realistic worst-case queue while still self-healing genuinely
+  // dead claims (crashed process) within the hour.
+  const CLAIM_MAX_AGE_MS = 45 * 60 * 1000;
+  const claimCutoffMs = Date.now() - CLAIM_MAX_AGE_MS;
   const stuckClaims = await prisma.scheduledPost.findMany({
     where:  { status: "FAILED", error: { startsWith: "__CLAIMING__" }, ...brandFilter(ctx) },
     select: { id: true, error: true },
@@ -1037,7 +1090,7 @@ export async function publishOverdueScheduled(
   const reapIds = stuckClaims
     .filter((s) => {
       const ts = Number(String(s.error ?? "").split(":")[1] ?? 0);
-      // No embedded timestamp (legacy "__CLAIMING__") OR claimed >10 min ago → reap.
+      // No embedded timestamp (legacy "__CLAIMING__") OR claimed >45 min ago → reap.
       return !ts || ts < claimCutoffMs;
     })
     .map((s) => s.id);
@@ -1047,7 +1100,7 @@ export async function publishOverdueScheduled(
       data:  { status: "PENDING", error: null },
     }).catch(() => ({ count: 0 }));
     if (reaped.count > 0) {
-      console.log(`[Catchup] Claim-lock self-heal: reset ${reaped.count} stuck claim(s) (claimed >10min ago) to PENDING`);
+      console.log(`[Catchup] Claim-lock self-heal: reset ${reaped.count} stuck claim(s) (claimed >${CLAIM_MAX_AGE_MS / 60_000}min ago) to PENDING`);
     }
   }
 
@@ -1225,6 +1278,9 @@ export async function publishOverdueScheduled(
           const { videoId, mp4 } = await publishPostToYouTubeShort(ytPost as any, {
             privacy:           yt?.privacy ?? "public",
             secondsPerImage:   yt?.secondsPerImage ?? 5,
+            // Honour the user's chosen Short length (mirrors forceYouTubeShort) —
+            // omitting this silently rendered every scheduled Short at the default.
+            targetShortSeconds: yt?.targetShortSeconds ?? DEFAULT_SHORT_SECONDS,
             descriptionSuffix: yt?.descriptionSuffix ?? "",
             voiceover:         yt?.voiceover ?? false,
             voiceoverVoice:    yt?.voiceoverVoice ?? "daniel",
@@ -1329,13 +1385,16 @@ export async function publishOverdueScheduled(
 
             // Idempotency: re-read the freshest instagramPostId from the DB (not the
             // stale in-memory sp) so a retry/race never posts to Instagram twice.
-            // Mirrors the youtubeVideoId re-read guard in forceYouTubeShort.
+            // Mirrors the youtubeVideoId re-read guard in forceYouTubeShort. A SECOND
+            // re-read (freshIgPostIdRecheck) runs INSIDE igPublishCarousel right before
+            // media_publish, closing the window where the claim reaper frees this row
+            // during the long item-registration/container waits.
             const freshIg = await prisma.scheduledPost.findUnique({
               where: { id: sp.id }, select: { instagramPostId: true },
             }).catch(() => null);
             const igPostId = freshIg?.instagramPostId
               ? freshIg.instagramPostId
-              : await igPublishCarousel(slideUrls, caption, igToken, igAcctId);
+              : await igPublishCarousel(slideUrls, caption, igToken, igAcctId, freshIgPostIdRecheck(sp.id));
             if (freshIg?.instagramPostId) {
               console.log(`[Catchup] Carousel SP ${sp.id} already has instagramPostId ${igPostId} — skipping IG publish, reusing it`);
             }
@@ -1492,7 +1551,10 @@ export async function publishOverdueScheduled(
       if (!resolvedMediaUrl) {
         await prisma.scheduledPost.update({
           where: { id: sp.id },
-          data: { status: "FAILED", error: "No media URL and image generation failed. Check that the canvas renderer (sharp/skia-canvas) is installed and working." },
+          // Increment retryCount like every other failure path — without it the
+          // FAILED-retry pass (retryCount < MAX) re-claimed this row on every tick,
+          // retrying a broken renderer forever instead of going terminal after MAX.
+          data: { status: "FAILED", error: "No media URL and image generation failed. Check that the canvas renderer (sharp/skia-canvas) is installed and working.", retryCount: { increment: 1 } },
         });
         failed++;
         continue;
@@ -1569,13 +1631,16 @@ export async function publishOverdueScheduled(
 
       // Idempotency: re-read the freshest instagramPostId from the DB (not the stale
       // in-memory sp) so a retry/race never posts to Instagram twice. Mirrors the
-      // youtubeVideoId re-read guard in forceYouTubeShort.
+      // youtubeVideoId re-read guard in forceYouTubeShort. A SECOND re-read
+      // (freshIgPostIdRecheck) runs INSIDE igPublish right before media_publish,
+      // closing the window where the claim reaper frees this row during the long
+      // container-processing wait (videos especially).
       const freshIg = await prisma.scheduledPost.findUnique({
         where: { id: sp.id }, select: { instagramPostId: true },
       }).catch(() => null);
       const igPostId = freshIg?.instagramPostId
         ? freshIg.instagramPostId
-        : await igPublish(resolvedMediaUrl, caption, igToken, igAcctId, isStory);
+        : await igPublish(resolvedMediaUrl, caption, igToken, igAcctId, isStory, freshIgPostIdRecheck(sp.id));
       if (freshIg?.instagramPostId) {
         console.log(`[Catchup] SP ${sp.id} already has instagramPostId ${igPostId} — skipping IG publish, reusing it`);
       }
@@ -1727,6 +1792,24 @@ function boundedAdd(set: Set<string>, id: string): void {
   }
 }
 
+// Map twin of boundedAdd — caps a module-level Map so it can't grow unbounded over
+// a long-lived server session. Delete-then-set keeps insertion order tracking
+// recency, so eviction past the cap drops the LEAST-recently-touched entries.
+function boundedMapSet<V>(map: Map<string, V>, key: string, value: V, cap: number): void {
+  if (!key) return;
+  if (map.has(key)) map.delete(key); // re-insert so insertion order = recency
+  map.set(key, value);
+  if (map.size > cap) {
+    const dropCount = map.size - cap;
+    const it = map.keys();
+    for (let i = 0; i < dropCount; i++) {
+      const oldest = it.next().value;
+      if (oldest === undefined) break;
+      map.delete(oldest);
+    }
+  }
+}
+
 // --- Grok auto-reply to YouTube comments --------------------------------------
 // Mirrors fetchMissedComments() but for the channel's recent Shorts/videos.
 // Best-effort: never throws. Returns the number of replies sent.
@@ -1742,6 +1825,20 @@ const YT_COMMENT_CHECK_MS = 2 * 60 * 1000; // throttle floor; actually driven by
 const _ytVideosCacheByBrand = new Map<string, Awaited<ReturnType<typeof getRecentVideos>>>();
 const _ytVideosCacheAtByBrand = new Map<string, number>();
 const YT_VIDEOS_CACHE_MS = 4 * 60 * 1000; // refresh the video list ~every 4 min
+
+// Quota guard for nested-reply fetches. Fetching replies for EVERY thread on EVERY
+// 5-min run (up to 20 threads × 5 videos = 100 comments.list calls/run) burned
+// ~30k units/day — 3× the 10k default daily quota — and killed uploads too.
+// listCommentThreads (lib/youtube.ts) does NOT surface snippet.totalReplyCount, so
+// we can't fetch only threads whose reply count changed; instead we (a) cap reply
+// fetches per run and (b) remember when each thread's replies were last fetched
+// (bounded Map, oldest-touched evicted) and re-fetch a thread at most every 30 min.
+// Worst case is now ~5 threads.list + 10 comments.list per run ≈ ~4.3k units/day.
+// Trade-off: a reply-to-a-reply may be picked up ~30 min late — fine for a bot.
+const _ytThreadReplyFetchAt = new Map<string, number>(); // threadId → last reply-fetch ms
+const YT_THREAD_REPLY_CACHE_CAP = 2000;
+const YT_THREAD_REPLY_TTL_MS = 30 * 60 * 1000;   // re-check a thread's replies ~every 30 min
+const YT_MAX_REPLY_FETCHES_PER_RUN = 10;         // hard per-run comments.list budget
 
 /**
  * Reply to new YouTube comments (and replies-to-replies) for ONE brand. Runs from
@@ -1791,6 +1888,9 @@ export async function replyToYouTubeComments(ctx: BrandContext, maxVideos = 5): 
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   let replied = 0;
+  // Per-RUN budget for nested-reply fetches across ALL videos (see the quota-guard
+  // comment on _ytThreadReplyFetchAt above).
+  let replyFetchesThisRun = 0;
 
   let videos: Awaited<ReturnType<typeof getRecentVideos>> = [];
   try {
@@ -1840,7 +1940,15 @@ export async function replyToYouTubeComments(ctx: BrandContext, maxVideos = 5): 
           publishedAt:     t.publishedAt,
           isReply:         false,
         });
-        // Fetch nested replies for this thread (cap kept sane via per-video reply cap below).
+        // Fetch nested replies for this thread — but ONLY within the per-run budget
+        // and only if this thread's replies weren't fetched recently (quota guard —
+        // see _ytThreadReplyFetchAt). Skipping just means we still process the
+        // top-level comment now and pick up its nested replies on a later run.
+        if (replyFetchesThisRun >= YT_MAX_REPLY_FETCHES_PER_RUN) continue;
+        const lastFetchedAt = _ytThreadReplyFetchAt.get(t.commentId) ?? 0;
+        if (Date.now() - lastFetchedAt < YT_THREAD_REPLY_TTL_MS) continue;
+        replyFetchesThisRun++;
+        boundedMapSet(_ytThreadReplyFetchAt, t.commentId, Date.now(), YT_THREAD_REPLY_CACHE_CAP);
         const replies = await listCommentReplies(t.commentId, 50, ctx.ytCreds);
         await sleep(400);
         for (const r of replies) {
@@ -2700,8 +2808,10 @@ export async function scheduleAutoStory(force = false, ctxArg?: BrandContext): P
 
     // Pick the next topic: an unused configured topic, or — once all configured
     // topics are exhausted — a fresh AI-generated topic similar to them. Never
-    // repeats a topic that has been used before. (logTopicUsed runs inside.)
-    const todayTopic = (await pickNextTopic("story", topicsArray, new Set(), ctx.prefs.brand)) ?? topicsArray[0];
+    // repeats a topic that has been used before. (logTopicUsed runs AFTER the
+    // story is generated + persisted below, so a failed generation doesn't burn it.)
+    const pickedTopic = await pickNextTopic("story", topicsArray, new Set(), ctx.prefs.brand);
+    const todayTopic  = pickedTopic ?? topicsArray[0];
 
     const avoidBlock = recentHeadlines.length
       ? `\n\nDO NOT repeat or closely paraphrase any of these recent story headlines (use a fresh angle and fresh wording):\n${recentHeadlines.map((h) => `- ${h}`).join("\n")}`
@@ -2826,6 +2936,11 @@ ${extraInstructions}`,
         brandId:     brandIdForWrite(ctx),
       } as any,
     });
+
+    // Burn the topic only NOW — the story was generated AND persisted. If the AI
+    // call had thrown above, the topic would stay unused for the next attempt.
+    // (Only picked topics are logged; the topicsArray[0] fallback never was.)
+    if (pickedTopic) await logTopicUsed("story", pickedTopic);
 
     await safeLog({
       action:   "POST_SCHEDULED",
@@ -3429,9 +3544,10 @@ export async function runAutoGeneratePosts(ctxArg?: BrandContext): Promise<Gener
       const type  = pickType(i);
       // Pick the next topic: an unused configured topic, or — once all configured
       // topics are exhausted — a fresh AI-generated topic similar to them. Never
-      // repeats a previously-used topic. (logTopicUsed runs inside pickNextTopic.)
-      const topic = (await pickNextTopic("post", cfg.topics, usedThisRun, ctx.prefs.brand))
-        ?? cfg.topics[i % cfg.topics.length];
+      // repeats a previously-used topic. (logTopicUsed runs AFTER the post is
+      // created below — a parse failure `continue`s without burning the topic.)
+      const picked = await pickNextTopic("post", cfg.topics, usedThisRun, ctx.prefs.brand);
+      const topic  = picked ?? cfg.topics[i % cfg.topics.length];
       usedThisRun.add(topic);
 
       const avoidBlock = recentAvoidList.length
@@ -3581,6 +3697,12 @@ Return ONLY a JSON array of 9 objects: [{"slide":1,"headline":"...","body":"..."
             brandId:     brandIdForWrite(ctx),
           } as any,
         });
+
+        // Burn the topic only NOW — generation parsed and the post exists. The
+        // parse-failure / thin-carousel paths above `continue` WITHOUT logging, so
+        // a wasted attempt leaves the topic available for a later run.
+        // (Only picked topics are logged; the cfg.topics[] fallback never was.)
+        if (picked) await logTopicUsed("post", picked);
 
         // ── Atomic claim (#9) + slot index ──────────────────────────────────
         // Count this brand's IG feed posts already scheduled today BEFORE assigning
@@ -3909,8 +4031,10 @@ export async function runAutoGenerateYouTube(ctxArg?: BrandContext): Promise<Gen
 
     for (let i = 0; i < toGenerate; i++) {
       const type  = YT_TYPES[(dayNumber + i) % YT_TYPES.length];
-      const topic = (await pickNextTopic("post", yt.topics, usedThisRun, ctx.prefs.brand))
-        ?? yt.topics[i % yt.topics.length];
+      // logTopicUsed runs AFTER the post is created below — an unparseable AI
+      // output `continue`s without burning the topic, so it can be retried later.
+      const picked = await pickNextTopic("post", yt.topics, usedThisRun, ctx.prefs.brand);
+      const topic  = picked ?? yt.topics[i % yt.topics.length];
       usedThisRun.add(topic);
 
       const avoidBlock = recentAvoidList.length
@@ -4050,6 +4174,12 @@ RULES:
             brandId:     brandIdForWrite(ctx),
           } as any,
         });
+
+        // Burn the topic only NOW — generation parsed and the post exists. The
+        // no-parseable-output path above `continue`s WITHOUT logging, so a wasted
+        // attempt leaves the topic available for a later run.
+        // (Only picked topics are logged; the yt.topics[] fallback never was.)
+        if (picked) await logTopicUsed("post", picked);
 
         // ── Atomic claim (#9) + slot index: count posts already scheduled today
         // (PENDING/PUBLISHED) BEFORE assigning this post's slot. This both stops

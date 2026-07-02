@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { brandFromQuery, brandFromBody } from "@/lib/brandRequest";
+import { resolveBrandId, getPrimaryBrandId, getBrandCredentials, updateBrandCredentials } from "@/lib/brands";
 
 const GRAPH_BASE = "https://graph.facebook.com/v25.0";
 
@@ -38,22 +40,39 @@ async function probeToken(token: string) {
 }
 
 // -- GET  -  load current settings -----------------------------------------------
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where:  { id: session.user.id },
-      select: { instagramToken: true, instagramAccountId: true },
-    });
+    // Brand scope: no/unknown brand resolves to the primary → legacy User-row path below.
+    const brand      = brandFromQuery(request);
+    const resolvedId = await resolveBrandId(brand);
+    const primaryId  = await getPrimaryBrandId();
 
-    // Use DB value; fall back to env vars
-    const token    = user?.instagramToken    || process.env.INSTAGRAM_ACCESS_TOKEN || "";
-    const igId     = user?.instagramAccountId || process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID || "";
-    const pageId   = process.env.FACEBOOK_PAGE_ID || "";
+    let token: string, igId: string, pageId: string, source: "database" | "env";
+    if (resolvedId !== primaryId) {
+      // Non-primary brand → its stored credential columns (the same storage the
+      // brand publishing pipeline reads via getBrandCredentials).
+      const c = await getBrandCredentials(resolvedId);
+      token  = c.igToken;
+      igId   = c.igAcctId;
+      pageId = c.fbPageId;
+      source = "database";
+    } else {
+      const user = await prisma.user.findUnique({
+        where:  { id: session.user.id },
+        select: { instagramToken: true, instagramAccountId: true },
+      });
+
+      // Use DB value; fall back to env vars
+      token  = user?.instagramToken    || process.env.INSTAGRAM_ACCESS_TOKEN || "";
+      igId   = user?.instagramAccountId || process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID || "";
+      pageId = process.env.FACEBOOK_PAGE_ID || "";
+      source = user?.instagramToken ? "database" : "env";
+    }
 
     // Probe the token
     const health = token ? await probeToken(token) : { valid: false, error: "No token configured", name: null, id: null, expiresAt: null };
@@ -70,7 +89,7 @@ export async function GET() {
         tokenError:    health.error,
         accountName:   health.name,
         expiresAt:     health.expiresAt ?? null,
-        source:        user?.instagramToken ? "database" : "env",
+        source,
       },
     });
   } catch (error: any) {
@@ -90,6 +109,11 @@ export async function POST(request: NextRequest) {
     if (!body) return NextResponse.json({ success: false, error: "Invalid request body" }, { status: 400 });
     const token = (body.accessToken ?? "").trim();
     const igId  = (body.accountId   ?? "").trim();
+
+    // Brand scope: no/unknown brand resolves to the primary → legacy User-row path below.
+    const brand      = brandFromBody(body, brandFromQuery(request));
+    const resolvedId = await resolveBrandId(brand);
+    const primaryId  = await getPrimaryBrandId();
 
     if (!token) {
       return NextResponse.json({ success: false, error: "Access token is required" }, { status: 400 });
@@ -120,14 +144,24 @@ export async function POST(request: NextRequest) {
       } catch {}
     }
 
-    // Persist to User record  -  now the entire app reads from here first
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        instagramToken:     token,
-        instagramAccountId: resolvedIgId || undefined,
-      },
-    });
+    if (resolvedId !== primaryId) {
+      // Non-primary brand → persist to its Brand credential columns (the same
+      // storage the brand publishing pipeline reads via getBrandCredentials),
+      // never the primary account's User row.
+      await updateBrandCredentials(resolvedId, {
+        igToken: token,
+        ...(resolvedIgId ? { igAcctId: resolvedIgId } : {}),
+      });
+    } else {
+      // Persist to User record  -  now the entire app reads from here first
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: {
+          instagramToken:     token,
+          instagramAccountId: resolvedIgId || undefined,
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,

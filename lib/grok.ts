@@ -174,6 +174,17 @@ export class GrokClient {
 
   // --- Core Request Method --------------------------------------------------
 
+  /**
+   * Retry only TRANSIENT failures: 429, 5xx, or network errors (no HTTP response).
+   * Other 4xx (bad request / auth / not found / payload too large) will never
+   * succeed on retry — fail fast instead of burning 3 backoff attempts.
+   */
+  private isRetryable(error: unknown): boolean {
+    const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+    if (status === undefined) return true; // network error / timeout / empty response
+    return status === 429 || status >= 500;
+  }
+
   private async makeRequest(
     messages: Message[],
     maxTokens = 2000,
@@ -203,6 +214,9 @@ export class GrokClient {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
 
+        if (!this.isRetryable(error)) {
+          throw new Error(`Grok API non-retryable error: ${lastError.message}`);
+        }
         if (attempt < this.maxRetries) {
           const delay = this.retryDelay * Math.pow(2, attempt - 1);
           console.warn(
@@ -235,6 +249,9 @@ export class GrokClient {
         return content;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
+        if (!this.isRetryable(error)) {
+          throw new Error(`Grok API non-retryable error: ${lastError.message}`);
+        }
         if (attempt < this.maxRetries) {
           const delay = this.retryDelay * Math.pow(2, attempt - 1);
           console.warn(
@@ -332,6 +349,8 @@ export class GrokClient {
   /**
    * Generate content that MUST be valid JSON. Retries (the makeRequest already
    * retries on transient errors) and validates the response actually parses.
+   * Throws after the final attempt if no response parsed — callers (and the
+   * ai-factory resilient chain) treat the throw as a tier failure and fall back.
    * Provided so callers can share one interface across Grok and Gemini clients.
    */
   async generateContentJSON(
@@ -353,7 +372,7 @@ export class GrokClient {
         if (match) { JSON.parse(match[0]); return raw; }
       } catch { /* retry once */ }
     }
-    return lastRaw;
+    throw new Error(`Grok API returned non-JSON after 2 attempts: ${lastRaw.slice(0, 200)}`);
   }
 
   /**

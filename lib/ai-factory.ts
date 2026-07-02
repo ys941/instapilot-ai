@@ -43,7 +43,7 @@ async function readAi(brandId?: string | null): Promise<any> {
 function keyFor(provider: AIProvider, ai: any): string {
   if (provider === "gemini")   return (process.env.GEMINI_API_KEY?.trim())   || (ai?.geminiApiKey?.trim()   ?? "");
   if (provider === "cerebras") return (process.env.CEREBRAS_API_KEY?.trim()) || (ai?.cerebrasApiKey?.trim() ?? "");
-  return (process.env.GROK_API_KEY?.trim()) || ""; // groq (env-only)
+  return (process.env.GROK_API_KEY || process.env.GROQ_API_KEY || "").trim(); // groq (env-only, both spellings)
 }
 
 /** Concrete client for a provider+model, or null when its key is missing. */
@@ -66,7 +66,8 @@ function makeRunner(provider: AIProvider, model: string, ai: any):
     // operator's model selection is honoured; the outer chain provides fallback.
     return {
       text: (p, s, m) => c.generateContentInModels([model], p, s, m),
-      json: (p, s, m) => c.generateContentInModels([model], p, s, m),
+      // jsonOutput=true → Gemini structured-output mode (responseMimeType application/json)
+      json: (p, s, m) => c.generateContentInModels([model], p, s, m, true),
     };
   }
   const g = c as GrokClient;
@@ -159,9 +160,10 @@ export async function generateTextResilient(
 
 /**
  * Resilient JSON generation across the configured chain for a task lane. A tier's
- * result is accepted only if, after stripping ```json fences, it starts with { or [.
- * Returns a RAW JSON string (caller parses), the best non-empty raw string if none
- * look like JSON, or "".
+ * result is accepted only if, after stripping ```json fences, its first {...} or
+ * [...] block actually JSON.parses — merely "looking like" JSON (truncated/degraded
+ * output) is a tier failure. Returns a RAW JSON string (caller parses), the best
+ * non-empty raw string if no tier parses, or "".
  */
 export async function generateJSONResilient(
   prompt: string,
@@ -173,9 +175,11 @@ export async function generateJSONResilient(
   const ai    = await readAi(brandId);
   const chain = chainForTask(ai, task);
 
-  const looksLikeJSON = (raw: string): boolean => {
+  /** Extract the first {...} or [...] block and verify it actually JSON.parses. */
+  const parsesAsJSON = (raw: string): boolean => {
     const cleaned = raw.replace(/```json\n?/gi, "").replace(/```\n?/gi, "").trim();
-    return cleaned.startsWith("{") || cleaned.startsWith("[");
+    const match = cleaned.match(/\{[\s\S]*\}/) ?? cleaned.match(/\[[\s\S]*\]/);
+    try { JSON.parse(match ? match[0] : cleaned); return true; } catch { return false; }
   };
 
   let bestNonEmpty = "";
@@ -186,12 +190,12 @@ export async function generateJSONResilient(
     try {
       const out = await runner.json(prompt, system, maxTokens);
       if (out && out.trim().length > 0) {
-        if (looksLikeJSON(out)) {
+        if (parsesAsJSON(out)) {
           if (i > 0) console.log(`[AIFactory] JSON served by fallback: ${step.provider}/${step.model}`);
           return out;
         }
         if (!bestNonEmpty) bestNonEmpty = out;
-        console.warn(`[AIFactory] ${step.provider}/${step.model} returned non-JSON — trying next`);
+        console.warn(`[AIFactory] ${step.provider}/${step.model} returned unparseable JSON — trying next`);
       }
     } catch (err: any) {
       console.warn(`[AIFactory] JSON tier ${step.provider}/${step.model} failed:`, err?.message ?? err);

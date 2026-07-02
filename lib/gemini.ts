@@ -98,6 +98,7 @@ const VISION_CHAIN: string[] = [
 let _modelIdx    = 0;             // current position in MODEL_CHAIN
 let _resetAt     = Date.now();    // when to try falling back to the top
 const RESET_MS   = 60 * 60 * 1000; // retry preferred model after 1 hour
+const REQUEST_TIMEOUT_MS = 30_000; // per-request SDK timeout — a hung call must never stall the chain
 
 function activeModel(): string {
   // Every hour, reset back to top of chain so preferred models get another chance
@@ -287,10 +288,12 @@ export class GeminiClient {
     systemInstruction?: string,
     maxTokens    = 2000,
     temperature  = 0.7,
+    jsonOutput   = false,
   ): Promise<string> {
     // Gemma models on the Generative Language API do NOT support systemInstruction.
     // Passing one makes them error or emit broken output. Fold it into the prompt.
     const isGemma = model.startsWith("gemma");
+    const isLive  = model.includes("-live");
     let effectivePrompt = prompt;
     let effectiveSystem = systemInstruction;
     if (isGemma && systemInstruction && typeof prompt === "string") {
@@ -301,10 +304,14 @@ export class GeminiClient {
     const m = this.genAI.getGenerativeModel({
       model,
       ...(effectiveSystem ? { systemInstruction: effectiveSystem } : {}),
-      generationConfig: { maxOutputTokens: maxTokens, temperature },
-    });
-
-    const isLive = model.includes("-live");
+      generationConfig: {
+        maxOutputTokens: maxTokens,
+        temperature,
+        // Structured-output mode: only gemini (non-live) models support the
+        // application/json response mime type — gemma/live would error on it.
+        ...(jsonOutput && !isGemma && !isLive ? { responseMimeType: "application/json" } : {}),
+      },
+    }, { timeout: REQUEST_TIMEOUT_MS });
 
     if (isLive) {
       const streamResult = await m.generateContentStream(effectivePrompt as any);
@@ -344,11 +351,12 @@ export class GeminiClient {
     prompt:      string,
     systemPrompt = CARDIOLOGY_SYSTEM,
     maxTokens    = 2000,
+    jsonOutput   = false,
   ): Promise<string> {
     let lastErr: unknown;
     for (const model of models) {
       try {
-        const out = await this.callModel(model, prompt, systemPrompt, maxTokens, 0.7);
+        const out = await this.callModel(model, prompt, systemPrompt, maxTokens, 0.7, jsonOutput);
         if (out && out.trim().length > 0) {
           if (model !== models[0]) console.log(`[Gemini] tier served by fallback model: ${model}`);
           return out;
@@ -399,7 +407,7 @@ export class GeminiClient {
       model,
       systemInstruction,
       generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 },
-    });
+    }, { timeout: REQUEST_TIMEOUT_MS });
     const textPart:  Part = { text: prompt };
     const mediaPart: Part = { inlineData: { data, mimeType: mimeType as any } };
     const result = await m.generateContent([textPart, mediaPart]);
@@ -424,7 +432,7 @@ export class GeminiClient {
     let lastRaw = "";
     for (const model of MODEL_CHAIN) {
       try {
-        const raw = await this.callModel(model, prompt, systemPrompt, maxTokens, 0.7);
+        const raw = await this.callModel(model, prompt, systemPrompt, maxTokens, 0.7, true);
         lastRaw = raw;
         const cleaned = raw.replace(/```json\n?/gi, "").replace(/```\n?/gi, "").trim();
         const match   = cleaned.match(/\{[\s\S]*\}/) ?? cleaned.match(/\[[\s\S]*\]/);

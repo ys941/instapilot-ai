@@ -22,7 +22,9 @@ const IST_TZ = "Asia/Kolkata";
 function istParts(d = new Date()) {
   const p: Record<string, number> = {};
   for (const part of new Intl.DateTimeFormat("en-US", {
-    timeZone: IST_TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
+    // hourCycle "h23" (NOT hour12:false) — some ICU builds map hour12:false to
+    // h24, which renders midnight as "24" and breaks the send-time compare.
+    timeZone: IST_TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
   }).formatToParts(d)) if (part.type !== "literal") p[part.type] = parseInt(part.value, 10);
   return p;
 }
@@ -31,26 +33,57 @@ const istTime = (d: Date) => d.toLocaleTimeString("en-IN", { timeZone: IST_TZ, h
 
 let _lastDigestDate: string | null = null;
 
-/** Poll-gated entry: send the digest once per day at the configured IST hour. */
+// ── Persistent once-per-day marker (survives container restarts) ─────────────
+// The in-memory var above is only a cheap same-process fast path — a restart
+// right after a send would wipe it and cause a SECOND digest. So the real guard
+// is an ActivityLog row (action MORNING_DIGEST_SENT, entityId = IST date key)
+// created BEFORE the email goes out (claim-first, same shape as safeLog rows).
+
+async function digestAlreadySent(dateKey: string): Promise<boolean> {
+  try {
+    const row = await prisma.activityLog.findFirst({
+      where: { action: "MORNING_DIGEST_SENT", entityId: dateKey }, select: { id: true },
+    });
+    return !!row;
+  } catch { return false; } // DB hiccup → fall back to the in-memory guard
+}
+
+async function markDigestSent(dateKey: string): Promise<void> {
+  try {
+    const user = await prisma.user.findFirst({ select: { id: true }, orderBy: { createdAt: "asc" } });
+    if (!user) return; // no users in DB yet — skip silently (mirrors safeLog)
+    await prisma.activityLog.create({
+      data: { userId: user.id, action: "MORNING_DIGEST_SENT", entity: "Digest", entityId: dateKey, metadata: { dateKey } as any },
+    });
+  } catch { /* best-effort — in-memory guard still covers this process */ }
+}
+
+/** Poll-gated entry: send the digest once per day at the configured IST time. */
 export async function runMorningDigest(): Promise<boolean> {
   let cfg: MorningDigestSettings | undefined;
   try { cfg = (await readPreferences()).morningDigest; } catch { return false; }
   if (!cfg?.enabled) return false;
 
   const now = istParts();
-  const todayKey = `${now.year}-${now.month}-${now.day}`;
+  const todayKey = `${now.year}-${String(now.month).padStart(2, "0")}-${String(now.day).padStart(2, "0")}`;
   if (_lastDigestDate === todayKey) return false;
 
   // Honor the full HH:MM send time. The poll runs every ~10 min, so fire once the
-  // current IST time has reached the configured minute within the target hour
-  // (the once-per-day guard above prevents a second send later in the same hour).
+  // current IST time has REACHED today's target (hour*60+minute compare). A
+  // same-hour-only gate would skip sendTimes with minutes ≥ ~50 for the whole
+  // day; the persistent once-per-day marker below makes the wide window safe.
   const [hStr, mStr] = (cfg.sendTime || "08:00").split(":");
   const targetHour = parseInt(hStr || "8", 10);
   const targetMin = parseInt(mStr || "0", 10) || 0;
-  if (now.hour !== targetHour) return false;
-  if (now.minute < targetMin) return false; // not yet at HH:MM
+  if (now.hour * 60 + now.minute < targetHour * 60 + targetMin) return false; // not yet at HH:MM
+
+  // Restart-proof guard: already sent today (marker row exists) → skip.
+  if (await digestAlreadySent(todayKey)) { _lastDigestDate = todayKey; return false; }
 
   _lastDigestDate = todayKey;
+  // Claim today BEFORE sending — a restart between send and a post-send write
+  // could otherwise produce a duplicate digest tomorrow's poll can't detect.
+  await markDigestSent(todayKey);
   console.log("[MorningDigest] Composing & sending digest…");
   try {
     const payload = await collectDigest(cfg);

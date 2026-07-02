@@ -181,7 +181,7 @@ export function chainSteps(chain: Chain): ChainStep[] {
 
 /** Default CONTENT/REPLY chain for a primary provider, per the configured templates:
  *  - gemini   → gemini FLASH models, then GROK, then gemini REASONING models
- *  - groq     → just grok (user adds their own fallbacks)
+ *  - groq     → grok, then cross-provider defaults (cerebras → gemini)
  *  - cerebras → cerebras models, then grok models
  */
 export function defaultChainFor(provider: AIProvider): Chain {
@@ -210,8 +210,9 @@ export function defaultChainFor(provider: AIProvider): Chain {
       ],
     };
   }
-  // groq — primary only; user picks additional fallbacks themselves
-  return { provider: "groq", model: "llama-3.3-70b-versatile", fallbacks: [] };
+  // groq — cross-provider defaults so a Groq outage never guts the chain
+  // (steps whose provider has no API key are skipped at runtime by the chain walker)
+  return { provider: "groq", model: "llama-3.3-70b-versatile", fallbacks: [...DEFAULT_FALLBACKS] };
 }
 
 /** Default VISION chain for a primary provider (gemini/groq only). */

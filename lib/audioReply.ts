@@ -11,10 +11,30 @@
 const GROQ_BASE   = process.env.GROK_API_URL || "https://api.groq.com/openai/v1";
 const GEMINI_TTS  = "gemini-2.5-flash-preview-tts";
 
+// ── SSRF guard: only fetch voice notes from Meta-owned CDNs ───────────────────
+// The attachment URL comes straight from the webhook payload, so a forged event
+// could point us at internal/metadata endpoints. Real IG voice notes are served
+// from lookaside.fbsbx.com / *.cdninstagram.com / *.fbcdn.net over https.
+const ALLOWED_AUDIO_HOST_SUFFIXES = [".cdninstagram.com", ".fbcdn.net", ".fbsbx.com"];
+
+function isAllowedAudioUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:") return false;
+    const host = u.hostname.toLowerCase();
+    // Match "cdn.fbsbx.com" AND the bare apex "fbsbx.com" (suffix minus the dot).
+    return ALLOWED_AUDIO_HOST_SUFFIXES.some((s) => host.endsWith(s) || host === s.slice(1));
+  } catch { return false; }
+}
+
 // ── 1. Transcribe an incoming voice note → text (Groq Whisper) ────────────────
 export async function transcribeAudio(audioUrl: string): Promise<string | null> {
   const key = process.env.GROK_API_KEY || process.env.GROQ_API_KEY;
   if (!key) { console.warn("[Audio] No Groq key for transcription"); return null; }
+  if (!isAllowedAudioUrl(audioUrl)) {
+    console.warn(`[Audio] Rejected voice-note URL — not an https Meta CDN host: ${audioUrl.slice(0, 120)}`);
+    return null;
+  }
   try {
     // Download the voice note (IG CDN url is public for a short window)
     const audioRes = await fetch(audioUrl, { signal: AbortSignal.timeout(15000) });

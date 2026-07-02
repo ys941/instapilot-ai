@@ -445,7 +445,9 @@ function mergePartial(base: AllPreferences, prefs: Partial<AllPreferences>): All
   return {
     ai:            { ...base.ai,            ...(prefs.ai            ?? {}) },
     notifications: { ...base.notifications, ...(prefs.notifications ?? {}) },
-    prompts:       { ...base.prompts,       ...(prefs.prompts       ?? {}) },
+    // prompts is a full REPLACEMENT when the patch provides it — callers send the
+    // complete map (a merge would resurrect keys deleted by "Reset to default").
+    prompts:       { ...(prefs.prompts      ?? base.prompts) },
     autoPost:      { ...base.autoPost,      ...(prefs.autoPost      ?? {}) },
     stories:       { ...base.stories,       ...(prefs.stories       ?? {}) },
     youtube:       { ...base.youtube,       ...(prefs.youtube       ?? {}) },
@@ -509,8 +511,26 @@ export async function writePreferences(prefs: Partial<AllPreferences>): Promise<
   // morningDigest has no dedicated column — stash it inside the `notifications` blob
   // (round-trips via readPreferences above).
   const notificationsBlob = { ...merged.notifications, morningDigest: merged.morningDigest };
+  // Only rewrite the JSON columns whose sections are actually in the incoming
+  // patch — rewriting all of them from a stale read would clobber a section another
+  // tab just saved. The `ai` column also carries the stashed igDefaultPrompt/
+  // ytDefaultPrompt and `notifications` carries morningDigest, so those columns
+  // must be rewritten whenever their stashed keys are patched too.
+  const update: Record<string, any> = {};
+  if (prefs.ai !== undefined || prefs.igDefaultPrompt !== undefined || prefs.ytDefaultPrompt !== undefined) {
+    update.ai = aiBlob as any;
+  }
+  if (prefs.notifications !== undefined || prefs.morningDigest !== undefined) {
+    update.notifications = notificationsBlob as any;
+  }
+  if (prefs.prompts  !== undefined) update.prompts  = merged.prompts  as any;
+  if (prefs.autoPost !== undefined) update.autoPost = merged.autoPost as any;
+  if (prefs.stories  !== undefined) update.stories  = merged.stories  as any;
+  if (prefs.youtube  !== undefined) update.youtube  = merged.youtube  as any;
+  if (prefs.brand    !== undefined) update.brand    = merged.brand    as any;
   // Prisma expects Json fields as `InputJsonValue` (no custom type index signatures).
   // Casting via `as any` is safe here — these are plain serialisable objects.
+  // The create branch still writes the full merged config (first-run singleton row).
   await prisma.preferences.upsert({
     where:  { id: "singleton" },
     create: {
@@ -523,15 +543,7 @@ export async function writePreferences(prefs: Partial<AllPreferences>): Promise<
       youtube:       merged.youtube       as any,
       brand:         merged.brand         as any,
     },
-    update: {
-      ai:            aiBlob             as any,
-      notifications: notificationsBlob  as any,
-      prompts:       merged.prompts       as any,
-      autoPost:      merged.autoPost      as any,
-      stories:       merged.stories       as any,
-      youtube:       merged.youtube       as any,
-      brand:         merged.brand         as any,
-    },
+    update,
   });
   _brandCache.clear();
   return merged;
@@ -586,6 +598,9 @@ export async function writePreferencesForBrand(
 
   const current = await readPreferencesForBrand(resolvedId);
   const merged  = mergePartial(current, prefs);
+  // Known limitation: Brand.settings is a single JSON blob, so this read-merge-
+  // rewrite can't be narrowed per section like writePreferences — two concurrent
+  // saves for the same brand can still race (last write wins across sections).
   await prisma.brand.update({
     where: { id: resolvedId },
     data:  { settings: merged as any },

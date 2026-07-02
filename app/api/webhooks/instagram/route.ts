@@ -77,15 +77,16 @@ export async function GET(request: NextRequest) {
 
 // ── POST: Real-time event handler ─────────────────────────────────────────────
 //
-// FAIL-CLOSED HMAC POSTURE (with a misconfig escape hatch)
-// --------------------------------------------------------
+// FAIL-CLOSED HMAC POSTURE
+// ------------------------
 // When FACEBOOK_APP_SECRET is set we trust ONLY signed-and-matching payloads:
 //   • signature present + matches  → process normally.
 //   • signature present + mismatch → DO NOT process; ack 200 (to avoid Meta
 //     retry storms) and log the rejection.
 //   • signature missing            → DO NOT process; reject.
-// If FACEBOOK_APP_SECRET is NOT set we cannot verify at all — rather than brick
-// production replies we PROCESS with a LOUD warning (misconfig escape hatch).
+// If FACEBOOK_APP_SECRET is NOT set we cannot verify at all — fail closed and
+// reject 401. Processing unverified payloads would let anyone forge webhook
+// events, so a missing secret must break loudly, not silently trust attackers.
 // We always return 200 on a signed-but-bad payload so Meta doesn't hammer us.
 export async function POST(request: NextRequest) {
   try {
@@ -134,9 +135,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ received: true }, { status: 200 });
       }
     } else {
-      // Misconfig escape hatch: can't verify without the secret. Process anyway
-      // so production replies don't break, but warn LOUDLY on every event.
-      console.warn("[Webhook] ⚠️  FACEBOOK_APP_SECRET NOT SET — signature CANNOT be verified; processing UNVERIFIED payload. Set FACEBOOK_APP_SECRET to enable fail-closed verification.");
+      // No secret → we cannot verify ANY payload. Fail closed: never process
+      // unverified events (anyone could forge them). Warn LOUDLY so the
+      // misconfiguration is impossible to miss.
+      console.warn("[Webhook] ⚠️  FACEBOOK_APP_SECRET NOT SET — signature CANNOT be verified; REJECTING event (fail-closed). Set FACEBOOK_APP_SECRET to restore webhook processing.");
+      return NextResponse.json({ error: "Webhook signature verification unavailable" }, { status: 401 });
     }
 
     const body = JSON.parse(rawBody);

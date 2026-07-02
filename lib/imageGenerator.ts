@@ -24,13 +24,18 @@ import { join } from "path";
 import { existsSync } from "fs";
 import crypto from "crypto";
 
-// -- Cloudinary delete - removes image after Instagram publish to save storage --
+// -- Cloudinary delete - removes asset after Instagram publish to save storage --
 /**
- * Deletes a Cloudinary image by its URL.
+ * Deletes a Cloudinary asset (image OR video) by its URL.
  * Requires CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET in .env.local.
  * Safe to call even if those vars are missing - it just warns and skips.
+ * Cloudinary namespaces destroy by resource type, so a video public_id sent to
+ * /image/destroy just returns "not found" and the video lingers forever. The
+ * resource type is sniffed from the delivery URL ("/video/upload/" vs image)
+ * so existing call sites get the right endpoint automatically; pass
+ * `resourceType` explicitly to override.
  */
-export async function deleteFromCloudinary(url: string): Promise<void> {
+export async function deleteFromCloudinary(url: string, resourceType?: "image" | "video"): Promise<void> {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
   const apiKey    = process.env.CLOUDINARY_API_KEY?.trim();
   const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
@@ -40,6 +45,10 @@ export async function deleteFromCloudinary(url: string): Promise<void> {
     return;
   }
   if (!url.includes("res.cloudinary.com")) return; // not a Cloudinary URL - skip
+
+  // Videos (uploaded via /video/upload, e.g. uploadVideoToStableCdn + voice
+  // replies) must be destroyed via /video/destroy - default to image otherwise.
+  const type = resourceType ?? (url.includes("/video/upload/") ? "video" : "image");
 
   try {
     // Extract public_id from URL
@@ -60,7 +69,7 @@ export async function deleteFromCloudinary(url: string): Promise<void> {
     const dotIndex = path.lastIndexOf(".");
     const publicId = dotIndex !== -1 ? path.slice(0, dotIndex) : path;
 
-    console.log("[Cloudinary] Attempting to delete public_id: " + publicId);
+    console.log("[Cloudinary] Attempting to delete " + type + " public_id: " + publicId);
 
     // Build signed request
     const timestamp = Math.round(Date.now() / 1000).toString();
@@ -77,7 +86,7 @@ export async function deleteFromCloudinary(url: string): Promise<void> {
       timestamp,
     });
 
-    const res  = await fetch("https://api.cloudinary.com/v1_1/" + cloudName + "/image/destroy", {
+    const res  = await fetch("https://api.cloudinary.com/v1_1/" + cloudName + "/" + type + "/destroy", {
       method: "POST",
       body,
     });
