@@ -33,7 +33,7 @@ async function generateAICommentReply(
   postContext: PostCommentContext
 ): Promise<string | null> {
   try {
-    const ai = await getAIClient();
+    const ai = await getAIClient("reply");
     return await ai.generateCommentReply(commentText, username, postContext);
   } catch (err) {
     console.warn("[Comments/Sync] AI unavailable  -  skipping reply:", String(err));

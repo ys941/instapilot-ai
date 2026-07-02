@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readPreferencesForBrand, writePreferencesForBrand } from "@/lib/preferences";
 import { brandFromQuery, brandFromBody } from "@/lib/brandRequest";
+import { coerceChain } from "@/lib/aiModels";
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,16 +24,27 @@ export async function POST(request: NextRequest) {
     if (!body) return NextResponse.json({ success: false, error: "Invalid request body" }, { status: 400 });
     const brand = brandFromBody(body, brandFromQuery(request));
 
-    // Whitelist the provider; fall back to "grok" on anything unrecognised.
+    // Validate the three per-task chains (content / reply / vision). coerceChain
+    // normalizes providers, validates models against the right catalog, drops dupes,
+    // forces vision to vision-capable providers, and falls back to task defaults.
+    const contentChain = coerceChain("content", body.contentChain);
+    const replyChain   = coerceChain("reply",   body.replyChain);
+    const visionChain  = coerceChain("vision",  body.visionChain);
+
+    // Whitelist the legacy provider selector; fall back to "grok" if unrecognised.
     const aiProvider = ["grok", "gemini"].includes(body.aiProvider) ? body.aiProvider : "grok";
 
     const updated = await writePreferencesForBrand(brand, {
       ai: {
-        defaultTone:  body.defaultTone  ?? "Professional",
-        defaultType:  body.defaultType  ?? "Educational",
-        language:     body.language     ?? "English",
+        defaultTone:    body.defaultTone  ?? "Friendly",
+        defaultType:    body.defaultType  ?? "Educational",
+        language:       body.language     ?? "English",
+        contentChain,
+        replyChain,
+        visionChain,
         aiProvider,
-        geminiApiKey: body.geminiApiKey ?? "",
+        geminiApiKey:   typeof body.geminiApiKey   === "string" ? body.geminiApiKey   : "",
+        cerebrasApiKey: typeof body.cerebrasApiKey === "string" ? body.cerebrasApiKey : "",
       },
     });
 

@@ -382,6 +382,31 @@ export class GeminiClient {
   }
 
   /**
+   * VISION: run EXACTLY the given multimodal model against a base64 image/video
+   * inline part. Returns the raw model text (caller parses). Unlike the internal
+   * vision chain, this honours the operator's per-task vision model selection;
+   * the outer ai-factory chain provides the fallback.
+   */
+  async visionRaw(
+    model: string,
+    data: string,      // raw base64, no data: prefix
+    mimeType: string,  // e.g. "image/jpeg" or "video/mp4"
+    prompt: string,
+    systemInstruction = "You are a social media content expert analysing images and videos. Return only valid JSON.",
+    maxTokens = 1000,
+  ): Promise<string> {
+    const m = this.genAI.getGenerativeModel({
+      model,
+      systemInstruction,
+      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 },
+    });
+    const textPart:  Part = { text: prompt };
+    const mediaPart: Part = { inlineData: { data, mimeType: mimeType as any } };
+    const result = await m.generateContent([textPart, mediaPart]);
+    return result.response.text();
+  }
+
+  /**
    * Generate content that MUST be valid JSON. Walks the full MODEL_CHAIN and
    * returns the first response that actually parses as a JSON object/array.
    * Unlike generateContent (which stops at the first model and only advances on

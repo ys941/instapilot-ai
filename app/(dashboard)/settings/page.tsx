@@ -18,6 +18,12 @@ import {
 } from "@/components/dashboard/useSelectedBrand";
 import { useBrandContext } from "@/components/BrandContext";
 import { SHORT_LENGTH_OPTIONS, normalizeShortSeconds, DEFAULT_SHORT_SECONDS } from "@/lib/shortLength";
+import {
+  MODEL_CATALOG, AI_PROVIDERS, normalizeProvider, resolveModel,
+  VISION_CATALOG, VISION_PROVIDERS, resolveVisionModel,
+  defaultChainFor, defaultVisionChainFor,
+  type AIProvider, type Chain,
+} from "@/lib/aiModels";
 
 const tabs = [
   { id: "brand",         label: "Brand",         icon: Sparkles },
@@ -778,25 +784,179 @@ function InstagramTab() {
 // ─────────────────────────────────────────────────────────────────────────────
 // AI CONFIG TAB
 // ─────────────────────────────────────────────────────────────────────────────
+// ── Per-lane chain editor (content / reply / vision) ──────────────────────────
+type LaneKind = "content" | "vision";
+
+function LaneEditor({
+  title, subtitle, accent, kind, chain, onChange,
+}: {
+  title: string;
+  subtitle: string;
+  accent: "purple" | "brand";
+  kind: LaneKind;
+  chain: Chain;
+  onChange: (next: Chain) => void;
+}) {
+  const PROVIDER_LABEL: Record<AIProvider, string> = { groq: "🤖 Groq", cerebras: "⚡ Cerebras", gemini: "✨ Gemini" };
+
+  // Lane-aware catalog access (content/reply → MODEL_CATALOG; vision → VISION_CATALOG).
+  const providers: AIProvider[] = kind === "vision" ? VISION_PROVIDERS : [...AI_PROVIDERS];
+  const modelsFor = (p: AIProvider): string[] =>
+    kind === "vision" ? (VISION_CATALOG[p]?.models ?? []) : MODEL_CATALOG[p].models;
+  const labelFor = (p: AIProvider): string =>
+    kind === "vision" ? (VISION_CATALOG[p]?.label ?? p) : MODEL_CATALOG[p].label;
+  const resolveFor = (p: AIProvider, m: unknown): string =>
+    kind === "vision" ? resolveVisionModel(p, m) : resolveModel(p, m);
+  const defaultChain = (p: AIProvider): Chain =>
+    kind === "vision" ? defaultVisionChainFor(p) : defaultChainFor(p);
+
+  // Changing the PRIMARY provider RE-SEEDS the whole lane from its default chain.
+  const pickPrimaryProvider = (p: AIProvider) => onChange(defaultChain(p));
+  const setPrimaryModel = (m: string) => onChange({ ...chain, model: m });
+  const resetToDefault = () => onChange(defaultChain(chain.provider));
+
+  const setFbProvider = (i: number, p: AIProvider) =>
+    onChange({ ...chain, fallbacks: chain.fallbacks.map((x, idx) => idx === i ? { provider: p, model: resolveFor(p, x.model) } : x) });
+  const setFbModel = (i: number, m: string) =>
+    onChange({ ...chain, fallbacks: chain.fallbacks.map((x, idx) => idx === i ? { ...x, model: m } : x) });
+  const addFallback = () => {
+    const p = providers[0];
+    onChange({ ...chain, fallbacks: [...chain.fallbacks, { provider: p, model: resolveFor(p, undefined) }] });
+  };
+  const removeFallback = (i: number) =>
+    onChange({ ...chain, fallbacks: chain.fallbacks.filter((_, idx) => idx !== i) });
+  const moveFallback = (i: number, dir: -1 | 1) => {
+    const j = i + dir; if (j < 0 || j >= chain.fallbacks.length) return;
+    const next = [...chain.fallbacks]; [next[i], next[j]] = [next[j], next[i]];
+    onChange({ ...chain, fallbacks: next });
+  };
+
+  // Concrete tints so the editor themes cleanly without depending on CSS vars:
+  // "purple" for content/reply lanes, "brand" (red/pink) for the vision lane.
+  const tint =
+    accent === "purple"
+      ? { background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.2)" }
+      : { background: "rgba(239,68,68,0.06)",  border: "1px solid rgba(239,68,68,0.2)" };
+  const titleClass = accent === "purple" ? "text-purple-400" : "text-red-300";
+  const activeBtn =
+    accent === "purple"
+      ? "bg-gradient-to-r from-purple-500/25 to-fuchsia-500/10 text-purple-200 border-purple-500/40"
+      : "bg-gradient-to-r from-red-500/20 to-pink-500/10 text-red-300 border-red-500/30";
+  const OPT_BG = "#161326"; // dark option background for native <select> menus
+
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={tint}>
+      <div className="flex items-center justify-between gap-2">
+        <p className={cn("text-xs font-semibold uppercase tracking-wider", titleClass)}>{title}</p>
+        <button onClick={resetToDefault}
+          className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg border border-white/15 text-white/60 hover:text-white hover:border-white/30 transition">
+          <RotateCcw size={11} /> Reset to default chain
+        </button>
+      </div>
+      <p className="text-xs text-white/40">{subtitle}</p>
+
+      {/* Primary provider buttons */}
+      <div className="flex gap-3">
+        {providers.map((p) => (
+          <motion.button key={p} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+            onClick={() => pickPrimaryProvider(p)}
+            className={cn(
+              "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all",
+              chain.provider === p ? activeBtn : "border-white/[0.08] text-white/40 hover:text-white/70",
+            )}
+          >
+            {PROVIDER_LABEL[p]}
+          </motion.button>
+        ))}
+      </div>
+
+      {/* Primary model */}
+      <GlassSelect
+        label={`${labelFor(chain.provider)} Model (primary)`}
+        value={chain.model}
+        onChange={setPrimaryModel}
+        options={modelsFor(chain.provider)}
+      />
+
+      {/* Fallback chain editor */}
+      <div className="flex items-center justify-between pt-1">
+        <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Fallback Chain</p>
+        <button onClick={addFallback}
+          className="text-xs px-2.5 py-1 rounded-lg border border-white/15 text-white/70 hover:text-white hover:border-white/30 transition">+ Add</button>
+      </div>
+      <p className="text-[11px] text-white/35 -mt-1">Tried in order if the primary fails or is rate-limited.</p>
+      {chain.fallbacks.length === 0 && (
+        <p className="text-[11px] text-white/30 italic">No fallbacks — only the primary is used.</p>
+      )}
+      {chain.fallbacks.map((f, i) => (
+        <div key={i} className="flex items-center gap-2 rounded-lg p-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <span className="text-[10px] text-white/30 w-4 text-center">{i + 1}</span>
+          <select value={f.provider} onChange={(e) => setFbProvider(i, e.target.value as AIProvider)}
+            className="px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            {providers.map((p) => <option key={p} value={p} style={{ background: OPT_BG }}>{labelFor(p)}</option>)}
+          </select>
+          <select value={f.model} onChange={(e) => setFbModel(i, e.target.value)}
+            className="flex-1 px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            {modelsFor(f.provider).map((m) => <option key={m} value={m} style={{ background: OPT_BG }}>{m}</option>)}
+          </select>
+          <button onClick={() => moveFallback(i, -1)} disabled={i === 0} className="text-white/40 hover:text-white disabled:opacity-20 px-1">↑</button>
+          <button onClick={() => moveFallback(i, 1)} disabled={i === chain.fallbacks.length - 1} className="text-white/40 hover:text-white disabled:opacity-20 px-1">↓</button>
+          <button onClick={() => removeFallback(i)} className="text-red-400/70 hover:text-red-400 px-1">✕</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AiTab() {
-  const [loading,      setLoading]      = useState(true);
-  const [saving,       setSaving]       = useState(false);
-  const [defaultTone,  setDefaultTone]  = useState("Professional");
-  const [defaultType,  setDefaultType]  = useState("Educational");
-  const [language,     setLanguage]     = useState("English");
-  const [aiProvider,   setAiProvider]   = useState<"grok" | "gemini">("grok");
-  const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [loading,        setLoading]        = useState(true);
+  const [saving,         setSaving]         = useState(false);
+  const [defaultTone,    setDefaultTone]    = useState("Friendly");
+  const [defaultType,    setDefaultType]    = useState("Educational");
+  const [language,       setLanguage]       = useState("English");
+  const [geminiApiKey,   setGeminiApiKey]   = useState("");
+  const [cerebrasApiKey, setCerebrasApiKey] = useState("");
+
+  // Three per-task lanes.
+  const [contentChain, setContentChain] = useState<Chain>(() => defaultChainFor("groq"));
+  const [replyChain,   setReplyChain]   = useState<Chain>(() => defaultChainFor("groq"));
+  const [visionChain,  setVisionChain]  = useState<Chain>(() => defaultVisionChainFor("gemini"));
+
+  // Normalize a stored chain (content/reply) into a valid Chain, falling back to a default.
+  const loadChain = (raw: any, fallbackProvider: AIProvider): Chain => {
+    if (!raw || typeof raw !== "object") return defaultChainFor(fallbackProvider);
+    const provider = normalizeProvider(raw.provider);
+    const model = resolveModel(provider, raw.model);
+    const fallbacks = Array.isArray(raw.fallbacks)
+      ? raw.fallbacks.map((f: any) => { const p = normalizeProvider(f?.provider); return { provider: p, model: resolveModel(p, f?.model) }; })
+      : [];
+    return { provider, model, fallbacks };
+  };
+
+  // Normalize a stored VISION chain; vision providers must be ∈ VISION_PROVIDERS.
+  const loadVisionChain = (raw: any): Chain => {
+    if (!raw || typeof raw !== "object") return defaultVisionChainFor("gemini");
+    let provider = normalizeProvider(raw.provider);
+    if (!VISION_PROVIDERS.includes(provider)) provider = "gemini";
+    const model = resolveVisionModel(provider, raw.model);
+    const fallbacks = (Array.isArray(raw.fallbacks) ? raw.fallbacks : [])
+      .map((f: any) => { let p = normalizeProvider(f?.provider); if (!VISION_PROVIDERS.includes(p)) p = "gemini"; return { provider: p, model: resolveVisionModel(p, f?.model) }; });
+    return { provider, model, fallbacks };
+  };
 
   useEffect(() => {
     fetch("/api/settings/ai")
       .then((r) => r.json())
       .then((d) => {
         if (d.success) {
-          setDefaultTone(d.data.defaultTone  ?? "Professional");
+          setDefaultTone(d.data.defaultTone  ?? "Friendly");
           setDefaultType(d.data.defaultType  ?? "Educational");
           setLanguage(d.data.language        ?? "English");
-          setAiProvider(d.data.aiProvider    ?? "grok");
-          setGeminiApiKey(d.data.geminiApiKey ?? "");
+          setContentChain(loadChain(d.data.contentChain, "groq"));
+          setReplyChain(loadChain(d.data.replyChain, "groq"));
+          setVisionChain(loadVisionChain(d.data.visionChain));
+          setGeminiApiKey(d.data.geminiApiKey     ?? "");
+          setCerebrasApiKey(d.data.cerebrasApiKey ?? "");
         }
       })
       .catch(() => {})
@@ -810,7 +970,7 @@ function AiTab() {
       const res  = await fetch("/api/settings/ai", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ defaultTone, defaultType, language, aiProvider, geminiApiKey }),
+        body:    JSON.stringify({ defaultTone, defaultType, language, contentChain, replyChain, visionChain, geminiApiKey, cerebrasApiKey }),
       });
       const data = await res.json();
       if (data.success) toast.success("AI Config saved ✅", { id: tid });
@@ -831,49 +991,47 @@ function AiTab() {
   return (
     <div className="space-y-5">
       <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>AI Configuration</h3>
+      <p className="text-xs text-white/40 -mt-3">
+        Configure each task lane independently — pick its primary provider + model and an ordered fallback chain.
+        Switching a lane&apos;s primary provider auto-seeds a sensible default chain you can then tweak.
+      </p>
 
-      {/* ── AI Provider Selection ── */}
-      <div className="rounded-xl p-4 space-y-3" style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.2)" }}>
-        <p className="text-xs font-semibold text-purple-400 uppercase tracking-wider">AI Provider</p>
-        <p className="text-xs text-white/40">Select which AI engine powers content generation, comment replies, DMs, and story creation.</p>
-        <div className="flex gap-3">
-          {(["grok", "gemini"] as const).map((p) => (
-            <motion.button key={p} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-              onClick={() => setAiProvider(p)}
-              className={cn(
-                "flex-1 py-3 rounded-xl text-sm font-semibold border transition-all",
-                aiProvider === p
-                  ? p === "gemini"
-                    ? "bg-gradient-to-r from-blue-500/20 to-cyan-500/10 text-cyan-300 border-cyan-500/40"
-                    : "bg-gradient-to-r from-red-500/20 to-pink-500/10 text-red-300 border-red-500/30"
-                  : "border-white/[0.08] text-white/40 hover:text-white/70"
-              )}
-            >
-              {p === "grok" ? "🤖 Groq (Llama)" : "✨ Gemini (Google)"}
-            </motion.button>
-          ))}
-        </div>
-        {aiProvider === "gemini" && (
-          <div className="space-y-2 pt-1">
-            <GlassInput
-              label="Gemini API Key"
-              value={geminiApiKey}
-              onChange={setGeminiApiKey}
-              placeholder="AIzaSy..."
-              masked
-            />
-            <div className="flex items-start gap-2 rounded-lg p-2.5" style={{ background: "rgba(6,182,212,0.06)", border: "1px solid rgba(6,182,212,0.15)" }}>
-              <span className="text-cyan-400 text-xs mt-0.5">ℹ️</span>
-              <div className="text-[10px] text-white/40 leading-relaxed space-y-1">
-                <p>When Gemini is active: image & video uploads are analysed by Gemini Vision to auto-generate content-aware captions.</p>
-                <p>Also set <code className="text-cyan-300/70 bg-cyan-900/20 px-1 rounded">GEMINI_API_KEY</code> as a Railway env var for production use.</p>
-              </div>
-            </div>
-          </div>
-        )}
-        {aiProvider === "grok" && (
-          <p className="text-[10px] text-white/30">Using Groq (Llama) API. Set <code className="text-red-300/70 bg-red-900/20 px-1 rounded">GROK_API_KEY</code> in Railway env vars.</p>
-        )}
+      {/* ── Lane 1: Content generation ── */}
+      <LaneEditor
+        title="Content generation"
+        subtitle="Powers post/caption/hook/story generation. Pick the provider, primary model, and fallback order."
+        accent="purple"
+        kind="content"
+        chain={contentChain}
+        onChange={setContentChain}
+      />
+
+      {/* ── Lane 2: DM / comment reply ── */}
+      <LaneEditor
+        title="DM / comment reply"
+        subtitle="Powers automated DM and comment replies. Often a fast/cheap model with reliable fallbacks."
+        accent="purple"
+        kind="content"
+        chain={replyChain}
+        onChange={setReplyChain}
+      />
+
+      {/* ── Lane 3: Vision (image / video analysis) ── */}
+      <LaneEditor
+        title="Vision — image & video analysis"
+        subtitle="Used when you upload media so the AI LOOKS at the image/video to write the caption. Gemini handles images + video; Groq llama-4 handles images."
+        accent="brand"
+        kind="vision"
+        chain={visionChain}
+        onChange={setVisionChain}
+      />
+
+      {/* ── Provider API keys ── */}
+      <div className="rounded-xl p-4 space-y-3 border border-white/[0.06]" style={{ background: "rgba(255,255,255,0.02)" }}>
+        <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Provider API Keys</p>
+        <p className="text-[11px] text-white/35 -mt-1">Needed for any provider used above. Env vars (<code className="text-white/40">GEMINI_API_KEY</code>, <code className="text-white/40">CEREBRAS_API_KEY</code>) take priority over these.</p>
+        <GlassInput label="Gemini API Key"   value={geminiApiKey}   onChange={setGeminiApiKey}   placeholder="AIzaSy..." masked />
+        <GlassInput label="Cerebras API Key" value={cerebrasApiKey} onChange={setCerebrasApiKey} placeholder="csk-..."   masked />
       </div>
 
       <div className="space-y-5">
@@ -902,7 +1060,9 @@ function AiTab() {
           <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Current Defaults</p>
           <div className="flex flex-wrap gap-2">
             {[
-              { label: "Provider", value: aiProvider === "gemini" ? "Gemini ✨" : "Groq (Llama) 🤖" },
+              { label: "Content",  value: `${MODEL_CATALOG[contentChain.provider].label} · ${contentChain.model}` },
+              { label: "Reply",    value: `${MODEL_CATALOG[replyChain.provider].label} · ${replyChain.model}` },
+              { label: "Vision",   value: `${VISION_CATALOG[visionChain.provider]?.label ?? visionChain.provider} · ${visionChain.model}` },
               { label: "Tone",     value: defaultTone },
               { label: "Type",     value: defaultType },
               { label: "Language", value: language    },

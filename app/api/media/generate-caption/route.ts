@@ -15,8 +15,8 @@
  *   mimeType    — e.g. "image/jpeg", "video/mp4"
  */
 import { NextRequest, NextResponse } from "next/server";
-import { getAIClient } from "@/lib/ai-factory";
-import { readPreferences, getBrand } from "@/lib/preferences";
+import { getAIClient, analyzeMediaResilient } from "@/lib/ai-factory";
+import { getBrand } from "@/lib/preferences";
 import { atHandle, typeLabel } from "@/lib/brandConfig";
 
 const TYPE_INSTRUCTIONS: Record<string, string> = {
@@ -47,31 +47,31 @@ export async function POST(request: NextRequest) {
     const label       = typeLabel(brand, postType);
     const instruction = TYPE_INSTRUCTIONS[postType] ?? TYPE_INSTRUCTIONS["EDUCATIONAL"];
 
-    // ── Try Gemini vision first if client sent base64 media data ─────────────
+    // ── Vision path: walk the operator's configured VISION chain (Settings → AI
+    //    Config → Vision) when the client sent base64 media data. The chain picks
+    //    provider+model+fallbacks (gemini/groq); video routes to Gemini only.
     if (imageBase64 && mimeType) {
       try {
-        const prefs     = await readPreferences();
-        const provider  = (prefs.ai as any).aiProvider ?? "grok";
-        const geminiKey = (process.env.GEMINI_API_KEY?.trim()) || ((prefs.ai as any).geminiApiKey?.trim() ?? "");
-
-        if (provider === "gemini" && geminiKey) {
-          const { GeminiClient } = await import("@/lib/gemini");
-          const gemini  = new GeminiClient(geminiKey);
-          const result  = await gemini.analyzeMediaInline(imageBase64, mimeType, postType);
-          if (result?.caption) {
-            console.log(`[GenerateCaption] Gemini vision (inline) caption generated for ${postType} — ${mimeType}`);
-            return NextResponse.json({
-              success: true,
-              data: {
-                caption:  result.caption,
-                hashtags: result.hashtags ?? [],
-                source:   "gemini-vision",
-              },
-            });
-          }
+        const result = await analyzeMediaResilient(imageBase64, mimeType, postType, null, {
+          niche:       brand.niche,
+          audience:    brand.audience,
+          handle:      atHandle(brand),
+          instruction,
+          typeLabel:   label,
+        });
+        if (result?.caption) {
+          console.log(`[GenerateCaption] Vision chain caption generated for ${postType} — ${mimeType}`);
+          return NextResponse.json({
+            success: true,
+            data: {
+              caption:  result.caption,
+              hashtags: result.hashtags ?? [],
+              source:   "vision",
+            },
+          });
         }
       } catch (visionErr: any) {
-        console.warn("[GenerateCaption] Gemini inline vision failed, falling back to text:", visionErr?.message);
+        console.warn("[GenerateCaption] Vision chain failed, falling back to text:", visionErr?.message);
       }
     }
 

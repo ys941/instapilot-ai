@@ -95,7 +95,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const ai = await getAIClient();
+    const ai = await getAIClient("reply");
     let reply = "";
 
     if (type === "comment") {

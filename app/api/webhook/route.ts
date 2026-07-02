@@ -138,7 +138,7 @@ async function generateAICommentReply(
   postContext: PostCommentContext
 ): Promise<string | null> {
   try {
-    const ai = await getAIClient();
+    const ai = await getAIClient("reply");
     return await ai.generateCommentReply(commentText, username, postContext);
   } catch (err) {
     console.warn("[Webhook] AI comment reply unavailable -- skipping reply:", String(err));
@@ -151,7 +151,7 @@ async function generateAIDMReply(
   senderUsername: string
 ): Promise<string | null> {
   try {
-    const ai = await getAIClient();
+    const ai = await getAIClient("reply");
     return await ai.generateDMReply(messages, senderUsername);
   } catch (err) {
     console.warn("[Webhook] AI DM reply unavailable -- skipping reply:", String(err));

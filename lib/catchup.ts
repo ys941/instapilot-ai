@@ -368,7 +368,7 @@ async function generateSimilarTopics(
   brand?: BrandConfig | null,
 ): Promise<string[]> {
   try {
-    const ai = await getAIClient();
+    const ai = await getAIClient("content");
     const usedList = [...usedTopics];
     const niche  = brand?.niche?.trim() || "this account's topic";
     const handle = brand ? atHandle(brand) : "this account";
@@ -1959,7 +1959,7 @@ export async function resolveQuizAnswer(
 
   // 3. Ask AI provider to determine the correct answer once -- low temperature, deterministic
   try {
-    const ai     = await getAIClient();
+    const ai     = await getAIClient("content");
     const answer = await ai.determineQuizAnswer(caption);
     if (answer) {
       _quizAnswerCache.set(mediaId, answer);
