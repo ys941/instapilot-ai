@@ -3700,6 +3700,52 @@ Return ONLY a JSON array of 9 objects: [{"slide":1,"headline":"...","body":"..."
 // Mirrors runAutoGeneratePosts() but driven entirely by prefs.youtube. Generates
 // YouTube-platform Posts + ScheduledPosts (one per configured postTime) so the
 // scheduler's youtube branch publishes them as Shorts. Runs once per IST day.
+// ── YouTube title de-dup (#2) + hook-quality gate (#3) ───────────────────────
+// Generic/structural words that don't define a video's THEME — ignored when
+// comparing two titles for topic overlap (so two titles that merely share a
+// niche-generic word don't falsely collide). Two titles "collide" when they
+// still share a DISTINCTIVE keyword (the actual subject of the video).
+const YT_THEME_STOP = new Set([
+  "the","a","an","and","or","to","of","for","that","this","with","into","from","at","by","as",
+  "it","its","on","in","your","you","my","our","is","are","was","be","being","how","why","what",
+  "which","when","who","does","do","can","will","could","should","would","may","might","most",
+  "people","ignore","really","actually","silently","quietly","secretly","hidden","reveal","reveals",
+  "reverse","hiding","saves","saving","save","truth","real","reason","difference","matters","need",
+  "know","about","more","every","everyday","daily","things","ways","stop","keep","make","makes",
+  // generic ACTION verbs / adjectives — describe what happens, not the SUBJECT, so they
+  // must not trigger a false collision.
+  "hurt","harm","harmful","protect","raise","raising","spike","spiking","cause","causing","predict",
+  "predicting","lower","lowering","boost","boosting","improve","improving","increase","reduce","reducing",
+  "prevent","preventing","affect","affecting","trigger","triggering","damage","damaging","kill","killing",
+  "harden","hardening","age","aging","ageing","worse","better","good","bad","best","worst","common","simple",
+  "easy","quick","fast","slow","new","old","big","small","warning","warn","hour","year","help","helps",
+]);
+function ytThemeKeywords(title: string): Set<string> {
+  return new Set(
+    (title || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, " ")
+      .split(/[\s-]+/)
+      .map((w) => w.replace(/(es|s|ing|ed)$/, "")) // light stemming so plurals match
+      .filter((w) => w.length >= 3 && !YT_THEME_STOP.has(w)),
+  );
+}
+/** Reject malformed / too-thin / vague-abstract titles that flop. */
+function ytIsWeakTitle(title: string): boolean {
+  const t = (title || "").trim();
+  if (!t) return true;
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length < 3) return true;                    // e.g. "Eye Strain"
+  if (/_/.test(t)) return true;                         // raw filename leaked as title
+  if (/^\d{1,2}\s+\w+\s+\d{4}$/.test(t)) return true;   // "23 June 2026" date fallback
+  if (/^(auto|untitled|test)\b/i.test(t)) return true;
+  // Vague abstractions with no concrete picture (these flop):
+  return [
+    /^stop\s+\w+\s+from\s+/i,
+    /\bsilent(ly)?\b[^.]*\bdamage\b/i,
+  ].some((re) => re.test(t));
+}
+
 export async function runAutoGenerateYouTube(ctxArg?: BrandContext): Promise<GeneratedPostSummary[]> {
   const generated: GeneratedPostSummary[] = [];
   const ctx = ctxArg ?? await getPrimaryBrandContext();
@@ -3828,8 +3874,13 @@ export async function runAutoGenerateYouTube(ctxArg?: BrandContext): Promise<Gen
       select:  { title: true },
     }).catch(() => [] as { title: string }[]);
     const recentAvoidList = recentPosts.map((p) => p.title).filter(Boolean).slice(0, 40);
+    // #2: precompute the distinctive theme keywords of every recent title once.
+    const recentThemeKw = recentAvoidList.map(ytThemeKeywords);
 
     const usedThisRun = new Set<string>();
+    // #2: theme-keyword signatures generated THIS run, so two posts in one run can't
+    // cover the same subject even before they hit the DB recent-list.
+    const usedThemeKw: Set<string>[] = [];
 
     // Rotate among the configured YouTube post types (Settings → YouTube).
     // Falls back to the proven content-friendly default set when none configured.
@@ -3878,7 +3929,7 @@ export async function runAutoGenerateYouTube(ctxArg?: BrandContext): Promise<Gen
 
       try {
         const typeLabel = type.replace(/_/g, " ").toLowerCase();
-        const prompt = `Generate a ${typeLabel} ${brand.niche} YouTube Short post about: "${topic}".
+        const basePrompt = `Generate a ${typeLabel} ${brand.niche} YouTube Short post about: "${topic}".
 
 You are ${atHandle(brand)} — ${brand.persona.role}. This is for a YouTube channel. Create high-impact ${brand.niche} content that gets watched, saved, and shared.
 
@@ -3897,7 +3948,7 @@ Return ONLY a valid JSON object with EXACTLY these fields:
   "title": "SEO title under 60 chars, searchable YouTube phrasing. Obey the TITLE RULE: concrete everyday noun + specific curiosity/benefit (a number only if truthful); NEVER abstract/jargon or the banned vague patterns.",
   "hook": "Card headline — bold 6-9 words, no asterisks, no punctuation at end.",
   "content": "The IMAGE-CARD text. Follow the IMAGE-CARD REQUIREMENT above EXACTLY. Each item on its OWN LINE separated by \\n. Plain lines only — NO prose paragraphs, NO markdown, NO asterisks.",
-  "caption": "Caption (prose, DIFFERENT from and RICHER than the card). Make it detailed and substantial: a strong scroll-stopping hook, then 2-4 sentences of context with specifics, then 5 key points each starting with ① ② ③ ④ ⑤ and each EXPANDED to a full, complete sentence with a real number/stat/detail AND its significance (NOT a fragment), then a 'Why it matters:' line (one full sentence), then the save prompt and a Follow ${atHandle(brand)} CTA.",
+  "caption": "Caption (prose, DIFFERENT from and RICHER than the card). Make it detailed and substantial: a strong scroll-stopping hook, then 2-4 sentences of context with specifics, then 5 key points each starting with ① ② ③ ④ ⑤ and each EXPANDED to a full, complete sentence with a real number/stat/detail AND its significance (NOT a fragment), then a 'Why it matters:' line (one full sentence), then a short QUESTION that invites the viewer to comment their experience/opinion, then a SUBSCRIBE call-to-action (this is a YouTube Short — drive subscribes): 'Subscribe to ${atHandle(brand)} for a fresh tip every day.'",
   "cta": "Short call to action fitting the post type",
   "hashtags": ["exactly 3 topic-specific hashtags, lowercase, no # prefix"]
 }
@@ -3907,18 +3958,49 @@ RULES:
 - "caption" = ONLY prose with emojis. Must be DIFFERENT from the card content.
 - hashtags: EXACTLY 3. Mix 1 high-volume (>500k) + 1 medium (50k-500k) + 1 niche (<50k).${toneDirective}${angleBlock}${ytExtra}${avoidBlock}${languageDirective}`;
 
-        const raw = await generateJSONResilient(prompt,
-          buildBrandSystemPrompt(brand) + " This is for a YouTube channel — optimize hooks to grab a broad audience. Return ONLY valid JSON — no markdown, no preamble. Every post you write must be distinct from previous ones — never repeat the same facts, angle, or wording." + languageDirective,
-          2500, ctx.brandId);
+        const ytSystem =
+          buildBrandSystemPrompt(brand) + " This is for a YouTube channel — optimize hooks to grab a broad audience. Return ONLY valid JSON — no markdown, no preamble. Every post you write must be distinct from previous ones — never repeat the same facts, angle, or wording." + languageDirective;
 
-        let parsed: any = {};
-        try {
-          const cleaned = raw.replace(/```json\n?/gi, "").replace(/```\n?/gi, "").trim();
-          parsed = JSON.parse(cleaned.match(/\{[\s\S]*\}/)?.[0] ?? cleaned);
-        } catch {
-          console.warn(`[YT-AutoGen] JSON parse failed for ${type} post — skipping this post`);
+        // ── #2 de-dup + #3 hook-quality gate ──────────────────────────────────
+        // Generate, then HARD-validate the title: reject if it's weak/malformed (#3)
+        // or repeats the SUBJECT of a recent / same-run post (#2), and regenerate
+        // with targeted feedback (up to 3 tries). The recentAvoidList prompt hint is
+        // soft (models ignore it) — this is the enforcement.
+        const collidesAny = (ttl: string): boolean => {
+          const k = ytThemeKeywords(ttl);
+          for (const rk of recentThemeKw) for (const w of k) if (rk.has(w)) return true;
+          for (const rk of usedThemeKw)   for (const w of k) if (rk.has(w)) return true;
+          return false;
+        };
+        let parsed: any = null;
+        let banFeedback = "";
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          const raw = await generateJSONResilient(basePrompt + banFeedback, ytSystem, 2500, ctx.brandId);
+          let p: any;
+          try {
+            const cleaned = raw.replace(/```json\n?/gi, "").replace(/```\n?/gi, "").trim();
+            p = JSON.parse(cleaned.match(/\{[\s\S]*\}/)?.[0] ?? cleaned);
+          } catch {
+            console.warn(`[YT-AutoGen] attempt ${attempt}: JSON parse failed for ${type}`);
+            continue;
+          }
+          parsed = p; // keep the latest parse as a best-effort fallback
+          const ttl  = String(p.title || "").trim();
+          const weak = ytIsWeakTitle(ttl);
+          const dup  = collidesAny(ttl);
+          if (!weak && !dup) break; // accepted
+          console.warn(`[YT-AutoGen] attempt ${attempt} rejected (weak=${weak} dup=${dup}): "${ttl}"`);
+          const reasons: string[] = [];
+          if (weak) reasons.push(`the title "${ttl}" is malformed, too short, or a vague/abstract pattern that flops — write a CONCRETE curiosity hook built on a specific everyday noun (use a number only if it is truthful)`);
+          if (dup)  reasons.push(`the SUBJECT of "${ttl}" repeats a recent video — choose a COMPLETELY different ${brand.niche} subject that shares NO keywords with the recent list above`);
+          banFeedback = `\n\nREGENERATE — the previous attempt was rejected because ${reasons.join("; and ")}. Return fresh JSON (all fields) with a distinct, strong, concrete title and matching content.`;
+        }
+        if (!parsed) {
+          console.warn(`[YT-AutoGen] No parseable AI output for ${type} after retries — skipping this post`);
           continue;
         }
+        // Record this post's theme so later posts in the same run avoid it (#2).
+        usedThemeKw.push(ytThemeKeywords(String(parsed.title || "")));
 
         if (!parsed.caption && parsed.content) parsed.caption = parsed.content;
         parsed.content = deriveCardContent(type, parsed.content || "", parsed.caption || "");
