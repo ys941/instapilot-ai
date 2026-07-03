@@ -1,7 +1,7 @@
 {
   "name": "instapilot-ai",
   "version": "1.0.0",
-  "description": "AI-powered cardiology content automation platform for Instagram",
+  "description": "AI-powered, white-label content automation platform for Instagram + YouTube",
   "private": true,
   "scripts": {
     "dev": "next dev --turbo -p 3000",

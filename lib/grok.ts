@@ -525,7 +525,7 @@ Return a JSON array with ${days * postsPerDay} objects:
   }
 ]
 
-Vary post types: educational (30%), quiz (20%), carousel (20%), myth-fact (10%), clinical-pearl (10%), case-study (10%).
+Vary post types: educational (30%), quiz (20%), carousel (20%), myth-fact (10%), pro-tip (10%), story (10%).
 Best times should be 7:00, 12:00, 18:00, or 20:00 based on your audience's engagement patterns.`;
 
     const { buildBrandSystemPrompt } = await import("@/lib/brandConfig");

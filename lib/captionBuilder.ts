@@ -6,7 +6,16 @@
  * so encoding can never corrupt the output.
  */
 
-import { BrandConfig, atHandle } from "@/lib/brandConfig";
+import { BrandConfig, atHandle, typeLabel } from "@/lib/brandConfig";
+
+// Neutral fallback labels when no brand is supplied (white-label: the header is
+// the user's renameable type label, resolved via typeLabel(brand, postType)).
+const NEUTRAL_TYPE_LABEL: Record<string, string> = {
+  EDUCATIONAL: "Did You Know", QUIZ: "Quiz", MYTH_FACT: "Myth vs Fact",
+  CLINICAL_PEARL: "Pro Tip", CASE_STUDY: "Story", ECG_QUIZ: "Knowledge Quiz",
+  ANGIOGRAPHY_QUIZ: "Image Quiz", PREVENTIVE: "How-To", CTA: "Take Action",
+  REEL: "Reel", CAROUSEL: "Carousel",
+};
 
 // -- Helpers ------------------------------------------------------------------
 function clean(t: string): string {
@@ -186,7 +195,7 @@ function educational(hook: string, content: string, cta: string): string {
     "",
     DIVIDER,
     "",
-    clean(cta) || `${E.floppy} Save this post  -  you'll thank yourself later on your next shift!`,
+    clean(cta) || `${E.floppy} Save this post  -  you'll thank yourself later!`,
     "",
     `${E.pointDown} Drop your questions below  -  I reply to every comment! ${E.heart}`,
     "",
@@ -304,7 +313,7 @@ function mythFact(hook: string, content: string, cta: string): string {
   return parts.join("\n");
 }
 
-function clinicalPearl(hook: string, content: string, cta: string): string {
+function clinicalPearl(hook: string, content: string, cta: string, label = "PRO TIP"): string {
   const parseSectionBullets = (text: string, max = 3): string[] =>
     text
       .split(/\n/)
@@ -326,7 +335,7 @@ function clinicalPearl(hook: string, content: string, cta: string): string {
     const numbered = [E.n1, E.n2, E.n3, E.n4, E.n5];
     const bulletLines = bullets.map((b, i) => `${numbered[i] ?? E.bullet} ${b}`).join("\n\n");
     return [
-      `${E.gem} CLINICAL PEARL`,
+      `${E.gem} ${label}`,
       "",
       DIVIDER,
       "",
@@ -338,9 +347,9 @@ function clinicalPearl(hook: string, content: string, cta: string): string {
       "",
       DIVIDER,
       "",
-      clean(cta) || `${E.hospital} Save this for your ward rounds  -  share with your team!`,
+      clean(cta) || `${E.floppy} Save this for later  -  share it with someone who'd find it useful!`,
       "",
-      `${E.pointDown} Have a pearl to add? Drop it below! ${E.anatomHeart}`,
+      `${E.pointDown} Got something to add? Drop it below! ${E.sparkles}`,
       "",
       `${E.heart} Follow @__HANDLE__ for more!`,
     ].join("\n");
@@ -348,7 +357,7 @@ function clinicalPearl(hook: string, content: string, cta: string): string {
 
   const parts: string[] = [];
 
-  parts.push(`${E.gem} CLINICAL PEARL`);
+  parts.push(`${E.gem} ${label}`);
   parts.push("");
   parts.push(DIVIDER);
   parts.push("");
@@ -366,7 +375,7 @@ function clinicalPearl(hook: string, content: string, cta: string): string {
     parts.push("");
     parts.push(DIVIDER);
     parts.push("");
-    parts.push(`${E.hospital} CLINICAL APPLICATION`);
+    parts.push(`${E.pushpin} HOW TO APPLY IT`);
     applicationBullets.forEach((b) => parts.push(`${E.bullet} ${b}`));
   }
 
@@ -381,9 +390,9 @@ function clinicalPearl(hook: string, content: string, cta: string): string {
   parts.push("");
   parts.push(DIVIDER);
   parts.push("");
-  parts.push(clean(cta) || `${E.floppy} Save this for your next shift  -  share with your team! ${E.hospital}`);
+  parts.push(clean(cta) || `${E.floppy} Save this for later  -  share it with someone who'd find it useful!`);
   parts.push("");
-  parts.push(`${E.pointDown} Which pearl do you wish you knew earlier? Comment below! ${E.anatomHeart}`);
+  parts.push(`${E.pointDown} What would you add? Comment below! ${E.sparkles}`);
   parts.push("");
   parts.push(`${E.heart} Follow @__HANDLE__ for more!`);
 
@@ -444,7 +453,7 @@ function caseStudy(hook: string, content: string, cta: string): string {
     "",
     DIVIDER,
     "",
-    clean(cta) || `${E.floppy} Save this case. Test your team!`,
+    clean(cta) || `${E.floppy} Save this. Quiz a friend!`,
     "",
     `${E.pointDown} What would YOU have done differently? Comment below! ${E.brain}`,
     "",
@@ -491,7 +500,7 @@ function ecgFindingEmoji(finding: string): string {
   return E.bullet;
 }
 
-function ecgQuiz(hook: string, content: string, cta: string): string {
+function ecgQuiz(hook: string, content: string, cta: string, label = "KNOWLEDGE QUIZ"): string {
   const stripped = stripAnswerSections(content);
   const opts     = parseOptions(stripped);
   const { caseInfo, ecgFindings } = parseEcgCase(stripped);
@@ -503,7 +512,7 @@ function ecgQuiz(hook: string, content: string, cta: string): string {
   const parts: string[] = [];
 
   // -- Header ----------------------------------------------------------------
-  parts.push(`${E.chartUp} ECG CHALLENGE  -  Can you crack this one? ${E.brain}`);
+  parts.push(`${E.chartUp} ${label}  -  Can you crack this one? ${E.brain}`);
   parts.push("");
   parts.push(DIVIDER);
 
@@ -519,7 +528,7 @@ function ecgQuiz(hook: string, content: string, cta: string): string {
     parts.push("");
     parts.push(DIVIDER);
     parts.push("");
-    parts.push(`${E.chartBar} ECG FINDINGS`);
+    parts.push(`${E.chartBar} THE FINDINGS`);
     ecgFindings.forEach((f) => {
       parts.push(`${ecgFindingEmoji(f)} ${f}`);
     });
@@ -529,7 +538,7 @@ function ecgQuiz(hook: string, content: string, cta: string): string {
   parts.push("");
   parts.push(DIVIDER);
   parts.push("");
-  parts.push(`${E.question} WHAT IS THE DIAGNOSIS?`);
+  parts.push(`${E.question} WHAT'S THE ANSWER?`);
   parts.push("");
 
   if (opts.length > 0) {
@@ -548,16 +557,16 @@ function ecgQuiz(hook: string, content: string, cta: string): string {
   parts.push(DIVIDER);
   parts.push("");
   parts.push(`${E.speech} Drop your answer  -  A, B, C or D below!`);
-  parts.push(`${E.pointDown} I reveal the full explanation in the comments ${E.anatomHeart}`);
+  parts.push(`${E.pointDown} I reveal the full explanation in the comments ${E.sparkles}`);
   parts.push("");
-  parts.push(clean(cta) || `${E.floppy} Save this for your next on-call shift! Share with a colleague ${E.hospital}`);
+  parts.push(clean(cta) || `${E.floppy} Save this for later! Share it with a friend`);
   parts.push("");
   parts.push(`${E.heart} Follow @__HANDLE__ for more!`);
 
   return parts.join("\n");
 }
 
-function angiographyQuiz(hook: string, content: string, cta: string): string {
+function angiographyQuiz(hook: string, content: string, cta: string, label = "IMAGE QUIZ"): string {
   const stripped = stripAnswerSections(content);
   const opts     = parseOptions(stripped);
   const LETTER_BOX: Record<string, string> = {
@@ -580,13 +589,13 @@ function angiographyQuiz(hook: string, content: string, cta: string): string {
 
   const parts: string[] = [];
 
-  parts.push(`${E.anatomHeart} ANGIOGRAPHY CHALLENGE`);
+  parts.push(`${E.sparkles} ${label}`);
   parts.push("");
   parts.push(DIVIDER);
 
   if (caseInfo) {
     parts.push("");
-    parts.push(`${E.stethoscope} THE CASE`);
+    parts.push(`${E.pushpin} THE SETUP`);
     parts.push(caseInfo);
   }
 
@@ -594,14 +603,14 @@ function angiographyQuiz(hook: string, content: string, cta: string): string {
     parts.push("");
     parts.push(DIVIDER);
     parts.push("");
-    parts.push(`${E.microscope} ANGIOGRAPHIC FINDINGS`);
+    parts.push(`${E.microscope} THE FINDINGS`);
     angiFindings.forEach((f) => parts.push(`${E.bullet} ${f}`));
   }
 
   parts.push("");
   parts.push(DIVIDER);
   parts.push("");
-  parts.push(`${E.question} ${clean(hook) || "What is your management strategy?"}`);
+  parts.push(`${E.question} ${clean(hook) || "What's your answer?"}`);
   parts.push("");
   opts.forEach(({ letter, text }) => {
     parts.push(`${LETTER_BOX[letter] ?? letter} ${text}`);
@@ -611,9 +620,9 @@ function angiographyQuiz(hook: string, content: string, cta: string): string {
   parts.push(DIVIDER);
   parts.push("");
   parts.push(`${E.speech} Comment your answer  -  A, B, C or D!`);
-  parts.push(`${E.pointDown} Tag a colleague  -  can they crack it? ${E.hospital}`);
+  parts.push(`${E.pointDown} Tag a friend  -  can they crack it? ${E.sparkles}`);
   parts.push("");
-  parts.push(clean(cta) || `${E.floppy} Save for later! I reveal the answer in the comments ${E.stethoscope}`);
+  parts.push(clean(cta) || `${E.floppy} Save for later! I reveal the answer in the comments`);
   parts.push("");
   parts.push(`${E.heart} Follow @__HANDLE__ for more!`);
 
@@ -716,16 +725,19 @@ export function buildBeautifulCaption(input: CaptionInput, brand?: BrandConfig):
   const { postType, hook, content, cta: ctaText, reelScript, hashtags } = input;
   const h   = hook    ?? "";
   const ct  = ctaText ?? "";
+  // White-label: the caption's type header is the user's RENAMEABLE label, not a
+  // hardcoded niche word. Falls back to a neutral label when no brand is supplied.
+  const label = (brand ? typeLabel(brand, postType) : NEUTRAL_TYPE_LABEL[postType] || "Post").toUpperCase();
 
   let body: string;
   switch (postType) {
     case "EDUCATIONAL":      body = educational(h, content, ct);              break;
     case "QUIZ":             body = quiz(h, content, ct);                     break;
     case "MYTH_FACT":        body = mythFact(h, content, ct);                 break;
-    case "CLINICAL_PEARL":   body = clinicalPearl(h, content, ct);            break;
+    case "CLINICAL_PEARL":   body = clinicalPearl(h, content, ct, label);     break;
     case "CASE_STUDY":       body = caseStudy(h, content, ct);                break;
-    case "ECG_QUIZ":         body = ecgQuiz(h, content, ct);                  break;
-    case "ANGIOGRAPHY_QUIZ": body = angiographyQuiz(h, content, ct);          break;
+    case "ECG_QUIZ":         body = ecgQuiz(h, content, ct, label);           break;
+    case "ANGIOGRAPHY_QUIZ": body = angiographyQuiz(h, content, ct, label);   break;
     case "PREVENTIVE":       body = preventive(h, content, ct);               break;
     case "CTA":              body = ctaPost(h, content, ct);                  break;
     case "REEL":             body = reel(h, content, reelScript, ct);         break;

@@ -20,7 +20,7 @@ import { selectMusicForCard } from "@/lib/music";
 import { shortPlan } from "@/lib/shortLength";
 import { getBrand, type YouTubeSettings } from "@/lib/preferences";
 import type { BrandConfig } from "@/lib/brandConfig";
-import { atHandle, ytHandle, ytChannelName, dualFollowCTA } from "@/lib/brandConfig";
+import { atHandle, ytHandle, ytChannelName, dualFollowCTA, typeLabel } from "@/lib/brandConfig";
 
 export interface YtPostInput {
   id?:             string;
@@ -70,8 +70,9 @@ export function buildYouTubeTags(post: YtPostInput, brand?: BrandConfig): string
     .replace(/\s+/g, " ")
     .trim();
 
-  // A keyword derived from the post type (e.g. ECG_QUIZ → "ecg quiz").
-  const typeKeyword = (post.type ?? "")
+  // A keyword derived from the post type's RENAMEABLE label (white-label: never
+  // the raw enum id, so e.g. a cooking brand's quiz never emits an "ecg quiz" tag).
+  const typeKeyword = (brand ? typeLabel(brand, post.type ?? "") : (post.type ?? ""))
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();

@@ -290,9 +290,9 @@ Respond with this exact JSON structure (carouselSlides MUST have exactly ${slide
   "title": "Carousel SEO title",
   "hook": "First slide headline -- 4-7 bold words, makes people stop and swipe. No asterisks.",
   "content": "Instagram caption -- ${handle} style. 100-180 words. Swipe prompt. Save and share CTA. No asterisks.",
-  "cta": "Swipe through all slides! Save for your next shift! Share with a colleague!",
+  "cta": "Swipe through all slides! Save this + share it with a friend!",
   "hashtags": ["25-30 relevant hashtags"],
-  "imagePrompt": "Dark purple-navy background, red gradient border, medical infographic carousel style",
+  "imagePrompt": "Clean on-brand background, bold accent border, modern infographic carousel style",
   "viralScore": 0.91,
   "carouselSlides": [
 ${slidesJson}
