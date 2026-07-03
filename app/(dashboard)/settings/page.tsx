@@ -9,7 +9,7 @@ import {
   ShieldCheck, Clock, Database, Globe, Calendar,
   Activity, Sparkles, Zap, FileText, Plus, X,
   ChevronDown, ChevronUp, RotateCw, BookImage, Radio, LogOut, Youtube,
-  Building2, Layers, Sunrise, Palette,
+  Building2, Layers, Sunrise, Palette, Wand2, ArrowRight, ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
@@ -29,6 +29,7 @@ import {
 
 const tabs = [
   { id: "brand",         label: "Brand",         icon: Sparkles },
+  { id: "ai-setup",      label: "AI Setup",      icon: Wand2 },
   { id: "content-types", label: "Content Types", icon: FileText },
   { id: "account",       label: "Account",       icon: User },
   { id: "appearance",    label: "Appearance",    icon: Palette },
@@ -4035,11 +4036,431 @@ function ContentTypesTab() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// AI SETUP TAB  (describe your brand → Groq asks questions → generates config)
+// ─────────────────────────────────────────────────────────────────────────────
+type SetupQuestion = {
+  id: string;
+  label: string;
+  hint: string;
+  type: "text" | "select" | "chips";
+  options?: string[];
+};
+
+type SetupPreview = {
+  brand: {
+    appName: string; niche: string; purpose: string; audience: string;
+    language: string; defaultTone: string;
+    persona: { role: string; voice: string };
+    igHandle: string; ytHandle: string; ytChannelName: string; dualFollowCTA: string;
+  };
+  contentTypes: Array<{ id: string; label: string; enabled: boolean }>;
+  enabledTypes: string[];
+  topics: string[];
+  schedule: { scheduleDays: number[]; postTimes: string[]; postsPerDay: number };
+  igDefaultPrompt: string;
+  ytDefaultPrompt: string;
+};
+
+function PreviewCard({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl p-4 border border-white/[0.07]" style={{ background: "rgba(255,255,255,0.02)" }}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-red-400">{icon}</span>
+        <p className="text-xs font-semibold uppercase tracking-wider text-white/60">{title}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function KV({ k, v }: { k: string; v: string }) {
+  if (!v) return null;
+  return (
+    <div className="flex gap-2 text-sm py-0.5">
+      <span className="text-white/35 min-w-[92px]">{k}</span>
+      <span className="text-white/80 flex-1 break-words">{v}</span>
+    </div>
+  );
+}
+
+function AiSetupTab({ onGoToTab }: { onGoToTab: (id: string) => void }) {
+  const { brandId } = useSelectedBrand();
+  const [mode, setMode] = useState<"manual" | "ai">("ai");
+  const [step, setStep] = useState<"describe" | "answer" | "review">("describe");
+
+  const [description, setDescription] = useState("");
+  const [questions, setQuestions] = useState<SetupQuestion[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [preview, setPreview] = useState<SetupPreview | null>(null);
+
+  const [loadingQ, setLoadingQ] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [applying, setApplying] = useState(false);
+
+  const setAnswer = (id: string, v: string) => setAnswers((p) => ({ ...p, [id]: v }));
+  const toggleChip = (id: string, opt: string) => {
+    setAnswers((p) => {
+      const cur = (p[id] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+      const next = cur.includes(opt) ? cur.filter((x) => x !== opt) : [...cur, opt];
+      return { ...p, [id]: next.join(", ") };
+    });
+  };
+
+  const restart = () => {
+    setStep("describe"); setQuestions([]); setAnswers({}); setPreview(null);
+  };
+
+  const genQuestions = async () => {
+    if (description.trim().length < 8) { toast.error("Describe your brand in a bit more detail first"); return; }
+    setLoadingQ(true);
+    const tid = toast.loading("Asking the AI what it needs to know…");
+    try {
+      const res = await fetch(withBrand("/api/ai/setup", brandId), {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: "questions", description }),
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data?.questions) && data.data.questions.length) {
+        setQuestions(data.data.questions);
+        setStep("answer");
+        toast.success("A few quick questions ✨", { id: tid });
+      } else {
+        toast.error(data.error ?? "Could not generate questions", { id: tid });
+      }
+    } catch {
+      toast.error("Network error", { id: tid });
+    } finally {
+      setLoadingQ(false);
+    }
+  };
+
+  const generate = async () => {
+    setGenerating(true);
+    const tid = toast.loading("Generating your brand config…");
+    try {
+      const res = await fetch(withBrand("/api/ai/setup", brandId), {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: "generate", description, answers }),
+      });
+      const data = await res.json();
+      if (data.success && data.data?.config) {
+        setPreview(data.data.config);
+        setStep("review");
+        toast.success("Here's your setup — review it ✅", { id: tid });
+      } else {
+        toast.error(data.error ?? "Generation failed", { id: tid });
+      }
+    } catch {
+      toast.error("Network error", { id: tid });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const apply = async () => {
+    if (!preview) return;
+    setApplying(true);
+    const tid = toast.loading("Applying setup…");
+    try {
+      const res = await fetch(withBrand("/api/ai/setup", brandId), {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: "apply", config: preview }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Setup applied — refine it anytime in the other tabs ✅", { id: tid });
+      } else {
+        toast.error(data.error ?? "Apply failed", { id: tid });
+      }
+    } catch {
+      toast.error("Network error", { id: tid });
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const stepIndex = step === "describe" ? 0 : step === "answer" ? 1 : 2;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>AI Setup</h3>
+        <p className="text-xs text-white/40 mt-0.5">
+          Describe the brand you want — the AI asks a few questions, then fills your whole config
+          (brand, content types, topics, schedule, persona, and both your Instagram + YouTube handles).
+        </p>
+      </div>
+
+      {/* Mode toggle */}
+      <div className="flex gap-2 p-1 rounded-xl border border-white/[0.07]" style={{ background: "rgba(255,255,255,0.02)" }}>
+        {(["ai", "manual"] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            className={cn(
+              "flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2",
+              mode === m
+                ? "bg-gradient-to-r from-brand/25 to-brand-light/10 text-white border border-red-500/20"
+                : "text-white/40 hover:text-white/70",
+            )}
+          >
+            {m === "ai" ? <><Wand2 size={14} /> AI Setup</> : <><User size={14} /> Manual</>}
+          </button>
+        ))}
+      </div>
+
+      {mode === "manual" && (
+        <div className="rounded-xl p-5 border border-white/[0.07] space-y-3" style={{ background: "rgba(255,255,255,0.02)" }}>
+          <p className="text-sm text-white/70">
+            Prefer to set things up by hand? Configure each area directly:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: "brand", label: "Brand" },
+              { id: "content-types", label: "Content Types" },
+              { id: "auto-post", label: "Auto-Post schedule" },
+              { id: "youtube", label: "YouTube" },
+              { id: "prompts", label: "AI Prompts" },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => onGoToTab(t.id)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold border border-white/[0.08] text-white/60 hover:text-white hover:border-white/20 transition-all"
+              >
+                {t.label} <ArrowRight size={12} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {mode === "ai" && (
+        <>
+          {/* Step indicator */}
+          <div className="flex items-center gap-2">
+            {["Describe", "Answer", "Review"].map((s, i) => (
+              <div key={s} className="flex items-center gap-2 flex-1">
+                <div className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all whitespace-nowrap",
+                  i === stepIndex ? "bg-gradient-to-r from-brand/25 to-brand-light/10 text-white border-red-500/20"
+                  : i < stepIndex ? "text-emerald-400 border-emerald-500/20 bg-emerald-500/5"
+                  : "text-white/30 border-white/[0.06]",
+                )}>
+                  <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] bg-white/10">{i < stepIndex ? "✓" : i + 1}</span>
+                  {s}
+                </div>
+                {i < 2 && <div className="h-px flex-1 bg-white/[0.06]" />}
+              </div>
+            ))}
+          </div>
+
+          {/* STEP: Describe */}
+          {step === "describe" && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-white/40 block mb-1.5 uppercase tracking-wider">
+                  What kind of channel / brand do you want?
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={5}
+                  placeholder="e.g. A brand teaching beginner home cooks quick 15-minute weeknight dinners, upbeat and friendly, on Instagram + YouTube Shorts."
+                  className="w-full px-4 py-3 rounded-xl text-sm text-white/90 placeholder-white/25 outline-none resize-y"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                />
+              </div>
+              <div className="flex justify-end">
+                <motion.button
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  onClick={genQuestions}
+                  disabled={loadingQ}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
+                  style={{ background: "var(--gradient-accent)" }}
+                >
+                  {loadingQ ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                  {loadingQ ? "Thinking…" : "Generate Questions"}
+                </motion.button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP: Answer */}
+          {step === "answer" && (
+            <div className="space-y-4">
+              <p className="text-xs text-white/40">
+                Answer what you can — leave anything blank and the AI will decide.
+              </p>
+              <div className="space-y-4">
+                {questions.map((q) => (
+                  <div key={q.id}>
+                    <label className="text-xs font-medium text-white/50 block mb-1.5">
+                      {q.label}
+                      {q.hint && <span className="text-white/25 font-normal ml-1.5">· {q.hint}</span>}
+                    </label>
+                    {q.type === "select" && q.options ? (
+                      <select
+                        value={answers[q.id] ?? ""}
+                        onChange={(e) => setAnswer(q.id, e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
+                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                      >
+                        <option value="" style={{ background: "#161326" }}>Let AI decide</option>
+                        {q.options.map((o) => <option key={o} value={o} style={{ background: "#161326" }}>{o}</option>)}
+                      </select>
+                    ) : q.type === "chips" && q.options ? (
+                      <div className="flex flex-wrap gap-2">
+                        {q.options.map((o) => {
+                          const active = (answers[q.id] ?? "").split(",").map((s) => s.trim()).includes(o);
+                          return (
+                            <button
+                              key={o}
+                              onClick={() => toggleChip(q.id, o)}
+                              className={cn(
+                                "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                                active
+                                  ? "bg-gradient-to-r from-red-500/20 to-pink-500/10 text-red-300 border-red-500/30"
+                                  : "border-white/[0.08] text-white/40 hover:text-white/70 hover:border-white/20",
+                              )}
+                            >
+                              {o}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <input
+                        value={answers[q.id] ?? ""}
+                        onChange={(e) => setAnswer(q.id, e.target.value)}
+                        placeholder="Your answer (optional)"
+                        className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/25 outline-none"
+                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between pt-1">
+                <button
+                  onClick={() => setStep("describe")}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-white/50 border border-white/[0.08] hover:text-white hover:border-white/20 transition-all"
+                >
+                  <ArrowLeft size={13} /> Back
+                </button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  onClick={generate}
+                  disabled={generating}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
+                  style={{ background: "var(--gradient-accent)" }}
+                >
+                  {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  {generating ? "Generating…" : "Generate Config"}
+                </motion.button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP: Review */}
+          {step === "review" && preview && (
+            <div className="space-y-4">
+              <PreviewCard title="Brand" icon={<Sparkles size={13} />}>
+                <div className="space-y-0.5">
+                  <KV k="Name" v={preview.brand.appName} />
+                  <KV k="Niche" v={preview.brand.niche} />
+                  <KV k="Audience" v={preview.brand.audience} />
+                  <KV k="Purpose" v={preview.brand.purpose} />
+                  <KV k="Language" v={preview.brand.language} />
+                  <KV k="Tone" v={preview.brand.defaultTone} />
+                  <KV k="Instagram" v={preview.brand.igHandle ? `@${preview.brand.igHandle}` : ""} />
+                  <KV k="YouTube" v={preview.brand.ytHandle ? `@${preview.brand.ytHandle}` : ""} />
+                  <KV k="Channel" v={preview.brand.ytChannelName} />
+                  <KV k="Follow CTA" v={preview.brand.dualFollowCTA} />
+                </div>
+              </PreviewCard>
+
+              <PreviewCard title="Persona" icon={<User size={13} />}>
+                <div className="space-y-0.5">
+                  <KV k="Role" v={preview.brand.persona.role} />
+                  <KV k="Voice" v={preview.brand.persona.voice} />
+                </div>
+              </PreviewCard>
+
+              <PreviewCard title="Content Types" icon={<FileText size={13} />}>
+                <div className="flex flex-wrap gap-2">
+                  {preview.contentTypes.map((c) => (
+                    <span key={c.id} className={cn(
+                      "px-2.5 py-1 rounded-full text-xs font-medium border",
+                      c.enabled
+                        ? "text-emerald-300 border-emerald-500/25 bg-emerald-500/8"
+                        : "text-white/30 border-white/[0.06] line-through",
+                    )}>
+                      {c.label}
+                    </span>
+                  ))}
+                </div>
+              </PreviewCard>
+
+              <PreviewCard title="Topics" icon={<Layers size={13} />}>
+                {preview.topics.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {preview.topics.map((t, i) => (
+                      <span key={i} className="px-2.5 py-1 rounded-full text-xs text-white/60 border border-white/[0.08]" style={{ background: "rgba(255,255,255,0.03)" }}>{t}</span>
+                    ))}
+                  </div>
+                ) : <p className="text-xs text-white/30">No topics generated.</p>}
+              </PreviewCard>
+
+              <PreviewCard title="Schedule" icon={<Calendar size={13} />}>
+                <div className="space-y-0.5">
+                  <KV k="Posts/day" v={String(preview.schedule.postsPerDay)} />
+                  <KV k="Days" v={preview.schedule.scheduleDays.map((d) => DAY_LABELS[d] ?? d).join(", ")} />
+                  <KV k="Times" v={preview.schedule.postTimes.join(", ")} />
+                </div>
+              </PreviewCard>
+
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  onClick={restart}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-white/50 border border-white/[0.08] hover:text-white hover:border-white/20 transition-all"
+                >
+                  <RotateCcw size={13} /> Start over
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={generate}
+                    disabled={generating}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-white/60 border border-white/[0.08] hover:text-white hover:border-white/20 transition-all disabled:opacity-60"
+                  >
+                    {generating ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                    Regenerate
+                  </button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    onClick={apply}
+                    disabled={applying}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
+                    style={{ background: "var(--gradient-accent)" }}
+                  >
+                    {applying ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                    {applying ? "Applying…" : "Apply Setup"}
+                  </motion.button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 // Tabs whose data is scoped to the currently-selected account (brand).
 const BRAND_SCOPED_TABS = new Set([
-  "brand", "content-types", "instagram", "prompts", "auto-post", "stories", "youtube",
+  "brand", "ai-setup", "content-types", "instagram", "prompts", "auto-post", "stories", "youtube",
 ]);
 
 export default function SettingsPage() {
@@ -4093,6 +4514,9 @@ export default function SettingsPage() {
             >
               <tab.icon size={15} />
               {tab.label}
+              {tab.id === "ai-setup" && (
+                <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded font-bold" style={{ background: "rgba(139,92,246,0.2)", color: "#c4b5fd" }}>NEW</span>
+              )}
               {tab.id === "prompts" && (
                 <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold">NEW</span>
               )}
@@ -4145,6 +4569,7 @@ export default function SettingsPage() {
             )}
 
             {activeTab === "brand"         && <BrandTab />}
+            {activeTab === "ai-setup"      && <AiSetupTab onGoToTab={selectTab} />}
             {activeTab === "content-types" && <ContentTypesTab />}
             {activeTab === "account"       && <AccountTab />}
             {activeTab === "accounts"      && <AccountsTab />}

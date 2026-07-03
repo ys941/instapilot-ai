@@ -65,6 +65,7 @@ InstaPilot ships **niche-neutral** and is re-skinnable for any brand entirely fr
 ## ✨ Key Features
 
 ### 🧠 AI content generation
+- **AI Setup — describe your brand, the AI configures it (Groq-powered)** — **Settings → AI Setup** lets you set up a whole brand by describing it in plain English. Groq (via the content chain) first **asks the tailored questions** it needs (niche, audience, persona/voice, tone, language, Instagram + YouTube handles, channel name, posts/day, publishing days, which content types to enable, topic seeds), then **generates the full config** — brand skin, renamed/enabled content-type labels, topic seeds, per-weekday schedule, persona, dual-follow CTA, and default prompts. You **review a preview** (Brand incl. both handles, Content Types, Topics, Schedule, Persona) and **Apply** to persist it via the same per-brand preferences store — then refine anything in the individual tabs. **Niche-neutral** (works for any topic) and the **manual path is unchanged**. Powered by `POST /api/ai/setup` with stages `questions` / `generate` / `apply`.
 - **Per-task AI Config — provider + model + fallback chain (per brand)** — **Settings → AI** now configures **three independent task lanes**, each an ordered fallback **chain** of `provider · model` steps that are tried top-to-bottom until one succeeds:
   - **Content** (`contentChain`) — posts, captions, hooks, stories.
   - **Reply** (`replyChain`) — comment + DM auto-replies.
@@ -256,6 +257,9 @@ Settings persist per brand (`lib/preferences.ts`): the **Primary** brand uses th
 | `igHandle` | Instagram `@handle` used in CTAs/watermarks |
 | `ytHandle` / `ytChannelName` | YouTube `@handle` + channel name used in CTAs/outros |
 | `dualFollowCTA` | The dual-account "follow us" CTA text/links |
+
+### AI Setup (`Settings → AI Setup`)
+Set up a whole brand by **describing it**. Groq asks the questions it needs, then generates the full config (brand skin + Instagram/YouTube handles + channel name + dual-follow CTA, content-type labels & which to enable, topic seeds, per-weekday schedule, persona/tone/language, and default prompts). Review the preview, then **Apply** to persist it (per brand) — or refine each area in the tabs below. Toggle to **Manual** for the hand-configured path (unchanged).
 
 ### Content Types (`Settings → Content Types`)
 Rename the **user-facing label** of each fixed content slot (the internal ID is preserved so data never breaks). Labels flow into the generator, cards, and captions.
