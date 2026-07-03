@@ -380,7 +380,9 @@ async function sendViaResend(subject: string, html: string): Promise<void> {
     body: JSON.stringify({
       from:    RESEND_FROM,
       to:      [recipient],
-      subject: `${BRAND_NAME} Alert: ${subject}`,
+      // A leading emoji marks a subject that is already fully formed (digest/
+      // briefing) — everything else gets the brand alert prefix.
+      subject: /^\p{Extended_Pictographic}/u.test(subject) ? subject : `${BRAND_NAME} Alert: ${subject}`,
       html,
     }),
     signal: AbortSignal.timeout(20_000),
@@ -1184,10 +1186,10 @@ export async function sendDailyHealthReport(opts: {
 
 export interface MorningDigestPayload {
   dateLabel:     string;
-  ig?:           { posts24h: number; likes: number; comments: number; reach: number; saves: number; shares: number } | null;
+  ig?:           { posts24h: number; likes: number; comments: number; views?: number; reach: number; saves: number; shares: number } | null;
   igFollowers?:  { count: number; delta: number | null } | null;
   igComments?:   Array<{ author: string; text: string; sentiment?: string | null }> | null;
-  igPublished?:  Array<{ title: string; url?: string | null }> | null;
+  igPublished?:  Array<{ title: string; url?: string | null; kind?: string; likes?: number; comments?: number }> | null;
   yt?:           { videos24h: number; views: number; likes: number; comments: number } | null;
   ytSubscribers?:{ count: number; delta: number | null } | null;
   ytComments?:   Array<{ author: string; text: string; videoTitle?: string }> | null;
@@ -1217,10 +1219,18 @@ export async function sendMorningDigestEmail(p: MorningDigestPayload): Promise<v
   const blocks: string[] = [];
 
   if (p.ig) blocks.push(sec("📸 Instagram — last 24h", statRow([
-    stat("Posts", String(p.ig.posts24h)), stat("Likes", String(p.ig.likes)), stat("Comments", String(p.ig.comments)),
-  ]) + statRow([ stat("Reach", String(p.ig.reach)), stat("Saves", String(p.ig.saves)), stat("Shares", String(p.ig.shares)) ])));
+    stat("Posts", String(p.ig.posts24h)), stat("Views", String(p.ig.views ?? 0)), stat("Likes", String(p.ig.likes)),
+  ]) + statRow([ stat("Comments", String(p.ig.comments)), stat("Reach", String(p.ig.reach)), stat("Saves", String(p.ig.saves)) ])));
   if (p.igFollowers) blocks.push(sec("👥 Instagram followers", statRow([ stat("Followers", String(p.igFollowers.count)), stat("Change (24h)", p.igFollowers.delta == null ? "—" : (p.igFollowers.delta >= 0 ? `+${p.igFollowers.delta}` : String(p.igFollowers.delta))) ])));
-  if (p.igPublished?.length) blocks.push(sec("🆕 Published to Instagram", p.igPublished.map((x) => li(x.url ? `<a href="${esc(x.url)}" style="color:#8ab4ff;text-decoration:none">${esc(x.title)}</a>` : esc(x.title))).join("")));
+  if (p.igPublished?.length) blocks.push(sec("🆕 Published to Instagram", p.igPublished.map((x) => {
+    // Colored content-type chip (REEL / STORY / CAROUSEL / POST) + linked title + live ❤/💬.
+    const k = (x.kind || "POST").toUpperCase();
+    const c = k === "REEL" ? "#E1306C" : k === "STORY" ? "#FCAF45" : k === "CAROUSEL" ? "#833AB4" : "#8ab4ff";
+    const chip = `<span style="display:inline-block;background:${c}22;border:1px solid ${c}55;color:${c};border-radius:6px;padding:1px 7px;font-size:10px;font-weight:800;letter-spacing:.5px;margin-right:8px">${esc(k)}</span>`;
+    const titleHtml = x.url ? `<a href="${esc(x.url)}" style="color:#fff;text-decoration:none;font-weight:600">${esc(x.title)}</a>` : `<span style="color:#fff;font-weight:600">${esc(x.title)}</span>`;
+    const metrics = (typeof x.likes === "number" || typeof x.comments === "number") ? `<span style="color:#9aa7b8;font-size:12px">&nbsp;·&nbsp; ❤️ ${x.likes ?? 0}&nbsp;&nbsp;💬 ${x.comments ?? 0}</span>` : "";
+    return li(`${chip}${titleHtml}${metrics}`);
+  }).join("")));
   if (p.igComments?.length) blocks.push(sec(`💬 New Instagram comments (${p.igComments.length})`, p.igComments.slice(0, 15).map((c) => commentLi(c.author, c.text, c.sentiment ?? undefined)).join("")));
 
   if (p.yt) blocks.push(sec("▶️ YouTube — last 24h", statRow([
@@ -1248,7 +1258,7 @@ export async function sendMorningDigestEmail(p: MorningDigestPayload): Promise<v
     ctaLabel:    "Open Dashboard",
     ctaUrl:      APP_URL,
   });
-  await sendEmail("Morning Digest", html, "morning_digest", true /* skip rate limit */);
+  await sendEmail(`☀️ Morning Digest — ${p.dateLabel}`, html, "morning_digest", true /* skip rate limit */);
 }
 
 // ════════════════════════════════════════════════════════════════════════════════

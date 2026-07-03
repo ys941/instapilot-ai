@@ -103,22 +103,67 @@ export async function collectDigest(cfg: MorningDigestSettings): Promise<Morning
   const p: MorningDigestPayload = { dateLabel };
 
   // ── Instagram posts published in last 24h (for insights / published / top) ──
-  let igPosts: any[] = [];
+  // IG content is published as ScheduledPost rows (Reels/Stories usually have NO
+  // linked Post record — postId NULL — and the Post rows that do exist are the
+  // YouTube pipeline's, platform "youtube"), so the old Post-table query matched
+  // nothing and the section rendered empty. Collect every row with a real
+  // instagramPostId instead, then pull LIVE metrics from the Graph API so the
+  // numbers are correct at send time (the local analytics relation is never synced).
+  type IgItem = { title: string; kind: string; mediaId: string; likes: number; comments: number; views: number; reach: number; saves: number; shares: number; url: string | null };
+  const igItems: IgItem[] = [];
   try {
-    igPosts = await prisma.post.findMany({
-      where: { status: "PUBLISHED", publishedAt: { gte: since }, platform: { in: ["instagram", "both"] } },
-      include: { analytics: true }, orderBy: { publishedAt: "desc" },
+    const seen = new Set<string>();
+    const sps = await prisma.scheduledPost.findMany({
+      where: { status: "PUBLISHED", publishedAt: { gte: since }, instagramPostId: { not: null } },
+      orderBy: { publishedAt: "desc" }, take: 20,
+      select: { title: true, postType: true, instagramPostId: true },
     });
+    for (const s of sps) {
+      if (!s.instagramPostId || seen.has(s.instagramPostId)) continue;
+      seen.add(s.instagramPostId);
+      igItems.push({ title: s.title, kind: s.postType || "POST", mediaId: s.instagramPostId, likes: 0, comments: 0, views: 0, reach: 0, saves: 0, shares: 0, url: null });
+    }
+    const posts = await prisma.post.findMany({
+      where: { status: "PUBLISHED", publishedAt: { gte: since }, instagramPostId: { not: null } },
+      orderBy: { publishedAt: "desc" }, take: 20,
+      select: { title: true, type: true, instagramPostId: true },
+    });
+    for (const x of posts) {
+      if (!x.instagramPostId || seen.has(x.instagramPostId)) continue;
+      seen.add(x.instagramPostId);
+      igItems.push({ title: x.title, kind: String(x.type || "POST"), mediaId: x.instagramPostId, likes: 0, comments: 0, views: 0, reach: 0, saves: 0, shares: 0, url: null });
+    }
   } catch { /* best-effort */ }
 
-  if (cfg.igInsights) {
-    const s = igPosts.reduce((a, x) => { const an = x.analytics; return {
-      likes: a.likes + (an?.likes || 0), comments: a.comments + (an?.comments || 0),
-      reach: a.reach + (an?.reach || 0), saves: a.saves + (an?.saves || 0), shares: a.shares + (an?.shares || 0),
-    }; }, { likes: 0, comments: 0, reach: 0, saves: 0, shares: 0 });
-    p.ig = { posts24h: igPosts.length, ...s };
+  // Live per-media metrics. Per-item try/catch: STORY media rejects like_count and
+  // expires after 24h — a 400 there must not blank the Reels' numbers.
+  const igTok = process.env.INSTAGRAM_ACCESS_TOKEN?.trim();
+  if (igTok && igItems.length) {
+    for (const it of igItems.slice(0, 12)) {
+      try {
+        const r = await fetch(`https://graph.facebook.com/v25.0/${it.mediaId}?fields=like_count,comments_count,permalink&access_token=${igTok}`, { signal: AbortSignal.timeout(8000) });
+        const d: any = await r.json();
+        if (!d.error) { it.likes = d.like_count ?? 0; it.comments = d.comments_count ?? 0; it.url = d.permalink ?? null; }
+      } catch { /* keep zeros */ }
+      try {
+        const ir = await fetch(`https://graph.facebook.com/v25.0/${it.mediaId}/insights?metric=views,reach,saved,shares&access_token=${igTok}`, { signal: AbortSignal.timeout(8000) });
+        const idata: any = await ir.json();
+        if (Array.isArray(idata.data)) for (const m of idata.data) {
+          const v = m?.values?.[0]?.value ?? 0;
+          if (m.name === "views") it.views = v; else if (m.name === "reach") it.reach = v; else if (m.name === "saved") it.saves = v; else if (m.name === "shares") it.shares = v;
+        }
+      } catch { /* insights unavailable for this media type — fine */ }
+    }
   }
-  if (cfg.igPublished) p.igPublished = igPosts.map((x) => ({ title: x.title }));
+
+  if (cfg.igInsights) {
+    const s = igItems.reduce((a, x) => ({
+      likes: a.likes + x.likes, comments: a.comments + x.comments, views: a.views + x.views,
+      reach: a.reach + x.reach, saves: a.saves + x.saves, shares: a.shares + x.shares,
+    }), { likes: 0, comments: 0, views: 0, reach: 0, saves: 0, shares: 0 });
+    p.ig = { posts24h: igItems.length, ...s };
+  }
+  if (cfg.igPublished) p.igPublished = igItems.map((x) => ({ title: x.title, url: x.url, kind: x.kind, likes: x.likes, comments: x.comments }));
 
   if (cfg.igComments) {
     try {
@@ -165,7 +210,7 @@ export async function collectDigest(cfg: MorningDigestSettings): Promise<Morning
   // ── Top performer (across IG likes + YT views in the last 24h) ──
   if (cfg.topContent) {
     const cands: Array<{ platform: string; title: string; score: number; metric: string }> = [];
-    const igBest = igPosts.map((x) => ({ platform: "Instagram", title: x.title, score: x.analytics?.likes || 0, metric: `${x.analytics?.likes || 0} likes` })).sort((a, b) => b.score - a.score)[0];
+    const igBest = igItems.map((x) => ({ platform: "Instagram", title: x.title, score: x.likes, metric: `${x.likes} likes` })).sort((a, b) => b.score - a.score)[0];
     const ytBest = yt24.map((v) => ({ platform: "YouTube", title: v.title, score: v.views || 0, metric: `${v.views || 0} views` })).sort((a, b) => b.score - a.score)[0];
     if (igBest) cands.push(igBest); if (ytBest) cands.push(ytBest);
     const best = cands.sort((a, b) => b.score - a.score)[0];
