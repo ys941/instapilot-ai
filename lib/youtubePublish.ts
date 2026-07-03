@@ -209,9 +209,11 @@ function isVideoUrl(url: string): boolean {
   return /\.(mp4|mov|webm|m4v|avi)(\?|#|$)/i.test(url) || url.includes("/video/upload/");
 }
 
-/** Download a URL into a Buffer. Throws on a non-OK response. */
+/** Download a URL into a Buffer. Throws on a non-OK response.
+ *  Runs inside withRenderLock — a hung URL with no timeout would hold the lock
+ *  forever and freeze ALL publishing, so we cap the fetch at 60s. */
 async function fetchUrlToBuffer(url: string): Promise<Buffer> {
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(60_000) });
   if (!res.ok) throw new Error(`Failed to download media (${res.status} ${res.statusText}) from ${url}`);
   const ab = await res.arrayBuffer();
   return Buffer.from(ab);

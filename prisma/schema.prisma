@@ -304,6 +304,7 @@ model ActivityLog {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt(sort: Desc)])  // activity feed — always sorted newest first
+  @@index([action, entity])                  // getUsedTopics hot scan (previously unindexed)
 }
 
 // Singleton preferences row — always id = "singleton"

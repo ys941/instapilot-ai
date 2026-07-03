@@ -22,10 +22,18 @@ export async function GET() {
     results["1_me"] = await r.json();
   } catch (e: any) { results["1_me"] = { error: e.message }; }
 
-  // 2. Check pages
+  // 2. Check pages — strip Page access_token before returning (never echo secrets).
   try {
     const r = await fetch(`${GRAPH_BASE}/me/accounts?access_token=${TOKEN}`);
-    results["2_me_accounts"] = await r.json();
+    const d = await r.json();
+    if (Array.isArray(d?.data)) {
+      d.data = d.data.map((p: any) =>
+        p && typeof p === "object" && "access_token" in p
+          ? { ...p, access_token: p.access_token ? "[REDACTED]" : "[MISSING]" }
+          : p
+      );
+    }
+    results["2_me_accounts"] = d;
   } catch (e: any) { results["2_me_accounts"] = { error: e.message }; }
 
   // 3. Page token

@@ -6,6 +6,7 @@ import { getServerSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveBrandId } from "@/lib/brands";
 import { brandFromQuery } from "@/lib/brandRequest";
+import { validateMediaUrl } from "@/lib/urlSafety";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,12 @@ export async function POST(request: NextRequest) {
       const publicUrl = (body?.mediaUrl ?? "").toString().trim();
       if (!publicUrl) {
         return NextResponse.json({ success: false, error: "No mediaUrl provided" }, { status: 400 });
+      }
+      // SSRF guard: the server later fetches this URL at publish time. Only accept
+      // URLs on the media host-allowlist; reject private/link-local targets.
+      const urlCheck = validateMediaUrl(publicUrl);
+      if (!urlCheck.ok) {
+        return NextResponse.json({ success: false, error: `Rejected mediaUrl: ${urlCheck.reason}` }, { status: 400 });
       }
       const fileType = (body?.fileType ?? "").toString();
       const isVideo  = fileType.startsWith("video/") || /\.(mp4|mov|webm)(\?|$)/i.test(publicUrl);

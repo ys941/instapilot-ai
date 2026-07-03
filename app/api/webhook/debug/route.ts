@@ -204,9 +204,6 @@ export async function GET() {
   // ── 3. App Secret HMAC test ─────────────────────────────────────────────────
   const hmacWorks = appSecret ? testAppSecretHmac(appSecret) : null;
 
-  // ── 4. Effective verify token (fallback) ────────────────────────────────────
-  const effectiveVerifyToken = verifyToken || "instapilot_webhook_token";
-
   // ── 5. App-level webhook subscriptions (correct endpoint) ───────────────────
   // Webhooks are registered at the APP level via GET /{app-id}/subscriptions.
   // This uses an App Access Token (APP_ID|APP_SECRET)  -  no user permissions needed.
@@ -381,7 +378,9 @@ export async function GET() {
       },
       verifyToken: {
         set:            !!verifyToken,
-        effectiveValue: effectiveVerifyToken,
+        // Never echo the token value — expose only whether it is set and whether it
+        // matches the effective (fallback-aware) token used for verification.
+        usingFallback:  !verifyToken,
         note: !verifyToken ? "Using hardcoded fallback  -  set WEBHOOK_VERIFY_TOKEN in .env.local" : "Using env var",
       },
       subscriptions: {

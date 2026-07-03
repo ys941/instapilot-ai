@@ -799,7 +799,10 @@ async function processWebhookEvent(body: {
 // WEBHOOK_DISABLE_SIGNATURE_CHECK=true bypasses HMAC verification.
 // Use ONLY during local dev when you cannot get the correct App Secret.
 // NEVER set this in production -- it allows anyone to spoof events.
-const DISABLE_SIG_CHECK = process.env.WEBHOOK_DISABLE_SIGNATURE_CHECK === "true";
+// Only honoured OUTSIDE production — a bypass flag must never weaken a live deploy.
+const DISABLE_SIG_CHECK =
+  process.env.WEBHOOK_DISABLE_SIGNATURE_CHECK === "true" &&
+  process.env.NODE_ENV !== "production";
 if (DISABLE_SIG_CHECK) {
   console.warn("[Webhook] ⚠️  WEBHOOK_DISABLE_SIGNATURE_CHECK=true is ACTIVE — HMAC verification is bypassed for ALL events. This is UNSAFE for production (anyone can spoof events). Unset it as soon as the App Secret is fixed.");
 }
@@ -850,7 +853,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
       console.log("[Webhook] Signature verified -- processing event");
     } else {
-      console.warn("[Webhook] FACEBOOK_APP_SECRET not set -- skipping signature check");
+      // No secret → we cannot verify ANY payload. Fail CLOSED (mirrors the sibling
+      // /api/webhooks/instagram route): never process unverified events, since
+      // anyone could forge them. Ack 200 so Meta doesn't enter a retry storm.
+      console.warn("[Webhook] ⚠️  FACEBOOK_APP_SECRET NOT SET -- signature CANNOT be verified; REJECTING event (fail-closed). Set FACEBOOK_APP_SECRET to restore webhook processing.");
+      return NextResponse.json({ received: true }, { status: 200 });
     }
 
     const body = JSON.parse(rawBody);

@@ -55,8 +55,10 @@ echo.
 
 :: ── Step 4: Generate Prisma Client + Push Schema ──────────────────────────────
 echo  [4/5] Preparing database...
-call npx prisma generate >nul 2>&1
-call npx prisma db push --accept-data-loss >nul 2>&1
+call npx prisma generate
+:: Schema sync should be a deliberate release step, not silently forced. Dropped
+:: --accept-data-loss (never auto-drop columns) and surface output so failures are visible.
+call npx prisma db push
 echo  [OK] Prisma client generated and schema synced.
 echo.
 

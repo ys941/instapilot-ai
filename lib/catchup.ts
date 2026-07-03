@@ -13,6 +13,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { claimCommentForReply, releaseCommentClaim, markCommentReplied } from "@/lib/commentClaim";
+import { claimDMForReply, releaseDMClaim } from "@/lib/dmClaim";
 import { PostCommentContext, getGrokClient, checkGrokHealth } from "@/lib/grok";
 import { getAIClient, generateJSONResilient } from "@/lib/ai-factory";
 // renderPostToJpeg and renderStoryToJpeg are imported dynamically at call sites
@@ -467,6 +468,32 @@ async function fetchWithRetry(url: string, opts?: RequestInit, retries = 1): Pro
     }
     throw err;
   }
+}
+
+// -- Persist a post/scheduled-post id with a short retry ------------------------
+// After a SUCCESSFUL external publish, the id-persist write MUST survive a
+// transient DB blip. If it were lost, the SP would stay PENDING and the next
+// catchup tick would re-publish → duplicate post. Retry a few times with a small
+// backoff so a momentary connection hiccup doesn't cause a re-publish.
+async function persistWithRetry(
+  fn: () => Promise<unknown>,
+  label: string,
+  attempts = 3,
+): Promise<void> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await fn();
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  // Exhausted retries — surface loudly. The id is already known externally, so a
+  // human/next reconciliation must record it; do NOT silently swallow.
+  console.error(`[Catchup] id-persist FAILED after ${attempts} attempts (${label}):`, lastErr);
+  throw lastErr;
 }
 
 // --- Summary returned to caller -----------------------------------------------
@@ -1286,15 +1313,17 @@ export async function publishOverdueScheduled(
             voiceoverVoice:    yt?.voiceoverVoice ?? "daniel",
             burnCaptions:      yt?.burnCaptions ?? false,
           }, ctx.ytCreds);
-          await prisma.scheduledPost.update({
+          // Publish succeeded externally — persist the id with retry so a transient
+          // DB blip can't drop it and cause a re-publish next tick (duplicate post).
+          await persistWithRetry(() => prisma.scheduledPost.update({
             where: { id: sp.id },
             data:  { status: "PUBLISHED", publishedAt: new Date(), youtubeVideoId: videoId, error: null },
-          });
+          }), `YT sp ${sp.id}`);
           if (sp.postId) {
-            await prisma.post.updateMany({
-              where: { id: sp.postId },
+            await persistWithRetry(() => prisma.post.updateMany({
+              where: { id: sp.postId! },
               data:  { status: "PUBLISHED", youtubeVideoId: videoId, publishedAt: new Date() },
-            });
+            }), `YT post ${sp.postId}`);
           }
           await safeLog({ action: "YOUTUBE_PUBLISHED", entity: "ScheduledPost", entityId: sp.id,
             metadata: { youtubeVideoId: videoId, platform: "youtube", catchup: true,
@@ -1399,14 +1428,16 @@ export async function publishOverdueScheduled(
               console.log(`[Catchup] Carousel SP ${sp.id} already has instagramPostId ${igPostId} — skipping IG publish, reusing it`);
             }
 
-            await prisma.scheduledPost.update({
+            // Publish succeeded externally — persist the id with retry so a transient
+            // DB blip can't drop it and cause a re-publish next tick (duplicate post).
+            await persistWithRetry(() => prisma.scheduledPost.update({
               where: { id: sp.id },
               data:  { status: "PUBLISHED", publishedAt: new Date(), instagramPostId: igPostId, error: null },
-            });
-            await prisma.post.updateMany({
-              where: { id: sp.postId },
+            }), `carousel sp ${sp.id}`);
+            await persistWithRetry(() => prisma.post.updateMany({
+              where: { id: sp.postId! },
               data:  { status: "PUBLISHED", instagramPostId: igPostId, publishedAt: new Date() },
-            });
+            }), `carousel post ${sp.postId}`);
             await safeLog({ action: "POST_PUBLISHED", entity: "ScheduledPost", entityId: sp.id,
               metadata: { igPostId, carousel: true, slides: slideUrls.length, catchup: true } });
 
@@ -1645,16 +1676,18 @@ export async function publishOverdueScheduled(
         console.log(`[Catchup] SP ${sp.id} already has instagramPostId ${igPostId} — skipping IG publish, reusing it`);
       }
 
-      await prisma.scheduledPost.update({
+      // Publish succeeded externally — persist the id with retry so a transient
+      // DB blip can't drop it and cause a re-publish next tick (duplicate post).
+      await persistWithRetry(() => prisma.scheduledPost.update({
         where: { id: sp.id },
         data: { status: "PUBLISHED", publishedAt: new Date(), instagramPostId: igPostId, error: null },
-      });
+      }), `IG sp ${sp.id}`);
 
       if (sp.postId) {
-        await prisma.post.updateMany({
-          where: { id: sp.postId },
+        await persistWithRetry(() => prisma.post.updateMany({
+          where: { id: sp.postId! },
           data: { status: "PUBLISHED", instagramPostId: igPostId, publishedAt: new Date() },
-        });
+        }), `IG post ${sp.postId}`);
       }
 
       // YouTube cross-post ONLY when the post explicitly targets "both"
@@ -1824,7 +1857,7 @@ const YT_COMMENT_CHECK_MS = 2 * 60 * 1000; // throttle floor; actually driven by
 // quota) on back-to-back checks. Refreshed every few minutes, keyed by brandId.
 const _ytVideosCacheByBrand = new Map<string, Awaited<ReturnType<typeof getRecentVideos>>>();
 const _ytVideosCacheAtByBrand = new Map<string, number>();
-const YT_VIDEOS_CACHE_MS = 4 * 60 * 1000; // refresh the video list ~every 4 min
+const YT_VIDEOS_CACHE_MS = 10 * 60 * 1000; // refresh the video list ~every 10 min (longer than the 5-min loop so the cache actually hits)
 
 // Quota guard for nested-reply fetches. Fetching replies for EVERY thread on EVERY
 // 5-min run (up to 20 threads × 5 videos = 100 comments.list calls/run) burned
@@ -2496,11 +2529,21 @@ export async function replyMissedDMs(
             // Only reply to messages received in the last 48 hours
             if (Date.now() - log.createdAt.getTime() > 48 * 60 * 60 * 1000) continue;
 
+            // ATOMIC claim keyed on the inbound message id — same primitive the
+            // webhook + API path use, so those never double-reply this DM.
+            const dmClaimKey = log.entityId ?? senderId;
+            const dmClaimed  = await claimDMForReply(dmClaimKey, { senderId, username: senderUsername, text });
+            if (!dmClaimed) {
+              console.log(`[Catchup] DMs: mid ${dmClaimKey} already claimed by another path — skipping (fallback)`);
+              continue;
+            }
+
             const thread  = [{ from: `@${senderUsername}`, text, time: log.createdAt.toISOString() }];
             const aiReply = (await generateAIDMReply(thread, senderUsername)) ?? dmAutoReply ?? null;
 
             if (!aiReply) {
               console.log(`[Catchup] DMs: No reply for @${senderUsername} -- AI unavailable and no fallback`);
+              await releaseDMClaim(dmClaimKey);
               continue;
             }
 
@@ -2532,6 +2575,8 @@ export async function replyMissedDMs(
                 }
                 errors.push(`DM reply to ${senderUsername}: ${replyData.error.message} (code ${replyData.error.code})`);
                 console.error("[Catchup] DMs: ActivityLog-based reply error:", replyData.error);
+                // Transient send failure — release the claim so a redelivery can retry.
+                await releaseDMClaim(dmClaimKey);
                 continue;
               }
 
@@ -2550,6 +2595,8 @@ export async function replyMissedDMs(
             } catch (err) {
               errors.push(`DM reply (fallback) ${senderUsername}: ${String(err)}`);
               console.error("[Catchup] DMs: ActivityLog-based reply exception:", String(err));
+              // Exception around send — release the claim so a retry can happen.
+              await releaseDMClaim(dmClaimKey);
             }
           }
         }
@@ -2599,12 +2646,22 @@ export async function replyMissedDMs(
         time: m.created_time,
       }));
 
+      // ATOMIC claim keyed on the inbound message id — mirrors the webhook route.
+      // Without this, the webhook path and this poll (or overlapping polls) could
+      // both reply to the same DM. Exactly one caller wins; the rest skip.
+      const dmClaimed = await claimDMForReply(latest.id, { senderId: sender.id, username: senderUsername, text: latest.message });
+      if (!dmClaimed) {
+        console.log(`[Catchup] DMs: mid ${latest.id} already claimed by another path — skipping`);
+        continue;
+      }
+
       try {
         // Generate AI-powered DM reply (fall back to the brand's DM auto-reply)
         const aiReply = (await generateAIDMReply(thread, senderUsername)) ?? dmAutoReply ?? null;
 
         if (!aiReply) {
           console.log(`[Catchup] DMs: Skipping DM to @${senderUsername} -- AI unavailable and no fallback`);
+          await releaseDMClaim(latest.id);
           continue;
         }
 
@@ -2635,6 +2692,8 @@ export async function replyMissedDMs(
           }
           errors.push(`DM reply to ${senderUsername}: ${replyData.error.message} (code ${replyData.error.code})`);
           console.error("[Catchup] DMs: Reply error:", replyData.error);
+          // Transient send failure — release the claim so a redelivery can retry.
+          await releaseDMClaim(latest.id);
           continue;
         }
 
@@ -2661,6 +2720,8 @@ export async function replyMissedDMs(
       } catch (err) {
         errors.push(`DM reply ${senderUsername}: ${String(err)}`);
         console.error("[Catchup] DMs: Reply exception:", String(err));
+        // Exception before/around send — release the claim so a retry can happen.
+        await releaseDMClaim(latest.id);
       }
     }
   } catch (err) {
@@ -4676,6 +4737,10 @@ export async function runDailyHealthCheck(): Promise<boolean> {
 
 // --- Main export --------------------------------------------------------------
 let lastRanAt: Date | null = null;
+// Re-entrancy guard: a run that takes longer than MIN_INTERVAL_MS could overlap
+// the next timer tick and double-publish / double-reply. Only one runCatchup may
+// be in flight at a time; a second concurrent call returns immediately.
+let _catchupInFlight = false;
 // Full loop (publishing + DMs) always runs every 5 min so DMs are never delayed.
 // Comments have their own gate — see COMMENT_POLL_*_MS below.
 // Exported so instrumentation.ts can drive its catch-up setInterval at the SAME
@@ -4694,6 +4759,28 @@ const COMMENT_POLL_WEBHOOK_MS  = 60 * 60 * 1000; // webhook live  → hourly fal
 const COMMENT_POLL_FALLBACK_MS = 300_000;        // webhook silent → poll every 5 min
 
 export async function runCatchup(): Promise<CatchupResult> {
+  // Re-entrancy guard — if a previous run is still going, skip this tick entirely.
+  if (_catchupInFlight) {
+    console.log("[Catchup] Skipped -- a previous run is still in flight (re-entrancy guard)");
+    return {
+      scheduledPublished: 0,
+      scheduledFailed:    0,
+      newComments:        0,
+      commentsReplied:    0,
+      dmsReplied:         0,
+      errors:             [],
+      ranAt:              (lastRanAt ?? new Date()).toISOString(),
+    };
+  }
+  _catchupInFlight = true;
+  try {
+    return await _runCatchupInner();
+  } finally {
+    _catchupInFlight = false;
+  }
+}
+
+async function _runCatchupInner(): Promise<CatchupResult> {
   const now = new Date();
 
   // If Meta rate-limited us, skip entirely until the backoff expires

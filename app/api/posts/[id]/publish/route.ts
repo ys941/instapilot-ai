@@ -18,6 +18,19 @@ import { brandFromQuery, brandFromBody } from "@/lib/brandRequest";
 const GRAPH_API_VERSION = "v25.0";
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 
+// After a SUCCESSFUL external publish, the id-persist write must survive a
+// transient DB blip — otherwise the post looks unpublished and a retry re-posts
+// it (duplicate). Retry a few times with a small backoff.
+async function persistWithRetry(fn: () => Promise<unknown>, label: string, attempts = 3): Promise<void> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try { await fn(); return; }
+    catch (err) { lastErr = err; if (i < attempts - 1) await new Promise((r) => setTimeout(r, 500 * (i + 1))); }
+  }
+  console.error(`[Post Publish] id-persist FAILED after ${attempts} attempts (${label}):`, lastErr);
+  throw lastErr;
+}
+
 // ── Verify a CDN URL actually serves a valid image before giving it to Instagram ──
 // catbox.moe and other free CDNs can return HTML/errors instead of image bytes.
 // Instagram's container will hang at IN_PROGRESS forever if the URL is bad.
@@ -458,14 +471,14 @@ export async function POST(
       try {
         const ytResult = await publishYouTubeShortForPost(post, brandId, ytCreds);
         const now = new Date();
-        await prisma.post.update({
+        await persistWithRetry(() => prisma.post.update({
           where: { id },
           data: {
             status: "PUBLISHED",
             youtubeVideoId: ytResult.videoId,
             publishedAt: now,
           },
-        });
+        }), `YT post ${id}`);
         // Release ALL claimed ScheduledPosts as PUBLISHED with the resulting video id.
         // (This branch returns early, so it must finalize every SP it claimed — the
         // postId-based PUBLISHED cleanup further below only runs on the Instagram path.)
@@ -814,15 +827,20 @@ export async function POST(
 
     const now = new Date();
 
-    // Update post status in DB
-    const updatedPost = await prisma.post.update({
-      where: { id },
-      data: {
-        status: "PUBLISHED",
-        instagramPostId,
-        publishedAt: now,
-      },
-    });
+    // Update post status in DB. Publish already succeeded on Instagram — persist
+    // the id with retry so a transient DB blip can't drop it (which would look
+    // unpublished and cause a re-publish → duplicate post).
+    let updatedPost!: Awaited<ReturnType<typeof prisma.post.update>>;
+    await persistWithRetry(async () => {
+      updatedPost = await prisma.post.update({
+        where: { id },
+        data: {
+          status: "PUBLISHED",
+          instagramPostId,
+          publishedAt: now,
+        },
+      });
+    }, `IG post ${id}`);
 
     // ── Guard: cancel any pending ScheduledPost for this postId ──────────────
     // When a post is uploaded from the media folder, both a Post (status=SCHEDULED)
