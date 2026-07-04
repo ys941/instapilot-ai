@@ -77,7 +77,7 @@ function isOwnComment(c: { username?: string; from?: { id?: string; username?: s
 
 const DM_AUTO_REPLY =
   process.env.DM_AUTO_REPLY ??
-  "👋 Thanks for reaching out! We've received your message and will get back to you shortly.";
+  "Hey! Thanks for the message 🙂 I'll get back to you soon.";
 
 // -- Extract correct answer from quiz content ----------------------------------
 function extractCorrectAnswer(content: string): { letter: string; text: string } | null {
@@ -4130,9 +4130,9 @@ export async function runAutoGenerateYouTube(ctxArg?: BrandContext): Promise<Gen
         `\n\nDURATION — SIZE THE NARRATED CONTENT TO ≈${plan.target} SECONDS (critical):
 This Short must run about ${plan.target} seconds when the "content" card text is read aloud.
 - Write EXACTLY ${plan.points} content point(s) in the "content" field — no more, no fewer. This point count OVERRIDES any point count (e.g. "~5-7 points" or similar) mentioned in the IMAGE-CARD REQUIREMENT above.
-- Each point is ONE punchy, high-impact spoken line of ≤ ${plan.wordsPerPoint} spoken words.
+- Each point is ONE COMPLETE, beautifully-written sentence of about ${Math.max(9, plan.wordsPerPoint - 4)}–${plan.wordsPerPoint} words — smooth, vivid and high-impact, that flows when read aloud (NOT a terse fragment or a bare "42% of people…" stat). Weave the specific number/stat naturally INTO a real sentence with a subject and verb, and make it genuinely pleasant to read.
 - The WHOLE narration (hook + the ${plan.points} points + CTA) should total ≈ ${plan.totalWords} words.
-- A shorter target means FEWER, PUNCHIER points — keep every line tight, concrete, and worth saying. This is a SOFT target: a genuinely rich point may run slightly over, but do NOT pad or add filler to hit the number.
+- Fewer points is fine for a shorter target, but every point must be a full, polished sentence — concrete, elegant, and worth saying. This is a SOFT target: a genuinely rich point may run slightly over; do NOT pad with filler, but DO write in complete sentences rather than clipped fragments.
 - This duration budget applies ONLY to the narrated card "content". The "caption" field can stay rich, long, and detailed as specified below — do NOT shorten the caption to fit the duration.`;
 
       try {

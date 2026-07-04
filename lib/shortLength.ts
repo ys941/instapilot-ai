@@ -45,7 +45,11 @@ export function shortPlan(target?: unknown): ShortPlan {
   const points = POINTS_FOR[t] ?? 4;
   const totalWords   = Math.round(t * WPS);
   const contentWords = Math.max(points * 6, totalWords - 8 /*hook*/ - 10 /*cta*/);
-  const wordsPerPoint = Math.max(6, Math.round(contentWords / points));
+  // Each point is a COMPLETE, beautifully-written sentence (not a terse stat
+  // fragment), so give a fuller per-point budget: floor 11, +2 headroom, capped at
+  // 18 so the longer targets still land near their duration (renderer soft-caps at
+  // maxSecs). This is the default that makes cards read like real sentences.
+  const wordsPerPoint = Math.min(18, Math.max(11, Math.round(contentWords / points) + 2));
   const perCardSecs   = Math.max(2, Math.round(contentSecs / points));
   // Soft target: allow ~30% slack over the target, but never beyond the ~180s Shorts cap.
   const maxSecs = Math.min(178, Math.round(t * 1.3));

@@ -95,7 +95,7 @@ async function generateRichCaption(post: RichCaptionPost, brand: BrandConfig): P
     // explicitly NOT reveal which option is correct (the answer lives in comments).
     const learnSection = quiz
       ? `3. "🔑 The challenge:" then present the question and each answer option on its own line with a number emoji (1️⃣ 2️⃣ 3️⃣ …). DO NOT reveal, hint at, or imply which option is correct — the answer is revealed later in the comments. Frame it as a test for the viewer.`
-      : `3. "🔑 What you'll learn:" then expand EVERY key point (aim for 6-8) into its own line, each starting with a number emoji (1️⃣ 2️⃣ 3️⃣ …) — a full, accurate 1-2 sentence explanation with the specific stat/number, the mechanism, AND why it matters.`;
+      : `3. "🔑 What you'll learn:" then expand the key points into AT LEAST 5 (ideally 6-8) lines, each starting with a number emoji (1️⃣ 2️⃣ 3️⃣ …) — a full, accurate 1-2 sentence explanation. EVERY line MUST contain a concrete number, percentage, or statistic (e.g. "reduces risk by 24%", "raises the odds 4.5-fold"), the mechanism, AND why it matters. Never write a point without a specific figure.`;
     const ctaSection = quiz
       ? `5. A warm, energetic call to action that invites following on BOTH platforms: ▶️ Subscribe on YouTube ${ytH} AND 📸 Follow on Instagram ${igH} for daily ${brand.niche}, 💬 drop your answer (A/B/C/D) in the comments, 💾 Save this for later, and ❤️ Share this.`
       : `5. A warm, energetic call to action that BOTH grows the audience AND drives engagement (engagement = reach): ▶️ Subscribe on YouTube ${ytH} AND 📸 Follow on Instagram ${igH} for daily ${brand.niche}, 💾 Save this for later, ❤️ Share this with someone who needs it, 👇 Tag someone who needs to see this, and 💬 ask ONE specific question the viewer can answer in a word or two to spark comments.`;
@@ -106,8 +106,14 @@ async function generateRichCaption(post: RichCaptionPost, brand: BrandConfig): P
 POST TYPE: ${post.type}
 TITLE: ${post.title}
 HOOK: ${post.hook ?? ""}
-KEY POINTS / CONTENT:
+KEY POINTS / CONTENT (these are the EXACT points shown on the video cards — your caption MUST explain THESE, expanding every one):
 ${contentSource}
+
+CRITICAL FIDELITY RULES:
+- Cover EVERY key point above — one caption line per card point, in the same order.
+- Use the EXACT statistic/number from each point. NEVER invent, change, round, or substitute a different figure. If a point says "43%", the caption says "43%".
+- Do not skip a number in the sequence (no jumping ①②③⑤). Do not add points that aren't in the content.
+- Then ADD depth to each: the mechanism (why/how it happens) and why it matters for the viewer — but keep the card's own fact intact.
 ${quiz ? "\nIMPORTANT: This is a QUIZ post. NEVER state, reveal, or hint at the correct answer anywhere in the caption — the answer is only revealed later in the comments.\n" : ""}
 Structure it EXACTLY like this, with real line breaks between sections and tasteful emojis:
 1. An opening HOOK line with a relevant emoji — 1 punchy sentence that stops the scroll.
@@ -125,13 +131,25 @@ Tone: authoritative but warm and accessible — like a brilliant expert who's a 
     // Tier order: Gemini FLASH → Grok → Gemini REASONING (the slow "thinking"
     // models are the last resort, AFTER Grok). Centralized in ai-factory.
     const { generateTextResilient } = await import("@/lib/ai-factory");
-    // Generous token budget so the caption NEVER truncates mid-sentence (was 2000).
-    // Validator: reject a thin/truncated tier result (<300 chars) so the next tier
-    // (Grok) is tried instead of shipping a degraded caption.
-    const out = await generateTextResilient(prompt, system, 4000,
-      (t) => t.replace(/\*\*/g, "").trim().length >= 300);
+    // Quality gate. The TARGET is ~380-480 words (~2000+ chars) with a numbered
+    // key-points body (see the reference style). Demand a genuinely FULL caption from
+    // each tier — length AND at least 3 numbered points — so a thin/degraded provider
+    // is SKIPPED and the next tier is tried. This is what keeps captions "full and
+    // detailed" instead of shipping a 2-line stub when one provider returns short.
+    // Count numbered points in ANY style the models use: circled ①-⑳ (U+2460-2473),
+    // keycap 1️⃣, or plain "1." / "2)" at line start.
+    const numberedCount = (t: string) => (t.match(/[①-⑳]|\d️?⃣|^\s*\d+[.)]\s/gm) || []).length;
+    const richEnough = (t: string) => {
+      const c = t.replace(/\*\*/g, "").trim();
+      return c.length >= 1100 && numberedCount(c) >= 3;
+    };
+    // Generous token budget so the caption NEVER truncates mid-sentence.
+    const out = await generateTextResilient(prompt, system, 4000, richEnough);
     const clean = (out ?? "").replace(/\*\*/g, "").replace(/^#+\s.*$/gm, "").trim();
-    if (clean.length >= 300) {
+    // Accept any substantial AI caption over the deterministic fallback — the strict
+    // validator above already pushed the chain toward the fullest tier; this floor
+    // (500 chars) only guards against an all-tiers-thin day.
+    if (clean.length >= 500) {
       return clean;
     }
     console.warn(`[RichCaption] AI caption too short (${clean.length} chars) — using beautiful-caption fallback`);
