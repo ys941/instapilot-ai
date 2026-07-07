@@ -157,7 +157,7 @@ function SkeletonBlock({ rows = 3 }: { rows?: number }) {
 }
 
 const panelStyle: React.CSSProperties = {
-  background:      "rgba(17,17,24,0.8)",
+  background:      "rgb(var(--surface-rgb) / 0.8)",
   backdropFilter:  "blur(20px)",
   border:          "1px solid rgba(255,255,255,0.07)",
 };
@@ -205,7 +205,7 @@ function AccountTab() {
 
   return (
     <div className="space-y-5">
-      <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Account Settings</h3>
+      <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>Account Settings</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <GlassInput label="Full Name"      value={name}  onChange={setName}  placeholder="Your name" />
         <GlassInput label="Email Address"  type="email"  value={email} onChange={setEmail} placeholder="you@example.com" />
@@ -445,7 +445,7 @@ function AccountsTab() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Accounts</h3>
+          <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>Accounts</h3>
           <p className="text-xs text-white/40 mt-0.5">
             Manage the Instagram + YouTube accounts (brands) this dashboard controls.
           </p>
@@ -684,7 +684,7 @@ function InstagramTab() {
 
   return (
     <div className="space-y-5">
-      <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Instagram Connection</h3>
+      <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>Instagram Connection</h3>
 
       <div className={cn("rounded-xl p-4 border flex items-start gap-3",
         tokenValid === true  ? "bg-emerald-500/5 border-emerald-500/20"
@@ -860,12 +860,12 @@ function LaneEditor({
       <p className="text-xs text-white/40">{subtitle}</p>
 
       {/* Primary provider buttons */}
-      <div className="flex gap-3">
+      <div className="flex gap-2 sm:gap-3">
         {providers.map((p) => (
           <motion.button key={p} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
             onClick={() => pickPrimaryProvider(p)}
             className={cn(
-              "flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all",
+              "flex-1 min-w-0 truncate py-2.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all",
               chain.provider === p ? activeBtn : "border-white/[0.08] text-white/40 hover:text-white/70",
             )}
           >
@@ -893,14 +893,14 @@ function LaneEditor({
         <p className="text-[11px] text-white/30 italic">No fallbacks — only the primary is used.</p>
       )}
       {chain.fallbacks.map((f, i) => (
-        <div key={i} className="flex items-center gap-2 rounded-lg p-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg p-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
           <span className="text-[10px] text-white/30 w-4 text-center">{i + 1}</span>
           <select value={f.provider} onChange={(e) => setFbProvider(i, e.target.value as AIProvider)}
-            className="px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            className="min-w-0 px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
             {providers.map((p) => <option key={p} value={p} style={{ background: OPT_BG }}>{labelFor(p)}</option>)}
           </select>
           <select value={f.model} onChange={(e) => setFbModel(i, e.target.value)}
-            className="flex-1 px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            className="flex-1 min-w-[120px] px-2 py-1.5 rounded-lg text-xs text-white outline-none" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
             {modelsFor(f.provider).map((m) => <option key={m} value={m} style={{ background: OPT_BG }}>{m}</option>)}
           </select>
           <button onClick={() => moveFallback(i, -1)} disabled={i === 0} className="text-white/40 hover:text-white disabled:opacity-20 px-1">↑</button>
@@ -994,7 +994,7 @@ function AiTab() {
 
   return (
     <div className="space-y-5">
-      <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>AI Configuration</h3>
+      <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>AI Configuration</h3>
       <p className="text-xs text-white/40 -mt-3">
         Configure each task lane independently — pick its primary provider + model and an ordered fallback chain.
         Switching a lane&apos;s primary provider auto-seeds a sensible default chain you can then tweak.
@@ -1223,7 +1223,7 @@ function PromptsTab() {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>AI Prompt Editor</h3>
+        <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>AI Prompt Editor</h3>
         <p className="text-xs text-white/35 mt-1 leading-relaxed">
           Customize the system instructions for each post type. Your prompt is appended after the base brand voice context. Leave blank to use the built-in default.
         </p>
@@ -1740,7 +1740,7 @@ function AutoPostTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Auto-Post Settings</h3>
+        <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>Auto-Post Settings</h3>
         <p className="text-xs text-white/35 mt-1 leading-relaxed">
           Automatically generate and schedule posts on a recurring basis. Posts are saved as drafts (or published) at your chosen times.
         </p>
@@ -2108,7 +2108,7 @@ function StoriesTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Stories Settings</h3>
+        <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>Stories Settings</h3>
         <p className="text-xs text-white/35 mt-1 leading-relaxed">
           Auto-generate and post one Instagram Story per day. Stories focus on quick, helpful tips for your audience.
         </p>
@@ -2330,7 +2330,7 @@ function NotificationsTab() {
 
   return (
     <div className="space-y-5">
-      <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Notification Preferences</h3>
+      <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>Notification Preferences</h3>
 
       {/* Alert email address */}
       <div className="rounded-xl p-4 space-y-3" style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.15)" }}>
@@ -2396,7 +2396,7 @@ function AppearanceTab() {
 
   return (
     <div className="space-y-5">
-      <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Appearance</h3>
+      <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>Appearance</h3>
       <p className="text-xs text-white/40 -mt-2">Pick a theme — it applies across the whole app instantly and is remembered on this device.</p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -2481,7 +2481,7 @@ function MorningDigestTab() {
 
   return (
     <div className="space-y-5">
-      <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Morning Digest</h3>
+      <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>Morning Digest</h3>
       <p className="text-xs text-white/40 leading-relaxed -mt-2">
         One email each morning summarising the <strong className="text-white/60">last 24 hours</strong> across Instagram & YouTube. Turn it on, pick a send time, and choose exactly what to include.
       </p>
@@ -2634,7 +2634,7 @@ function DangerTab() {
 
   return (
     <div className="space-y-5">
-      <h3 className="text-base font-bold text-red-400" style={{ fontFamily: "Sora, sans-serif" }}>Danger Zone</h3>
+      <h3 className="text-base font-bold text-red-400" style={{ fontFamily: "var(--font-sora), sans-serif" }}>Danger Zone</h3>
       <p className="text-sm text-white/40 -mt-2">These actions are permanent and cannot be undone. A confirmation dialog will appear before each action.</p>
 
       <div className="space-y-3">
@@ -2800,7 +2800,7 @@ function YouTubeTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>YouTube Settings</h3>
+        <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>YouTube Settings</h3>
         <p className="text-xs text-white/35 mt-1 leading-relaxed">
           Mirror every published post to YouTube as a vertical <strong className="text-white/50">Short</strong>.
           The same card images are stitched into a 1080×1920 video and uploaded automatically — on the same schedule as Instagram.
@@ -3308,7 +3308,7 @@ function WebhookTab() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Webhook Status</h3>
+          <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>Webhook Status</h3>
           <p className="text-xs text-white/35 mt-1 leading-relaxed">
             Real-time diagnostic  -  checks if Meta can deliver comment &amp; DM events to your server.
           </p>
@@ -3736,7 +3736,7 @@ function BrandTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Brand</h3>
+        <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>Brand</h3>
         <p className="text-xs text-white/35 mt-1 leading-relaxed">
           White-label the entire app — name, voice, persona, colours and content topics. These settings re-skin the dashboard and steer how the AI writes for this account.
         </p>
@@ -3943,7 +3943,7 @@ function ContentTypesTab() {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Content Types</h3>
+        <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>Content Types</h3>
         <p className="text-xs text-white/35 mt-1 leading-relaxed">
           Rename, describe, enable/disable, and give a custom AI prompt to each content slot. These labels appear throughout the app and steer generation for this account.
         </p>
@@ -4184,7 +4184,7 @@ function AiSetupTab({ onGoToTab }: { onGoToTab: (id: string) => void }) {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>AI Setup</h3>
+        <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>AI Setup</h3>
         <p className="text-xs text-white/40 mt-0.5">
           Describe the brand you want — the AI asks a few questions, then fills your whole config
           (brand, content types, topics, schedule, persona, and both your Instagram + YouTube handles).
@@ -4495,18 +4495,18 @@ export default function SettingsPage() {
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl mx-auto">
       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6">
         {/* Sidebar */}
-        <div className="rounded-2xl p-3 h-fit" style={panelStyle}>
+        <div className="rounded-2xl p-3 h-fit flex gap-2 overflow-x-auto lg:flex-col lg:gap-0 lg:overflow-visible" style={panelStyle}>
           {tabs.map((tab) => (
             <motion.button
               key={tab.id}
               whileHover={{ x: 2 }}
               onClick={() => selectTab(tab.id)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mb-1 last:mb-0",
+                "flex-shrink-0 whitespace-nowrap flex items-center gap-2 lg:gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all lg:w-full lg:mb-1 lg:last:mb-0",
                 activeTab === tab.id
                   ? tab.id === "danger"
                     ? "bg-red-500/20 text-red-300 border border-red-500/20"
-                    : "bg-gradient-to-r from-brand/20 to-brand-light/10 text-white border border-red-500/20"
+                    : "bg-gradient-to-r from-brand/20 to-brand-light/10 text-white border border-brand/20"
                   : tab.id === "danger"
                   ? "text-red-400/60 hover:text-red-400 hover:bg-red-500/5"
                   : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
@@ -4533,12 +4533,12 @@ export default function SettingsPage() {
           ))}
 
           {/* Sign Out */}
-          <div className="mt-3 pt-3 border-t border-white/[0.06]">
+          <div className="flex-shrink-0 lg:mt-3 lg:pt-3 lg:border-t border-white/[0.06]">
             <motion.button
               whileHover={{ x: 2 }}
               onClick={handleSignOut}
               disabled={signingOut}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-red-400/60 hover:text-red-400 hover:bg-red-500/5 disabled:opacity-40"
+              className="flex-shrink-0 whitespace-nowrap flex items-center gap-2 lg:gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-red-400/60 hover:text-red-400 hover:bg-red-500/5 disabled:opacity-40 lg:w-full"
             >
               {signingOut ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
               {signingOut ? "Signing out…" : "Sign Out"}

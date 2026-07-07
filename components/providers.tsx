@@ -45,7 +45,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           toastOptions={{
             duration: 4000,
             style: {
-              background: "rgba(17, 17, 24, 0.95)",
+              background: "rgb(var(--surface-rgb) / 0.95)",
               color: "white",
               border: "1px solid rgba(255, 255, 255, 0.08)",
               backdropFilter: "blur(20px)",
@@ -57,15 +57,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
               maxWidth: "380px",
             },
             success: {
-              iconTheme: { primary: "#E53E3E", secondary: "white" },
-              style: { borderColor: "rgba(229, 62, 62, 0.3)" },
+              iconTheme: { primary: "rgb(var(--accent-rgb))", secondary: "white" },
+              style: { borderColor: "rgb(var(--accent-rgb) / 0.3)" },
             },
             error: {
               iconTheme: { primary: "#FC8181", secondary: "white" },
               style: { borderColor: "rgba(252, 129, 129, 0.3)" },
             },
             loading: {
-              iconTheme: { primary: "#E53E3E", secondary: "transparent" },
+              iconTheme: { primary: "rgb(var(--accent-rgb))", secondary: "transparent" },
             },
           }}
         />

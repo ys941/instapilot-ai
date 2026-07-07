@@ -142,7 +142,7 @@ export default function StatsCard({
       transition={{ duration: 0.2 }}
       className="relative rounded-2xl p-5 overflow-hidden cursor-default"
       style={{
-        background: "rgba(17,17,24,0.8)",
+        background: "rgb(var(--surface-rgb) / 0.8)",
         backdropFilter: "blur(20px)",
         border: `1px solid rgba(255,255,255,0.07)`,
       }}
@@ -173,7 +173,7 @@ export default function StatsCard({
           </p>
           <div
             className="text-2xl font-bold text-white mb-2"
-            style={{ fontFamily: "Sora, sans-serif" }}
+            style={{ fontFamily: "var(--font-sora), sans-serif" }}
           >
             {animateValue && typeof value === "number" ? (
               <AnimatedNumber

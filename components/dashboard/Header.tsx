@@ -69,7 +69,7 @@ function Toast({ notif, onClose }: { notif: LiveNotification; onClose: () => voi
       exit={{    opacity: 0, x: 80, scale: 0.95 }}
       transition={{ type: "spring", bounce: 0.3 }}
       className="fixed bottom-6 right-6 z-[9999] flex items-start gap-3 px-4 py-3 rounded-2xl border border-white/10 shadow-2xl max-w-xs"
-      style={{ background: "rgba(17,17,24,0.98)", backdropFilter: "blur(24px)" }}
+      style={{ background: "rgb(var(--surface-rgb) / 0.98)", backdropFilter: "blur(24px)" }}
     >
       <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center mt-0.5">
         <NotifIcon type={notif.type} />
@@ -197,7 +197,7 @@ export default function Header({
       <header
         className="sticky top-0 z-40 flex items-center justify-between px-4 lg:px-8 h-16 border-b border-white/[0.05]"
         style={{
-          background: "rgba(10,10,15,0.8)",
+          background: "rgb(var(--bg-rgb) / 0.8)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
         }}
@@ -223,7 +223,7 @@ export default function Header({
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <h1 className="text-base lg:text-lg font-bold text-white leading-none" style={{ fontFamily: "Sora, sans-serif" }}>
+            <h1 className="text-base lg:text-lg font-bold text-white leading-none" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
               {pageInfo.title}
             </h1>
             {pageInfo.subtitle && (
@@ -303,15 +303,15 @@ export default function Header({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.96 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-12 w-80 rounded-2xl border border-white/[0.08] overflow-hidden z-50"
+                  className="absolute right-0 top-12 w-80 rounded-2xl border border-white/[0.08] overflow-hidden z-[60]"
                   style={{
-                    background: "rgba(17,17,24,0.98)",
+                    background: "rgb(var(--surface-rgb) / 0.98)",
                     backdropFilter: "blur(24px)",
                     boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
                   }}
                 >
                   <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-                    <span className="text-sm font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
+                    <span className="text-sm font-semibold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
                       Notifications
                     </span>
                     {unreadCount > 0 && (
@@ -394,9 +394,9 @@ export default function Header({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.96 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-12 w-48 rounded-xl border border-white/[0.08] overflow-hidden z-50"
+                  className="absolute right-0 top-12 w-48 rounded-2xl border border-white/[0.08] overflow-hidden z-[60]"
                   style={{
-                    background: "rgba(17,17,24,0.98)",
+                    background: "rgb(var(--surface-rgb) / 0.98)",
                     backdropFilter: "blur(24px)",
                     boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
                   }}

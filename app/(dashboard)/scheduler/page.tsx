@@ -311,7 +311,7 @@ function ScheduleModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
+          <h3 className="text-lg font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
             {isEdit ? "Edit Scheduled Post" : "Schedule New Post"}
           </h3>
           <button onClick={onClose}
@@ -692,7 +692,7 @@ export default function SchedulerPage() {
   };
 
   const panelStyle: React.CSSProperties = {
-    background:     "rgba(17,17,24,0.85)",
+    background:     "rgb(var(--surface-rgb) / 0.85)",
     backdropFilter: "blur(20px)",
     border:         "1px solid rgba(255,255,255,0.07)",
   };
@@ -721,7 +721,7 @@ export default function SchedulerPage() {
           >
             <ChevronLeft size={14} />
           </button>
-          <h2 className="text-lg font-bold text-white min-w-[160px] text-center" style={{ fontFamily: "Sora, sans-serif" }}>
+          <h2 className="text-lg font-bold text-white min-w-[160px] text-center" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
             {MONTH_NAMES[month]} {year}
           </h2>
           <button
@@ -797,6 +797,9 @@ export default function SchedulerPage() {
 
         {/* ── Calendar ───────────────────────────────────────────────────────── */}
         <div className="rounded-2xl p-5" style={panelStyle}>
+          {/* Calendar scrolls horizontally on small screens so all 7 columns stay legible */}
+          <div className="overflow-x-auto -mx-2 px-2">
+          <div className="min-w-[600px]">
           {/* Day-of-week headers */}
           <div className="grid grid-cols-7 mb-2">
             {DAY_NAMES.map((d) => (
@@ -828,6 +831,8 @@ export default function SchedulerPage() {
               ))}
             </div>
           )}
+          </div>
+          </div>
 
           {/* Legend */}
           <div className="mt-4 pt-4 border-t border-white/[0.05] flex flex-wrap gap-3">
@@ -853,7 +858,7 @@ export default function SchedulerPage() {
             <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Calendar size={14} className="text-white/40" />
-                <span className="text-sm font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
+                <span className="text-sm font-semibold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
                   {selectedDay
                     ? `${MONTH_NAMES[month]} ${selectedDay}`
                     : "Select a day"}
@@ -916,7 +921,7 @@ export default function SchedulerPage() {
           <div className="rounded-2xl overflow-hidden" style={panelStyle}>
             <div className="px-4 py-3 border-b border-white/[0.06] flex items-center gap-2">
               <List size={14} className="text-white/40" />
-              <span className="text-sm font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
+              <span className="text-sm font-semibold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
                 Upcoming
               </span>
               <span className="ml-auto text-xs text-white/30">

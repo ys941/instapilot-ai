@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Sora } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import PWARegister from "@/components/PWARegister";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -54,10 +55,21 @@ export const metadata: Metadata = {
     description: BRAND_TAGLINE,
   },
   icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon-16x16.png",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
     apple: "/apple-touch-icon.png",
   },
+  // Installable as a standalone web app on iOS/Safari ("Add to Home Screen").
+  appleWebApp: {
+    capable: true,
+    title: BRAND_NAME,
+    statusBarStyle: "black-translucent",
+  },
+  applicationName: BRAND_NAME,
   robots: {
     index: false,
     follow: false,
@@ -82,7 +94,8 @@ export default function RootLayout({
       className={`dark ${inter.variable} ${sora.variable}`}
       suppressHydrationWarning
     >
-      <body className="antialiased bg-[#0A0A0F] text-white min-h-screen">
+      <body className="antialiased bg-appbg text-white min-h-screen">
+        <PWARegister />
         <Providers>{children}</Providers>
       </body>
     </html>

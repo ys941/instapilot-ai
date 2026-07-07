@@ -107,7 +107,7 @@ function typeLabel(t: string): string {
 }
 
 const glassCard: React.CSSProperties = {
-  background: "rgba(17,17,24,0.8)",
+  background: "rgb(var(--surface-rgb) / 0.8)",
   backdropFilter: "blur(20px)",
   border: "1px solid rgba(255,255,255,0.07)",
 };
@@ -259,7 +259,7 @@ function PreviewModal({ post, onClose, onDelete, onPublish, onSchedule, isPublis
           <div className="flex-1 min-w-0 space-y-4">
             <div>
               <label className="text-[10px] text-white/30 uppercase tracking-wider font-medium">Title</label>
-              <h2 className="text-lg font-bold text-white mt-1 leading-snug" style={{ fontFamily: "Sora, sans-serif" }}>
+              <h2 className="text-lg font-bold text-white mt-1 leading-snug" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
                 {post.title}
               </h2>
             </div>
@@ -627,14 +627,14 @@ export default function ContentLibraryPage() {
             onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
             placeholder="Search posts..."
             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-all"
-            style={{ background: "rgba(17,17,24,0.8)", border: "1px solid rgba(255,255,255,0.08)" }}
+            style={{ background: "rgb(var(--surface-rgb) / 0.8)", border: "1px solid rgba(255,255,255,0.08)" }}
             onFocus={(e) => { e.target.style.borderColor = "rgb(var(--accent-rgb) / 0.4)"; }}
             onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.08)"; }}
           />
         </div>
 
         {/* Status filter */}
-        <div className="flex rounded-xl overflow-hidden border border-white/[0.08]" style={{ background: "rgba(17,17,24,0.8)" }}>
+        <div className="flex rounded-xl overflow-hidden border border-white/[0.08]" style={{ background: "rgb(var(--surface-rgb) / 0.8)" }}>
           {(["ALL", "PUBLISHED", "SCHEDULED", "DRAFT", "FAILED"] as const).map((s) => (
             <button
               key={s}
@@ -652,7 +652,7 @@ export default function ContentLibraryPage() {
         {/* Type filter */}
         <div
           className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/[0.08]"
-          style={{ background: "rgba(17,17,24,0.8)" }}
+          style={{ background: "rgb(var(--surface-rgb) / 0.8)" }}
         >
           <select
             value={typeFilter}
@@ -673,14 +673,14 @@ export default function ContentLibraryPage() {
           onClick={() => refetch()}
           disabled={isFetching}
           className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs text-white/40 hover:text-white border border-white/[0.08] hover:border-white/[0.15] transition-all disabled:opacity-40"
-          style={{ background: "rgba(17,17,24,0.8)" }}
+          style={{ background: "rgb(var(--surface-rgb) / 0.8)" }}
         >
           <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
           Refresh
         </button>
 
         {/* View toggle */}
-        <div className="flex rounded-xl overflow-hidden border border-white/[0.08]" style={{ background: "rgba(17,17,24,0.8)" }}>
+        <div className="flex rounded-xl overflow-hidden border border-white/[0.08]" style={{ background: "rgb(var(--surface-rgb) / 0.8)" }}>
           <button
             onClick={() => setViewMode("grid")}
             className={cn("p-2.5 transition-all", viewMode === "grid" ? "bg-brand/20 text-white" : "text-white/30 hover:text-white/60")}

@@ -95,7 +95,7 @@ function minScheduleValue() {
 type Platform = "instagram" | "youtube" | "both";
 
 const glassCard: React.CSSProperties = {
-  background:     "rgba(17,17,24,0.8)",
+  background:     "rgb(var(--surface-rgb) / 0.8)",
   backdropFilter: "blur(20px)",
   border:         "1px solid rgba(255,255,255,0.07)",
 };
@@ -496,7 +496,7 @@ export default function MediaFolderPage() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2" style={{ fontFamily: "Sora, sans-serif" }}>
+          <h2 className="text-xl font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
             <FolderOpen size={22} className="text-brand" />
             Media Folder
           </h2>
@@ -561,7 +561,7 @@ export default function MediaFolderPage() {
             onClick={() => inputRef.current?.click()}
             animate={{ borderColor: dragging ? "rgb(var(--accent-rgb) / 0.6)" : "rgba(255,255,255,0.1)", scale: dragging ? 1.01 : 1 }}
             className="relative rounded-2xl border-2 border-dashed cursor-pointer transition-colors"
-            style={{ background: dragging ? "rgb(var(--accent-rgb) / 0.05)" : "rgba(17,17,24,0.6)", minHeight: 200 }}
+            style={{ background: dragging ? "rgb(var(--accent-rgb) / 0.05)" : "rgb(var(--surface-rgb) / 0.6)", minHeight: 200 }}
           >
             <input ref={inputRef} type="file" multiple accept="image/*,video/*" className="hidden"
               onChange={(e) => e.target.files && addFiles(e.target.files)} />
@@ -974,7 +974,7 @@ export default function MediaFolderPage() {
                   <Calendar size={32} className="text-emerald-400/70" />
                 </div>
                 <div>
-                  <p className="text-white/70 text-sm font-semibold" style={{ fontFamily: "Sora, sans-serif" }}>
+                  <p className="text-white/70 text-sm font-semibold" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
                     Upload · AI · Schedule
                   </p>
                   <p className="text-white/30 text-xs mt-1.5 leading-relaxed">
@@ -1003,7 +1003,7 @@ export default function MediaFolderPage() {
 
           {/* How it works */}
           <div className="rounded-2xl p-4 space-y-3" style={glassCard}>
-            <p className="text-xs font-semibold text-white/60" style={{ fontFamily: "Sora, sans-serif" }}>How it works</p>
+            <p className="text-xs font-semibold text-white/60" style={{ fontFamily: "var(--font-sora), sans-serif" }}>How it works</p>
             {[
               { icon: Upload,   text: "Drop or pick your image/video (kept as-is, no card conversion)" },
               { icon: Sparkles, text: "AI generates a viral caption for your post" },
@@ -1042,7 +1042,7 @@ export default function MediaFolderPage() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
+                  <h3 className="text-base font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
                     {platformModal.intent === "schedule" ? "Schedule to" : "Publish to"}
                   </h3>
                   <p className="text-[11px] text-white/40 mt-0.5">Choose where this media goes</p>

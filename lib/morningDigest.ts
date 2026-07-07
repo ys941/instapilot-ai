@@ -14,7 +14,7 @@
 import { prisma } from "@/lib/prisma";
 import { readPreferences, type MorningDigestSettings } from "@/lib/preferences";
 import { getRecentVideos, getChannelStats, listCommentThreads } from "@/lib/youtube";
-import { sendMorningDigestEmail, type MorningDigestPayload } from "@/lib/notifier";
+import { sendMorningDigestEmail, getRecentRateLimitEvents, getRecentSystemErrors, type MorningDigestPayload } from "@/lib/notifier";
 import { wallTimeToUTC } from "@/lib/utils";
 
 const IST_TZ = "Asia/Kolkata";
@@ -266,13 +266,29 @@ export async function collectDigest(cfg: MorningDigestSettings): Promise<Morning
   if (cfg.systemHealth) {
     let dbOk = false;
     try { await prisma.$queryRaw`SELECT 1`; dbOk = true; } catch { dbOk = false; }
+
+    // Recent rate-limit hits + system errors from the last 24h (logged as they happen).
+    const rateLimits = getRecentRateLimitEvents();
+    const sysErrors  = getRecentSystemErrors();
+    const aiRateLimited = rateLimits.some((e) => /\bAI\b|groq|gemini|cerebras/i.test(e.service));
+    const groqKeySet = !!(process.env.GROK_API_KEY || process.env.GROQ_API_KEY);
+
     p.health = [
       { label: "Database", ok: dbOk },
       { label: "Instagram token", ok: !!process.env.INSTAGRAM_ACCESS_TOKEN },
       { label: "YouTube connected", ok: !!(process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_REFRESH_TOKEN) },
       { label: "Webhook configured", ok: !!process.env.WEBHOOK_VERIFY_TOKEN },
-      { label: "AI key (Groq)", ok: !!(process.env.GROK_API_KEY || process.env.GROQ_API_KEY) },
+      // Reflect ACTUAL AI health, not just whether a key is set: if a provider was
+      // rate-limited in the last 24h, mark it degraded (this is what breaks posts).
+      { label: aiRateLimited ? "AI provider — rate-limited (24h)" : "AI provider", ok: groqKeySet && !aiRateLimited },
     ];
+
+    // Surface the actual rate-limit + error events under System Health so a bad day
+    // (e.g. AI daily token cap → no posts) is visible instead of a silent 🟢.
+    const alerts: Array<{ label: string; detail: string }> = [];
+    for (const e of rateLimits.slice(-6).reverse()) alerts.push({ label: `Rate limit · ${e.service}`, detail: e.detail });
+    for (const e of sysErrors.slice(-6).reverse())  alerts.push({ label: e.title, detail: e.detail });
+    if (alerts.length) p.systemAlerts = alerts.slice(0, 8);
   }
 
   // ── AI usage ──

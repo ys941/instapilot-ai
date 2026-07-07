@@ -35,7 +35,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     >
       <p
         className="font-semibold text-white mb-2"
-        style={{ fontFamily: "Sora, sans-serif" }}
+        style={{ fontFamily: "var(--font-sora), sans-serif" }}
       >
         {label}
       </p>
@@ -72,7 +72,7 @@ export default function EngagementChart() {
         <div>
           <h3
             className="text-sm font-semibold text-white"
-            style={{ fontFamily: "Sora, sans-serif" }}
+            style={{ fontFamily: "var(--font-sora), sans-serif" }}
           >
             Engagement Overview
           </h3>

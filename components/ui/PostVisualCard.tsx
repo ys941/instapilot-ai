@@ -236,7 +236,7 @@ function EducationalCard({ hook, content }: { hook: string; content: string }) {
 
         {/* Headline */}
         <h2 className="font-black text-white text-center leading-tight mb-4"
-          style={{ fontSize: "clamp(16px, 4vw, 22px)", fontFamily: "Sora, sans-serif" }}>
+          style={{ fontSize: "clamp(16px, 4vw, 22px)", fontFamily: "var(--font-sora), sans-serif" }}>
           {hook.replace(/\*\*/g, "") || "Key Insight"}
         </h2>
 
@@ -315,7 +315,7 @@ function QuizCard({ hook, content }: { hook: string; content: string }) {
         {/* Question */}
         <h2
           className="font-extrabold text-center leading-snug mb-3"
-          style={{ color: "white", fontSize: "clamp(14px, 3.5vw, 19px)", fontFamily: "Sora, sans-serif", lineHeight: 1.3 }}
+          style={{ color: "white", fontSize: "clamp(14px, 3.5vw, 19px)", fontFamily: "var(--font-sora), sans-serif", lineHeight: 1.3 }}
         >
           {hook.replace(/\*\*/g, "") || "Test your knowledge"}
         </h2>
@@ -423,7 +423,7 @@ function MythFactCard({ hook, content }: { hook: string; content: string }) {
             <GoldLabel text={side === "myth" ? "Common Myth" : "The Truth"} />
             <h2
               className="font-black text-white leading-tight"
-              style={{ fontSize: "clamp(15px, 3.8vw, 22px)", fontFamily: "Sora, sans-serif" }}
+              style={{ fontSize: "clamp(15px, 3.8vw, 22px)", fontFamily: "var(--font-sora), sans-serif" }}
             >
               {side === "myth" ? mythText : factText}
             </h2>
@@ -468,7 +468,7 @@ function ClinicalPearlCard({ hook, content }: { hook: string; content: string })
           <div style={{ height: 1, width: "100%", background: "rgba(255,255,255,0.07)", marginBottom: 8 }} />
         </div>
         <h2 className="font-black text-white text-center leading-tight mb-3"
-          style={{ fontSize: "clamp(15px, 3.8vw, 20px)", fontFamily: "Sora, sans-serif" }}>
+          style={{ fontSize: "clamp(15px, 3.8vw, 20px)", fontFamily: "var(--font-sora), sans-serif" }}>
           {hook.replace(/\*\*/g, "") || "Key Insight"}
         </h2>
         <div className="flex flex-col gap-2">
@@ -662,7 +662,7 @@ function EcgQuizCard({ hook, content }: { hook: string; content: string }) {
         {/* Question */}
         <h2
           className="font-extrabold text-center text-white leading-snug mb-1.5"
-          style={{ fontSize: "clamp(11px, 2.8vw, 14px)", fontFamily: "Sora, sans-serif", flexShrink: 0 }}
+          style={{ fontSize: "clamp(11px, 2.8vw, 14px)", fontFamily: "var(--font-sora), sans-serif", flexShrink: 0 }}
         >
           {hook.replace(/\*\*/g, "") || "What's the answer? 🧠"}
         </h2>
@@ -755,7 +755,7 @@ function AngiographyQuizCard({ hook, content }: { hook: string; content: string 
         {/* Question */}
         <h2
           className="font-extrabold text-center text-white leading-snug mb-2"
-          style={{ fontSize: "clamp(13px, 3.2vw, 17px)", fontFamily: "Sora, sans-serif" }}
+          style={{ fontSize: "clamp(13px, 3.2vw, 17px)", fontFamily: "var(--font-sora), sans-serif" }}
         >
           {hook.replace(/\*\*/g, "") || "What is this? 🔍"}
         </h2>
@@ -835,7 +835,7 @@ function PreventiveCard({ hook, content }: { hook: string; content: string }) {
           <div style={{ height: 1, width: "100%", background: "rgba(255,255,255,0.07)", marginBottom: 8 }} />
         </div>
         <h2 className="font-black text-white text-center leading-tight mb-3"
-          style={{ fontSize: "clamp(15px, 3.8vw, 20px)", fontFamily: "Sora, sans-serif" }}>
+          style={{ fontSize: "clamp(15px, 3.8vw, 20px)", fontFamily: "var(--font-sora), sans-serif" }}>
           {hook.replace(/\*\*/g, "") || "How to get started"}
         </h2>
         <div className="flex flex-col gap-2.5">
@@ -878,7 +878,7 @@ function CtaCard({ hook, cta }: { hook: string; cta: string }) {
         <DarkIcon size={68}><Heart size={68} color={ICON_CLR} fill={ICON_CLR} /></DarkIcon>
         <h2
           className="font-black text-white text-center leading-tight"
-          style={{ fontSize: "clamp(20px, 5vw, 28px)", fontFamily: "Sora, sans-serif" }}
+          style={{ fontSize: "clamp(20px, 5vw, 28px)", fontFamily: "var(--font-sora), sans-serif" }}
         >
           {hook.replace(/\*\*/g, "") || "Save this post"}
         </h2>
@@ -1044,7 +1044,7 @@ function CarouselCardCompact({
           <svg viewBox="0 0 320 28" style={{ width: "84%", opacity: 0.2 }} preserveAspectRatio="none">
             <polyline points="0,14 30,14 42,14 46,3 50,25 54,14 74,14 104,14 116,14 120,2 124,26 128,14 148,14 178,14 190,14 194,3 198,25 202,14 222,14 252,14 264,14 268,3 272,25 276,14 296,14 320,14" fill="none" stroke={RED} strokeWidth="1.5" strokeLinecap="round" />
           </svg>
-          <h1 className="font-black text-white text-center leading-tight" style={{ fontSize: "clamp(22px, 5.5vw, 32px)", fontFamily: "Sora, sans-serif" }}>
+          <h1 className="font-black text-white text-center leading-tight" style={{ fontSize: "clamp(22px, 5.5vw, 32px)", fontFamily: "var(--font-sora), sans-serif" }}>
             {(hook || slide.headline).replace(/\*\*/g, "")}
           </h1>
           <div className="text-center mt-1">
@@ -1064,7 +1064,7 @@ function CarouselCardCompact({
           style={{ paddingLeft: 20, paddingRight: 14 }}
         >
           <Heart size={68} color={ICON_CLR} fill={ICON_CLR} />
-          <h2 className="font-black text-white text-center leading-tight" style={{ fontSize: "clamp(20px, 5.5vw, 30px)", fontFamily: "Sora, sans-serif" }}>
+          <h2 className="font-black text-white text-center leading-tight" style={{ fontSize: "clamp(20px, 5.5vw, 30px)", fontFamily: "var(--font-sora), sans-serif" }}>
             {slide.headline.replace(/\*\*/g, "") || "Save this post"}
           </h2>
           <p className="text-[12px] text-center leading-relaxed" style={{ color: BODY_TXT }}>
@@ -1088,7 +1088,7 @@ function CarouselCardCompact({
             style={{ paddingLeft: 20, paddingRight: 14, paddingTop: 20, paddingBottom: 12 }}
           >
             <div style={{ marginTop: 4, opacity: 0.82 }}>{getSlideIcon(slide.headline, idx)}</div>
-            <h2 className="font-black text-white text-center leading-tight" style={{ fontSize: "clamp(20px, 5.5vw, 32px)", fontFamily: "Sora, sans-serif" }}>
+            <h2 className="font-black text-white text-center leading-tight" style={{ fontSize: "clamp(20px, 5.5vw, 32px)", fontFamily: "var(--font-sora), sans-serif" }}>
               {slide.headline.replace(/\*\*/g, "")}
             </h2>
             <p className="text-center leading-relaxed" style={{ fontSize: "clamp(11px, 2.5vw, 13px)", color: BODY_TXT }}>

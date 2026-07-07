@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Header from "@/components/dashboard/Header";
+import Footer from "@/components/dashboard/Footer";
 import { useBrand } from "@/components/BrandContext";
 import {
   CheckCircle, AlertTriangle, Send, MessageCircle, Calendar, X, AtSign, BookOpen, Heart, Sparkles, ArrowRight,
@@ -35,7 +36,7 @@ function FirstRunBanner() {
           <Sparkles size={16} className="text-indigo-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold" style={{ color: "#a5b4fc", fontFamily: "Sora, sans-serif" }}>
+          <p className="text-sm font-semibold" style={{ color: "#a5b4fc", fontFamily: "var(--font-sora), sans-serif" }}>
             Finish setting up {brand.appName}
           </p>
           <p className="text-xs text-white/60 mt-1">
@@ -126,7 +127,7 @@ function CatchupBanner({
         <div className="flex-1 min-w-0">
           <p
             className="text-sm font-semibold"
-            style={{ color: hasErrors ? "#fbbf24" : "#4ade80", fontFamily: "Sora, sans-serif" }}
+            style={{ color: hasErrors ? "#fbbf24" : "#4ade80", fontFamily: "var(--font-sora), sans-serif" }}
           >
             {hasErrors ? "Catch-up completed with some issues" : "✅ Catch-up complete  -  you're all caught up!"}
           </p>
@@ -228,9 +229,20 @@ export default function DashboardLayout({
   const [catchupResult,   setCatchupResult]   = useState<CatchupResult | null>(null);
   const [showBanner,      setShowBanner]      = useState(false);
   const [mobileMenuOpen,  setMobileMenuOpen]  = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleMobileClose   = useCallback(() => setMobileMenuOpen(false), []);
   const handleMobileToggle  = useCallback(() => setMobileMenuOpen((v) => !v), []);
+
+  // Persist the desktop sidebar collapsed state so it survives reloads, and lift it
+  // here so the main content margin can shrink to match (no dead gutter).
+  useEffect(() => {
+    try { if (localStorage.getItem("sidebarCollapsed") === "1") setSidebarCollapsed(true); } catch {}
+  }, []);
+  const handleCollapsedChange = useCallback((v: boolean) => {
+    setSidebarCollapsed(v);
+    try { localStorage.setItem("sidebarCollapsed", v ? "1" : "0"); } catch {}
+  }, []);
 
   // ── One-time catchup on mount ─────────────────────────────────────────────
   // Publishes overdue scheduled posts and replies to any comments/DMs that
@@ -315,10 +327,16 @@ export default function DashboardLayout({
       </div>
 
       {/* Sidebar */}
-      <Sidebar mobileOpen={mobileMenuOpen} onMobileClose={handleMobileClose} />
+      <Sidebar
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={handleMobileClose}
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={handleCollapsedChange}
+      />
 
-      {/* Main area — no left margin on mobile (sidebar hidden), 260px on md+ */}
-      <div className="flex-1 flex flex-col min-h-screen md:ml-[260px]">
+      {/* Main area — no left margin on mobile (sidebar hidden); tracks the sidebar
+          width on md+ (72px collapsed / 260px expanded) so no dead gutter. */}
+      <div className={`flex-1 min-w-0 flex flex-col min-h-screen transition-[margin] duration-300 ${sidebarCollapsed ? "md:ml-[72px]" : "md:ml-[260px]"}`}>
         <Header onMobileMenuToggle={handleMobileToggle} />
 
         {/* First-run banner  -  until Settings → Brand is saved the first time */}
@@ -334,7 +352,7 @@ export default function DashboardLayout({
           )}
         </AnimatePresence>
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 flex flex-col overflow-x-hidden overflow-y-auto">
           <AnimatePresence mode="popLayout">
             <motion.div
               key={pathname}
@@ -342,11 +360,12 @@ export default function DashboardLayout({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.12, ease: "easeOut" }}
-              className="p-4 sm:p-6 lg:p-8"
+              className="p-4 sm:p-6 lg:p-8 min-w-0"
             >
               {children}
             </motion.div>
           </AnimatePresence>
+          <Footer />
         </main>
       </div>
     </div>

@@ -238,6 +238,25 @@ export async function assembleVoiceTrack(clips: Buffer[], padsSec: number[]): Pr
  * Signature is stable: callers pass `{ secondsPerImage, audio }`. New options are
  * optional and additive.
  */
+/** True when an image is near-uniform (all-black / blank) — a failed render.
+ *  Uses per-channel std-dev: real branded cards (headline, body, gradients) have
+ *  high variance, while a blank/black frame is essentially flat. Best-effort —
+ *  never throws (if it can't analyze, it does NOT flag the frame). */
+export async function isBlankFrame(buf: Buffer): Promise<boolean> {
+  try {
+    if (!buf || buf.length === 0) return true;
+    const { channels } = await sharp(buf).stats();
+    const rgb = channels.slice(0, 3);
+    if (rgb.length === 0) return false;
+    const avgStdev = rgb.reduce((a, c) => a + c.stdev, 0) / rgb.length;
+    const avgMean  = rgb.reduce((a, c) => a + c.mean, 0) / rgb.length;
+    // Flat variance = a uniform (blank/solid) frame; stricter still for very dark frames.
+    return avgStdev < 6 || (avgMean < 16 && avgStdev < 12);
+  } catch {
+    return false;
+  }
+}
+
 export function renderCardsToShortMp4(
   images: Buffer[],
   opts: ShortRenderOptions = {},
@@ -254,6 +273,22 @@ async function renderCardsToShortMp4Impl(
   if (valid.length === 0) {
     console.warn("[VideoGen] No images supplied — cannot render Short");
     return null;
+  }
+
+  // ── Black/blank-frame guard ────────────────────────────────────────────────
+  // A transient satori→sharp rasterization failure can produce valid-sized card
+  // frames that are visually BLANK (all-black). Publishing that yields a dead black
+  // reel with ~0 engagement. If EVERY frame is blank, refuse to render — the caller
+  // treats null as a failure, so the publish fails and RETRIES with a proper render
+  // instead of shipping a black video.
+  const blankFlags = await Promise.all(valid.map((b) => isBlankFrame(b)));
+  const blankCount = blankFlags.filter(Boolean).length;
+  if (blankCount === valid.length) {
+    console.warn(`[VideoGen] ABORT — all ${valid.length} card frame(s) are blank/black; refusing to build a black reel (publish will retry).`);
+    return null;
+  }
+  if (blankCount > 0) {
+    console.warn(`[VideoGen] ${blankCount}/${valid.length} card frame(s) look blank/black — rendering anyway.`);
   }
 
   // Hard ceiling = YouTube Shorts max (~3 min). The Short's length ADAPTS to its

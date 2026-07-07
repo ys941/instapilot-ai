@@ -44,7 +44,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <p className="text-white/50 text-xs mb-1">{label}</p>
       <p
         className="text-white font-bold text-base"
-        style={{ fontFamily: "Sora, sans-serif" }}
+        style={{ fontFamily: "var(--font-sora), sans-serif" }}
       >
         {value.toLocaleString()}
         <span className="text-xs font-normal text-white/40 ml-1">followers</span>
@@ -70,7 +70,7 @@ export default function FollowerChart() {
         <div>
           <h3
             className="text-sm font-semibold text-white"
-            style={{ fontFamily: "Sora, sans-serif" }}
+            style={{ fontFamily: "var(--font-sora), sans-serif" }}
           >
             Follower Growth
           </h3>

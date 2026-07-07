@@ -162,14 +162,23 @@ function MobileNavItem({
 export default function Sidebar({
   mobileOpen,
   onMobileClose,
+  collapsed: collapsedProp,
+  onCollapsedChange,
 }: {
   mobileOpen:    boolean;
   onMobileClose: () => void;
+  collapsed?:         boolean;
+  onCollapsedChange?: (v: boolean) => void;
 }) {
   const pathname = usePathname();
   const router   = useRouter();
   const brand    = useBrand();
-  const [collapsed, setCollapsed] = useState(false);
+  // Controlled when the layout passes `collapsed`/`onCollapsedChange` (so the main
+  // content margin can track it); falls back to local state otherwise.
+  const [collapsedLocal, setCollapsedLocal] = useState(false);
+  const collapsed = collapsedProp ?? collapsedLocal;
+  const setCollapsed = (v: boolean) =>
+    onCollapsedChange ? onCollapsedChange(v) : setCollapsedLocal(v);
 
   const handleLogout = async () => {
     onMobileClose();
@@ -186,7 +195,7 @@ export default function Sidebar({
       transition={{ type: "spring", bounce: 0.1, duration: 0.4 }}
       className="hidden md:flex fixed left-0 top-0 h-screen z-50 flex-col overflow-hidden"
       style={{
-        background:            "rgba(10,10,15,0.85)",
+        background:            "rgb(var(--bg-rgb) / 0.85)",
         backdropFilter:        "blur(24px)",
         WebkitBackdropFilter:  "blur(24px)",
         borderRight:           "1px solid rgba(255,255,255,0.06)",
@@ -214,7 +223,7 @@ export default function Sidebar({
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.2 }}
             >
-              <p className="font-bold text-base leading-tight gradient-text" style={{ fontFamily: "Sora, sans-serif" }}>
+              <p className="font-bold text-base leading-tight gradient-text" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
                 {brand.appName}
               </p>
               <p className="text-[10px] text-white/30 font-medium tracking-widest uppercase">AI Platform</p>
@@ -329,7 +338,7 @@ export default function Sidebar({
             transition={{ type: "spring", bounce: 0.1, duration: 0.35 }}
             className="fixed left-0 top-0 h-screen w-72 z-[70] flex flex-col md:hidden"
             style={{
-              background:           "rgba(10,10,15,0.97)",
+              background:           "rgb(var(--bg-rgb) / 0.97)",
               backdropFilter:       "blur(24px)",
               WebkitBackdropFilter: "blur(24px)",
               borderRight:          "1px solid rgba(255,255,255,0.08)",
@@ -345,7 +354,7 @@ export default function Sidebar({
                   <Heart size={18} className="text-white fill-white" />
                 </div>
                 <div>
-                  <p className="font-bold text-base leading-tight gradient-text" style={{ fontFamily: "Sora, sans-serif" }}>
+                  <p className="font-bold text-base leading-tight gradient-text" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
                     {brand.appName}
                   </p>
                   <p className="text-[10px] text-white/30 font-medium tracking-widest uppercase">AI Platform</p>

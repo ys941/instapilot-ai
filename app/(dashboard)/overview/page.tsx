@@ -454,7 +454,7 @@ export default function OverviewPage() {
         <div>
           <h2
             className="text-2xl font-bold text-white"
-            style={{ fontFamily: "Sora, sans-serif" }}
+            style={{ fontFamily: "var(--font-sora), sans-serif" }}
             suppressHydrationWarning
           >
             {greeting},{" "}
@@ -511,7 +511,7 @@ export default function OverviewPage() {
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-red-600/25 to-red-500/10 flex items-center justify-center">
             <Youtube size={15} className="text-red-500" />
           </div>
-          <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
+          <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
             YouTube
           </h3>
           {ytConfigured && ytChannelName ? (
@@ -571,7 +571,7 @@ export default function OverviewPage() {
                       <tile.icon size={13} className="text-red-500" />
                     </div>
                   </div>
-                  <p className="text-2xl font-bold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
+                  <p className="text-2xl font-bold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
                     {formatNumber(tile.value)}
                   </p>
                 </motion.div>
@@ -584,7 +584,7 @@ export default function OverviewPage() {
               style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
             >
               <div className="px-5 py-4 border-b border-white/[0.06]">
-                <h4 className="text-sm font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
+                <h4 className="text-sm font-semibold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
                   Recent Videos
                 </h4>
               </div>
@@ -653,7 +653,7 @@ export default function OverviewPage() {
               className="rounded-2xl p-5"
               style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
             >
-              <h3 className="text-sm font-semibold text-white mb-4" style={{ fontFamily: "Sora, sans-serif" }}>
+              <h3 className="text-sm font-semibold text-white mb-4" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
                 Weekly Engagement
               </h3>
               <div className="h-52">
@@ -689,7 +689,7 @@ export default function OverviewPage() {
               className="rounded-2xl p-5"
               style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
             >
-              <h3 className="text-sm font-semibold text-white mb-4" style={{ fontFamily: "Sora, sans-serif" }}>
+              <h3 className="text-sm font-semibold text-white mb-4" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
                 Weekly Reach
               </h3>
               <div className="h-52">
@@ -729,7 +729,7 @@ export default function OverviewPage() {
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/10 flex items-center justify-center">
               <Lightbulb size={14} className="text-yellow-400" />
             </div>
-            <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
+            <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
               AI Performance Insights
             </h3>
             <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
@@ -774,7 +774,7 @@ export default function OverviewPage() {
         <div className="space-y-3">
           <h3
             className="text-sm font-semibold text-white/60 uppercase tracking-wider px-1"
-            style={{ fontFamily: "Sora, sans-serif" }}
+            style={{ fontFamily: "var(--font-sora), sans-serif" }}
           >
             Quick Actions
           </h3>
@@ -818,7 +818,7 @@ export default function OverviewPage() {
           style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
         >
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-            <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
+            <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
               Recent Posts
             </h3>
             <Link href="/content-library" className="text-xs text-white/40 hover:text-white/70 flex items-center gap-1 transition-colors">

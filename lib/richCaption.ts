@@ -160,6 +160,22 @@ Tone: authoritative but warm and accessible — like a brilliant expert who's a 
 }
 
 /**
+ * Put a BLANK line between consecutive numbered points (① ② ③ … / 1️⃣ / "1.") so the
+ * key-points list breathes and is easy to read on Instagram. Only point lines are
+ * spaced — the hook, intro paragraph, "Why it matters" and CTA are untouched.
+ */
+function spaceCaptionPoints(text: string): string {
+  const isPoint = (l: string) => /^\s*(?:[①-⑳]|\d️?⃣|\d+[.)])\s/.test(l);
+  const lines = (text || "").split("\n");
+  const out: string[] = [];
+  for (const line of lines) {
+    if (isPoint(line) && out.length && out[out.length - 1].trim() !== "") out.push("");
+    out.push(line);
+  }
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
  * Build the ONE unified rich caption for a post (NO hashtags). Generated once and
  * cached on the post's `reelScript` as "RICHCAP:<text>" so both the IG and YT
  * publishers read the identical stored caption (and Grok is not called twice).
@@ -173,8 +189,8 @@ export async function buildRichCaption(post: RichCaptionPost): Promise<string> {
 
   const brand = await getBrand();
 
-  // 2. Generate the rich caption + append the clickable both-account follow links.
-  const text = appendFollowLinks(await generateRichCaption(post, brand), brand);
+  // 2. Generate the rich caption, space the numbered points, + append follow links.
+  const text = appendFollowLinks(spaceCaptionPoints(await generateRichCaption(post, brand)), brand);
 
   // 3. Best-effort: persist it back so the other platform reuses the same text.
   //    Only when the post has a real id (otherwise there's nothing to update).

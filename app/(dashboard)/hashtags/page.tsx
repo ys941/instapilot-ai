@@ -155,10 +155,10 @@ export default function HashtagsPage() {
       {/* Generator bar */}
       <div
         className="rounded-2xl p-5"
-        style={{ background: "rgba(17,17,24,0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
+        style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
+          <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
             Hashtag Intelligence Engine
           </h3>
           {generated && totalReach && (
@@ -217,12 +217,12 @@ export default function HashtagsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: ci * 0.1 }}
                 className="rounded-2xl overflow-hidden"
-                style={{ background: "rgba(17,17,24,0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
+                style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
               >
                 <div className="flex items-center justify-between px-4 py-4 border-b border-white/[0.06]">
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>{col.title}</h4>
+                      <h4 className="text-sm font-semibold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>{col.title}</h4>
                       <span className={cn("text-[10px] px-2 py-0.5 rounded-full border font-medium", col.badge)}>{col.tags.length}</span>
                     </div>
                     <p className="text-[11px] text-white/30 mt-0.5">{col.subtitle}</p>
@@ -257,7 +257,7 @@ export default function HashtagsPage() {
             whileTap={{ scale: 0.97 }}
             onClick={() => copyPack(allGenerated.map((t) => t.tag))}
             className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white border border-white/[0.1] hover:border-white/[0.2] transition-all"
-            style={{ background: "rgba(17,17,24,0.8)" }}
+            style={{ background: "rgb(var(--surface-rgb) / 0.8)" }}
           >
             <Copy size={15} />
             Copy All {allGenerated.length} Hashtags
@@ -270,11 +270,11 @@ export default function HashtagsPage() {
         {/* Trending  -  from last generation, or default if not generated yet */}
         <div
           className="rounded-2xl p-5"
-          style={{ background: "rgba(17,17,24,0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
+          style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
         >
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp size={14} className="text-red-400" />
-            <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>
+            <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
               {generated ? `Top Tags for "${topic}"` : "Trending Tags"}
             </h3>
           </div>
@@ -303,11 +303,11 @@ export default function HashtagsPage() {
         {/* Saved Packs */}
         <div
           className="rounded-2xl p-5"
-          style={{ background: "rgba(17,17,24,0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
+          style={{ background: "rgb(var(--surface-rgb) / 0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
         >
           <div className="flex items-center gap-2 mb-4">
             <Bookmark size={14} className="text-purple-400" />
-            <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "Sora, sans-serif" }}>Saved Hashtag Packs</h3>
+            <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "var(--font-sora), sans-serif" }}>Saved Hashtag Packs</h3>
           </div>
           <div className="space-y-3">
             {defaultPacks.map((pack, i) => (

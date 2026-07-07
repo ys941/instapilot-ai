@@ -90,7 +90,7 @@ export default function BrandSwitcher() {
             transition={{ duration: 0.15 }}
             className="absolute left-0 top-12 w-64 rounded-2xl border border-white/[0.08] overflow-hidden z-50"
             style={{
-              background: "rgba(17,17,24,0.98)",
+              background: "rgb(var(--surface-rgb) / 0.98)",
               backdropFilter: "blur(24px)",
               boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
             }}

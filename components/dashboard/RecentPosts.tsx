@@ -147,7 +147,7 @@ export default function RecentPosts() {
       transition={{ delay: 0.4 }}
       className="rounded-2xl overflow-hidden"
       style={{
-        background: "rgba(17,17,24,0.8)",
+        background: "rgb(var(--surface-rgb) / 0.8)",
         backdropFilter: "blur(20px)",
         border: "1px solid rgba(255,255,255,0.07)",
       }}
@@ -155,13 +155,10 @@ export default function RecentPosts() {
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
         <h3
           className="text-sm font-semibold text-white"
-          style={{ fontFamily: "Sora, sans-serif" }}
+          style={{ fontFamily: "var(--font-sora), sans-serif" }}
         >
           Recent Posts
         </h3>
-        <button className="text-xs text-red-400 hover:text-red-300 transition-colors">
-
-        </button>
       </div>
 
       <div className="overflow-x-auto">
@@ -300,7 +297,7 @@ export default function RecentPosts() {
                                     exit={{ opacity: 0, scale: 0.9 }}
                                     className="absolute right-0 bottom-8 w-32 rounded-xl border border-white/10 overflow-hidden z-20"
                                     style={{
-                                      background: "rgba(17,17,24,0.98)",
+                                      background: "rgb(var(--surface-rgb) / 0.98)",
                                       backdropFilter: "blur(20px)",
                                     }}
                                   >

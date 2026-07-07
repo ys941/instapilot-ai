@@ -13,6 +13,12 @@ const PUBLIC_PATHS = [
   "/favicon",
   "/fonts",
   "/images",
+  // PWA assets must be publicly reachable so the app is installable even when
+  // logged out (Chrome "Install app" / Safari "Add to Home Screen").
+  "/manifest.webmanifest",
+  "/sw.js",
+  "/icon-",              // icon-192.png / icon-512.png / icon-maskable-512.png
+  "/apple-touch-icon",
 ];
 
 function isPublic(pathname: string): boolean {

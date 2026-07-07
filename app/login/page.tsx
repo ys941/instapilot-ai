@@ -86,7 +86,7 @@ export default function LoginPage() {
             </div>
             <h1 style={{
               margin: 0, fontSize: 22, fontWeight: 700, color: "#fff",
-              fontFamily: "var(--font-sora, Sora, sans-serif)", letterSpacing: "-0.02em",
+              fontFamily: "var(--font-sora, var(--font-sora), sans-serif)", letterSpacing: "-0.02em",
             }}>{brand.appName}</h1>
             <p style={{ margin: "6px 0 0", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>
               Enter your access key to continue

@@ -81,7 +81,7 @@ export default function PostTypeChart() {
       <div className="mb-5">
         <h3
           className="text-sm font-semibold text-white"
-          style={{ fontFamily: "Sora, sans-serif" }}
+          style={{ fontFamily: "var(--font-sora), sans-serif" }}
         >
           Content Mix
         </h3>
