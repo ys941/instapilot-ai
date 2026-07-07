@@ -153,9 +153,9 @@ export default function Header({
       setToast(notif);
 
       // ── Broadcast to all page components so they can instant-refetch data ──
-      // Pages listen to "cardioflow:activity" to invalidate their React Query cache.
+      // Pages listen to "app:activity" to invalidate their React Query cache.
       if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("cardioflow:activity", {
+        window.dispatchEvent(new CustomEvent("app:activity", {
           detail: { type: notif.type, action: notif.action },
         }));
       }

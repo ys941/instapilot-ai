@@ -86,7 +86,7 @@ const typeColors: Record<string, string> = {
 };
 
 // Neutral, niche-agnostic labels for the internal post-type enum ids. KEEPS the
-// enum ids (DB values) but never surfaces cardiology wording in the UI.
+// enum ids (DB values) but never surfaces niche-specific wording in the UI.
 const NEUTRAL_TYPE_LABELS: Record<string, string> = {
   EDUCATIONAL:      "Educational",
   QUIZ:             "Quiz",

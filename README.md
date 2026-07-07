@@ -138,10 +138,14 @@ All scheduling runs in a configurable timezone (per brand via `autoPost.timezone
 - **Real-time analytics** — live IG followers/reach/top posts/engagement from the Graph API (synced to the DB), plus YouTube channel + per-video stats from the Data API, surfaced on Overview + Analytics.
 - **Daily health email** — health digest via Resend/Nodemailer: system health (DB / AI / Instagram), **Instagram webhook delivery status**, today's story status, **today's YouTube posts**, today's auto-generated posts, upcoming scheduled posts, 24h stats, failures, and rate-limit events.
 - **Morning Digest (configurable daily summary)** — an opt-in **once-a-day email summarising the last 24 hours across Instagram + YouTube** (`lib/morningDigest.ts` + `sendMorningDigestEmail`). In **Settings → Morning Digest** you set a master toggle, the **send time (IST)**, and per-section toggles for what's included: IG insights/comments/published/followers, YouTube insights/comments/published/subscribers, plus top performer, auto-engagement, today's schedule, failures, growth deltas, system health, and AI usage. Polled from `instrumentation.ts`, self-gated to the configured IST hour, once per day; settings round-trip through the notifications blob.
+- **System-Health surfaces AI rate-limits / 429s** — the digest's **System Health** section now reads the last 24h of logged rate-limit + error events (`getRecentRateLimitEvents` / `getRecentSystemErrors`). If any **AI provider (Groq/Gemini/Cerebras) was rate-limited**, the "AI provider" line is marked **degraded** and the specific `Rate limit · <service>` events are listed — so a bad day (e.g. a daily token cap silently killing generation) shows up instead of a false 🟢 all-clear.
+- **Generation-failure alert email** — when a day's content generation **produces no post at all** (every provider in the chain is exhausted/rate-limited), `notifyGenerationFailed()` (`lib/notifier.ts`) fires a **"No Post Generated"** alert email, **deduped to once per IST day per brand**, so a silent zero-output cycle can't go unnoticed while the scheduler keeps retrying.
 - **Activity + live alerts** — every publish/reply/topic-use logged to `ActivityLog`; real-time alerts stream over SSE (`/api/notifications/stream`) and email (publish, fail, YouTube published/failed, comment replied).
 
 ### 🎨 Appearance (10 app-wide themes)
 - **Selectable dashboard theme** — **Settings → Appearance** offers **10 brand-neutral palettes** — Crimson (default), Amethyst, Sapphire, Emerald, Sunset, Rosé, Cyber Teal, Gold, Indigo Night, Slate Mono. Themes are applied entirely through **CSS variables** (`lib/themes.ts` + `[data-theme="…"]` token blocks in `app/globals.css`, wired through Tailwind), swapped instantly by **next-themes** (`attribute="data-theme"`) and **persisted per device** — no rebuild, no code edit. A live accent preview shows each palette before you pick it.
+- **Installable PWA** — the dashboard is an installable **Progressive Web App**: a brand-driven web app manifest (`app/manifest.ts`, served at `/manifest.webmanifest`) plus a registered service worker (`components/PWARegister.tsx` → `/sw.js`) enable **"Install app"** (Chrome/Edge) and **"Add to Home Screen"** (Safari), launching standalone. The manifest's name/short-name follow the configured brand (`NEXT_PUBLIC_APP_NAME` / `BRAND_NAME`) with white-label icons, so the installed app carries *your* identity.
+- **Slim "Powered by" footer** — a lightweight `Powered by <app name>` footer (`components/dashboard/Footer.tsx`) sits under the dashboard, brand-driven and unobtrusive.
 
 ---
 
@@ -182,6 +186,7 @@ InstaPilot controls **multiple paired Instagram + YouTube "brand" accounts**. A 
 | Instagram | **Facebook Graph API** (publish, comments, DMs, insights) + webhooks |
 | Deployment | **Railway** (Nixpacks) or **Docker** (Compose) |
 | Automation engine | In-process catch-up loop (`lib/catchup.ts`, per-brand) + Instagram webhooks + daily timer |
+| PWA | Installable web app — brand-driven manifest (`app/manifest.ts`) + service worker (`components/PWARegister.tsx`) |
 
 ---
 
@@ -237,6 +242,7 @@ Both `Post` and `ScheduledPost` carry a `platform` column (default `"instagram"`
 - **Single-run catch-up** — a module-level in-flight guard makes `runCatchup()` **non-re-entrant**: if a cycle runs longer than the 5-min interval, the next tick early-returns instead of overlapping it, so DM replies and story creation can't double-fire.
 - **Atomic DM claim** — comment *and* DM auto-replies claim each message id (`claimDMForReply`/comment claim) before generating, so two overlapping ticks (or a catch-up racing a webhook redelivery) can never send two replies to the same message.
 - **Render lock (OOM guard)** — a **process-wide single-flight queue** wraps the **entire memory-heavy build** (card render + music + ffmpeg) for **both** the YouTube Short build **and** the IG carousel render, so only **one** render is ever in memory at a time on memory-limited hosts. Every remote fetch inside the lock carries a **60 s `AbortSignal` timeout** (a hung media URL can't deadlock the whole publish queue), and a 120s watchdog still SIGKILLs any wedged ffmpeg render.
+- **Black-frame render guard** — before a Short is encoded, every rendered card frame is variance-checked (`isBlankFrame` in `lib/videoGenerator.ts`): a transient satori→sharp rasterization glitch can emit valid-sized but visually **all-black** frames. If **every** frame is blank the render **aborts** (returns `null`), so the publish fails and **retries** with a proper render instead of ever shipping a dead all-black reel; a partial-blank render logs a warning and proceeds.
 - **JSON-resilient AI** — content-JSON generation tries the selected provider then **falls through to the other** on empty/quota-exhaustion responses (429 / `limit:0`), so Stories, IG posts, and Shorts never silently degrade to canned filler when a provider's free quota is gone.
 - **Passed slots publish today** — if a day's slot time has already passed when the auto-generator runs, the post is scheduled for **now (today)** instead of being pushed to tomorrow — fixing over-generation and the "N posts at one time" same-time collision (in **both** the IG and YouTube generators).
 - **AI fallback chains** everywhere; graceful degradation (silent Shorts, silent-Short voiceover fallback, default mood, branded fallback replies).
@@ -358,6 +364,8 @@ npm run dev                        # http://localhost:3000
 ```
 
 Then log in with your `APP_ACCESS_KEY`, open **Settings → Brand** and set your app name, niche, and handles — you're now running in your own niche.
+
+> **Windows one-click launcher** — `start-all.bat` brings the whole stack up in one step: it checks Docker, starts **PostgreSQL + Redis** via Compose, waits for the DB, runs `prisma generate` + `db push`, launches the Next.js dev server, opens the dashboard, and (optionally, if `NGROK_AUTHTOKEN` is set) starts an ngrok tunnel for Meta webhooks.
 
 ### Run with Docker (no Node setup needed)
 ```bash

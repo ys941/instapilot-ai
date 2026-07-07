@@ -1,7 +1,7 @@
 /**
  * lib/imageGenerator.ts
  *
- * Auto-generates a professional medical/cardiology image from a prompt.
+ * Auto-generates a professional niche-relevant image from a prompt.
  *
  * Image source: Picsum Photos (https://picsum.photos) - free, no API key needed.
  *   Uses topic-based seeds for consistent results per prompt.
@@ -14,7 +14,7 @@
  *
  * Note: Pollinations.ai removed their free tier (now returns HTTP 402).
  *
- * For AI-generated cardiology images, configure one of:
+ * For AI-generated images, configure one of:
  *   - Stability AI: STABILITY_API_KEY (25 free credits/day)
  *   - OpenAI DALL-E: OPENAI_API_KEY
  */

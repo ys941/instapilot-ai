@@ -164,7 +164,7 @@ function isRateLimitError(err: unknown): boolean {
 
 // Generic, niche-agnostic module default. Methods that have loaded a brand pass
 // buildBrandSystemPrompt(brand) instead of relying on this constant.
-const CARDIOLOGY_SYSTEM = `You are an expert Instagram content creator. You craft accurate, valuable, engaging content optimised for the Instagram feed. Always respond in valid JSON format unless instructed otherwise.`;
+const DEFAULT_SYSTEM = `You are an expert Instagram content creator. You craft accurate, valuable, engaging content optimised for the Instagram feed. Always respond in valid JSON format unless instructed otherwise.`;
 
 // DM-only persona: reply like a real, casual human (no AI/expert framing). Used for
 // Instagram DMs; other conversational paths keep their own brand persona. Takes the
@@ -345,7 +345,7 @@ export class GeminiClient {
 
   async generateContent(
     prompt: string,
-    systemPrompt = CARDIOLOGY_SYSTEM,
+    systemPrompt = DEFAULT_SYSTEM,
     maxTokens    = 2000,
   ): Promise<string> {
     return this.withFallback("generateContent", (model) =>
@@ -364,7 +364,7 @@ export class GeminiClient {
   async generateContentInModels(
     models:      string[],
     prompt:      string,
-    systemPrompt = CARDIOLOGY_SYSTEM,
+    systemPrompt = DEFAULT_SYSTEM,
     maxTokens    = 2000,
     jsonOutput   = false,
   ): Promise<string> {
@@ -395,12 +395,12 @@ export class GeminiClient {
   }
 
   /** FLASH tier only (fast, clean prose). Tried before Grok. */
-  async generateContentFlash(prompt: string, systemPrompt = CARDIOLOGY_SYSTEM, maxTokens = 2000): Promise<string> {
+  async generateContentFlash(prompt: string, systemPrompt = DEFAULT_SYSTEM, maxTokens = 2000): Promise<string> {
     return this.generateContentInModels(FLASH_MODELS, prompt, systemPrompt, maxTokens);
   }
 
   /** REASONING/"thinking" tier only — the VERY last resort, AFTER Grok. */
-  async generateContentReasoning(prompt: string, systemPrompt = CARDIOLOGY_SYSTEM, maxTokens = 2000): Promise<string> {
+  async generateContentReasoning(prompt: string, systemPrompt = DEFAULT_SYSTEM, maxTokens = 2000): Promise<string> {
     return this.generateContentInModels(REASONING_MODELS, prompt, systemPrompt, maxTokens);
   }
 
@@ -439,7 +439,7 @@ export class GeminiClient {
    */
   async generateContentJSON(
     prompt: string,
-    systemPrompt = CARDIOLOGY_SYSTEM,
+    systemPrompt = DEFAULT_SYSTEM,
     maxTokens    = 2000,
   ): Promise<string> {
     // Walk the Gemini model chain directly (selected-provider behaviour — the

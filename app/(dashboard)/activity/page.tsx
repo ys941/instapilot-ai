@@ -180,13 +180,13 @@ export default function ActivityPage() {
   });
 
   // ── Real-time refresh via SSE custom event ──────────────────────────────────
-  // Header.tsx dispatches "cardioflow:activity" whenever the SSE stream fires a
+  // Header.tsx dispatches "app:activity" whenever the SSE stream fires a
   // new notification (comment, DM, mention, etc.).  This lets us instantly
   // refetch instead of waiting up to 15 s for the poll interval.
   useEffect(() => {
     const handler = () => { refetch(); };
-    window.addEventListener("cardioflow:activity", handler);
-    return () => window.removeEventListener("cardioflow:activity", handler);
+    window.addEventListener("app:activity", handler);
+    return () => window.removeEventListener("app:activity", handler);
   }, [refetch]);
 
   const rawActivities: any[] = data?.data?.logs ?? [];

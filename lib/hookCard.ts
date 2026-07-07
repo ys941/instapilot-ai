@@ -178,7 +178,7 @@ const KEYWORD_EYEBROW: ReadonlyArray<{ re: RegExp; eyebrow: string }> = [
 
 /** Deterministic theme pick (hash of hook/title) so identical topics stay stable. */
 function pickTheme(hook: string, title: string): Theme {
-  const seed = hashStr(hook || title || "cardioflow");
+  const seed = hashStr(hook || title || "app");
   return THEMES[seed % THEMES.length];
 }
 
@@ -190,7 +190,7 @@ function pickTheme(hook: string, title: string): Theme {
  * cards in one Short share a cohesive look (and different Shorts look different).
  */
 export function pickShortTheme(seed: string): Theme {
-  const h = hashStr(seed || "cardioflow");
+  const h = hashStr(seed || "app");
   return THEMES[h % THEMES.length];
 }
 
@@ -199,7 +199,7 @@ function pickEyebrow(hook: string, title: string, postType: string): string {
   const blob = `${hook} ${title} ${postType}`.toLowerCase();
   const match = KEYWORD_EYEBROW.find((k) => k.re.test(blob));
   if (match) return match.eyebrow;
-  const seed = hashStr(hook || title || "cardioflow");
+  const seed = hashStr(hook || title || "app");
   return EYEBROWS[seed % EYEBROWS.length];
 }
 

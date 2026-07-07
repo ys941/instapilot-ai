@@ -1,5 +1,5 @@
 ﻿﻿/**
- * CardioFlow AI  -  File Storage Utility
+ * InstaPilot AI  -  File Storage Utility
  *
  * Persists AI-generated content to the local `generated/` directory tree.
  * All operations are async (fs/promises) with full error handling.

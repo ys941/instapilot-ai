@@ -595,7 +595,7 @@ function quizCard(children: object[]): object {
   };
 }
 
-// 2. QUIZ / CARDIOLOGY CHALLENGE
+// 2. QUIZ / IMAGE CHALLENGE
 function buildQuiz(hook: string, content: string): object {
   const opts     = parseOptions(content);
   const hookText = cleanText(hook) || "Test your knowledge";

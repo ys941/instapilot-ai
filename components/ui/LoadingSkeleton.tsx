@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 // All skeleton variants use this base shimmer animation via CSS keyframes.
 
 const shimmerStyle = `
-  @keyframes cardioflow-shimmer {
+  @keyframes skeleton-shimmer {
     0% { background-position: -600px 0; }
     100% { background-position: 600px 0; }
   }
@@ -18,7 +18,7 @@ const shimmerStyle = `
       rgba(255,255,255,0.03) 80%
     );
     background-size: 600px 100%;
-    animation: cardioflow-shimmer 1.6s ease-in-out infinite;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
   }
 `;
 
@@ -32,7 +32,7 @@ function ShimmerBase({ className, style }: { className?: string; style?: React.C
           background:
             "linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 40%, rgba(255,255,255,0.03) 80%)",
           backgroundSize: "600px 100%",
-          animation: "cardioflow-shimmer 1.6s ease-in-out infinite",
+          animation: "skeleton-shimmer 1.6s ease-in-out infinite",
           ...style,
         }}
       />

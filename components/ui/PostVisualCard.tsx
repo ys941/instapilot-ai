@@ -300,7 +300,7 @@ function QuizCard({ hook, content }: { hook: string; content: string }) {
       </svg>
 
       <div className="absolute inset-0 flex flex-col z-10" style={{ padding: "14px 18px 10px" }}>
-        {/* CARDIOLOGY CHALLENGE header */}
+        {/* Quiz challenge header */}
         <div className="flex flex-col items-center gap-1 mb-2">
           <div className="flex items-center gap-2">
             <div style={{ height: 1, width: 28, background: `${GOLD}45` }} />
@@ -973,7 +973,7 @@ function ReelCard({ hook, reelScript, cta }: { hook: string; reelScript?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 11. CAROUSEL  -  matches actual @interventional_heart carousel style
+// 11. CAROUSEL  -  matches the branded carousel style
 // ─────────────────────────────────────────────────────────────────────────────
 function CarouselCardCompact({
   slides,
