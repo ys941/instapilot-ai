@@ -18,6 +18,7 @@ import sharp   from "sharp";
 import fs      from "fs";
 import path    from "path";
 import type { Theme } from "@/lib/hookCard";
+import { sanitizeCardText } from "@/lib/cardText";
 import { getBrand } from "@/lib/preferences";
 import { atHandle } from "@/lib/brandConfig";
 
@@ -69,7 +70,9 @@ async function loadFonts(): Promise<{ bold: ArrayBuffer; regular: ArrayBuffer }>
 
 // -- Helpers ------------------------------------------------------------------
 function cleanText(t: string): string {
-  return (t ?? "").replace(/\*\*/g, "").trim();
+  // sanitizeCardText normalizes Unicode dashes/spaces/quotes the card font can't render
+  // (they'd show as "tofu" boxes); then drop markdown bold markers.
+  return sanitizeCardText((t ?? "").replace(/\*\*/g, ""));
 }
 
 function parseBullets(text: string, max = 4): string[] {

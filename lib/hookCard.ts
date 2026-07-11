@@ -35,6 +35,7 @@ import satori from "satori";
 import sharp from "sharp";
 import fs from "fs";
 import path from "path";
+import { sanitizeCardText } from "@/lib/cardText";
 import { getBrand } from "@/lib/preferences";
 import { ytChannelName, ytHandle } from "@/lib/brandConfig";
 
@@ -211,16 +212,24 @@ function pickEyebrow(hook: string, title: string, postType: string): string {
  */
 function fitHeadlineFontSize(text: string): number {
   const len = text.length;
-  // Generous tiers keyed on character count — longer hooks shrink so all 1080px
-  // of width is used and the (Satori-wrapped) block never runs off the now-taller
-  // 1920px card. The 1920px height gives far more vertical room than the old
-  // square, so the headline can run BIG (up to ~150px) for a striking thumbnail.
-  if (len > 130) return 70;
-  if (len > 100) return 82;
-  if (len > 72)  return 98;
-  if (len > 48)  return 118;
-  if (len > 28)  return 134;
-  return 150;
+  // Base size from total character count — longer hooks shrink so the (Satori-wrapped)
+  // block never runs off the 1920px card, and short hooks run BIG for a striking thumb.
+  let size =
+    len > 130 ? 70 :
+    len > 100 ? 82 :
+    len > 72  ? 98 :
+    len > 48  ? 118 :
+    len > 28  ? 134 : 150;
+
+  // A single WORD cannot wrap, so if the longest word is too wide for the card at the
+  // base size it overflows and CLIPS (e.g. "SUPERCHARGE"). Cap the size so the longest
+  // word fits the available width (WIDTH − 180 = 900px). Uppercase bold ≈ 0.72em/char.
+  const longest = text.split(/\s+/).reduce((m, w) => Math.max(m, w.length), 0);
+  if (longest > 0) {
+    const maxForWord = Math.floor((WIDTH - 180) / (longest * 0.72));
+    size = Math.min(size, maxForWord);
+  }
+  return Math.max(46, size);
 }
 
 // -- HOOK CARD -----------------------------------------------------------------
@@ -233,13 +242,13 @@ function fitHeadlineFontSize(text: string): number {
 export async function renderHookCard(input: HookCardInput): Promise<Buffer | null> {
   try {
     const raw = (input.hook && input.hook.trim()) || input.title || "Here's what you need to know";
-    const headline = raw.replace(/\s+/g, " ").trim().toUpperCase();
+    const headline = sanitizeCardText(raw).replace(/\s+/g, " ").trim().toUpperCase();
 
     const brand = await getBrand();
     const brandMark = (ytChannelName(brand) || brand.persona.displayName || brand.appName).toUpperCase();
 
     const theme = input.theme ?? pickTheme(input.hook || "", input.title || "");
-    const eyebrow = pickEyebrow(input.hook || "", input.title || "", input.postType || "");
+    const eyebrow = sanitizeCardText(pickEyebrow(input.hook || "", input.title || "", input.postType || ""));
     const fontSize = fitHeadlineFontSize(headline);
 
     const element = {
@@ -319,6 +328,7 @@ export async function renderHookCard(input: HookCardInput): Promise<Buffer | nul
                     lineHeight: 1.12,
                     letterSpacing: "-1px",
                     textAlign: "center",
+                    wordBreak: "break-word",
                   },
                   children: headline,
                 },

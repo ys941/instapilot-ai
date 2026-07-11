@@ -16,6 +16,7 @@ import satori from "satori";
 import sharp from "sharp";
 import fs from "fs";
 import path from "path";
+import { sanitizeCardText } from "@/lib/cardText";
 import { getBrand } from "@/lib/preferences";
 import { atHandle } from "@/lib/brandConfig";
 
@@ -243,7 +244,7 @@ function healthAwarenessCard(input: StoryInput, brandHandle: string, brandSubtit
     cta = "Save this story & share it with someone you care about",
   } = input;
 
-  const safeTips = (tips ?? []).slice(0, 6);
+  const safeTips = (tips ?? []).slice(0, 6).map((t) => sanitizeCardText(t));
 
   const tipRows = safeTips.map((tip) => ({
     type: "div",
@@ -474,8 +475,8 @@ function simpleBrandedCard(input: StoryInput, brandHandle: string, brandSubtitle
   const { headline, body, label = `DAILY ${niche.toUpperCase()} TIP` } = input;
   // No character cap — keep the FULL headline/body and let the font tiers below
   // shrink the text so everything fits the 1080×1920 story.
-  const safeHeadline = (headline ?? "").trim();
-  const safeBody     = (body     ?? "").trim();
+  const safeHeadline = sanitizeCardText(headline ?? "");
+  const safeBody     = sanitizeCardText(body     ?? "");
 
   return {
     type: "div",
