@@ -1,0 +1,41 @@
+name: 💡 Idea or feature request
+description: Something you wish this did.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome even if they're half-formed. If you'd rather think out
+        loud first, [start a discussion](https://github.com/ys941/instapilot-ai/discussions) instead.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's the annoyance?
+      description: Describe the problem rather than the solution — it often leads somewhere better.
+      placeholder: I run three brands and I can't tell at a glance which one failed to post.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like it to do?
+      placeholder: A per-brand status column on the dashboard, red when the last cycle failed.
+
+  - type: checkboxes
+    id: whitelabel
+    attributes:
+      label: White-label check
+      description: This project must stay usable for any niche, by anyone.
+      options:
+        - label: My idea doesn't hardcode a particular brand, niche, handle or language
+          required: false
+
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Would you like to build it?
+      options:
+        - label: I'd be up for trying this myself (help and review very much available)
+          required: false
