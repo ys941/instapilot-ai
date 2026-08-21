@@ -1,5 +1,6 @@
 {
   "name": "instapilot-ai",
+  "license": "MIT",
   "version": "1.0.0",
   "description": "AI-powered, white-label content automation platform for Instagram + YouTube",
   "private": true,

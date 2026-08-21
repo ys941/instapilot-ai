@@ -578,4 +578,10 @@ instapilot-ai/
 
 ## License
 
-Provided for use by the licensed operator. Configure your own brand in **Settings → Brand** and supply your own API keys. All third-party API usage (Meta, Groq, Google, Cloudinary, Jamendo, Resend) is subject to those providers' terms.
+Released under the **[MIT License](LICENSE)** — use it, fork it, ship it commercially. Just keep the copyright notice.
+
+Configure your own brand in **Settings → Brand** and supply your own API keys; none are bundled. All third-party API usage (Meta, Groq, Google, Cloudinary, Jamendo, Resend) remains subject to those providers' terms, and you are responsible for what the software publishes on your accounts. See the [LICENSE](LICENSE) for the full note on third-party services and generated content.
+
+## Contributing
+
+Contributions are genuinely welcome — including your first one. See **[CONTRIBUTING.md](CONTRIBUTING.md)** for a five-minute local setup, a map of the codebase, and a list of ideas currently looking for an owner.
