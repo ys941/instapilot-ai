@@ -47,3 +47,11 @@ Thumbs.db
 *.swp
 
 tsconfig.tsbuildinfo
+
+# Windows folder-icon artefacts
+desktop.ini
+folder-icon.ico
+
+# Locally generated sample media
+public/uploads/*
+!public/uploads/.gitkeep
