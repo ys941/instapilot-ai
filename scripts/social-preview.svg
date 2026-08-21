@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0D1117"/>
+      <stop offset="55%" stop-color="#12182A"/>
+      <stop offset="100%" stop-color="#1A1024"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#A371F7"/>
+      <stop offset="100%" stop-color="#F778BA"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <rect width="1280" height="6" fill="url(#accent)"/>
+
+  <!-- title -->
+  <text x="72" y="150" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="72" font-weight="700" fill="#FFFFFF">InstaPilot AI</text>
+
+  <!-- tagline -->
+  <text x="72" y="212" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="31" fill="#C9D1D9">
+    An autonomous content team for Instagram + YouTube Shorts.
+  </text>
+  <text x="72" y="256" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="31" fill="#C9D1D9">
+    Any niche. Your accounts. Your keys. <tspan fill="#F778BA" font-weight="600">Fully unattended.</tspan>
+  </text>
+
+  <!-- feature row -->
+  <rect x="72" y="318" width="264" height="96" rx="10" fill="#FFFFFF" fill-opacity="0.045" stroke="#A371F7" stroke-opacity="0.32"/>
+    <text x="94" y="356" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="23" font-weight="700" fill="#A371F7">Writes</text>
+    <text x="94" y="386" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="17" fill="#8B949E">copy, cards, carousels</text>
+  <rect x="360" y="318" width="264" height="96" rx="10" fill="#FFFFFF" fill-opacity="0.045" stroke="#A371F7" stroke-opacity="0.32"/>
+    <text x="382" y="356" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="23" font-weight="700" fill="#A371F7">Renders</text>
+    <text x="382" y="386" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="17" fill="#8B949E">vertical Shorts + voiceover</text>
+  <rect x="648" y="318" width="264" height="96" rx="10" fill="#FFFFFF" fill-opacity="0.045" stroke="#A371F7" stroke-opacity="0.32"/>
+    <text x="670" y="356" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="23" font-weight="700" fill="#A371F7">Publishes</text>
+    <text x="670" y="386" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="17" fill="#8B949E">Instagram + YouTube</text>
+  <rect x="936" y="318" width="264" height="96" rx="10" fill="#FFFFFF" fill-opacity="0.045" stroke="#A371F7" stroke-opacity="0.32"/>
+    <text x="958" y="356" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="23" font-weight="700" fill="#A371F7">Replies</text>
+    <text x="958" y="386" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="17" fill="#8B949E">comments &amp; DMs, in voice</text>
+
+  <!-- stack line -->
+  <text x="72" y="486" font-family="Consolas, Menlo, monospace" font-size="20" fill="#7D8590">
+    Next.js  ·  TypeScript  ·  Prisma  ·  Postgres  ·  ffmpeg  ·  self-hosted  ·  MIT
+  </text>
+
+  <!-- footer -->
+  <line x1="72" y1="530" x2="1208" y2="530" stroke="#30363D"/>
+  <text x="72" y="576" font-family="Consolas, Menlo, monospace" font-size="23" fill="#E6EDF3">github.com/ys941/instapilot-ai</text>
+  <text x="1208" y="576" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="21" fill="#7D8590" text-anchor="end">no API keys bundled</text>
+</svg>
