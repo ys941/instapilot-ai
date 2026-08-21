@@ -55,3 +55,6 @@ folder-icon.ico
 # Locally generated sample media
 public/uploads/*
 !public/uploads/.gitkeep
+
+# local screenshot staging (source files for docs/screenshots)
+/image/

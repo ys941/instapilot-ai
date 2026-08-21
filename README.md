@@ -33,18 +33,66 @@ Every day, per brand, it writes on-topic content with AI, renders branded image 
 
 ---
 
+## 📸 Screenshots
+
+<div align="center">
+
+<img src="docs/screenshots/02-ai-generator.png" alt="AI Generator — pick a platform, a post type and a tone, then generate" width="100%" />
+
+<sub><b>AI Generator</b> — eleven post types, five tones, Instagram / YouTube / both</sub>
+
+<br /><br />
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/07-settings-auto-post.png" alt="Auto-Post settings: posts per day, post types, posting days and time slots" /></td>
+<td width="50%"><img src="docs/screenshots/06-settings-ai-config.png" alt="AI Configuration: per-lane provider with an ordered fallback chain" /></td>
+</tr>
+<tr>
+<td><sub><b>Auto-Post</b> — posts per day, which types, which weekdays, which times</sub></td>
+<td><sub><b>AI Config</b> — a provider per task lane, each with an ordered fallback chain</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/01-overview.png" alt="Overview dashboard with live stats and weekly charts" /></td>
+<td><img src="docs/screenshots/03-scheduler.png" alt="Scheduler calendar showing the content plan for the month" /></td>
+</tr>
+<tr>
+<td><sub><b>Overview</b> — live stats, weekly charts, AI performance insights</sub></td>
+<td><sub><b>Scheduler</b> — the month at a glance, colour-coded by post type</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/05-settings-brand.png" alt="Brand settings: app name, niche, tagline, audience, persona" /></td>
+<td><img src="docs/screenshots/04-analytics.png" alt="Analytics: reach, impressions, engagement, follower growth" /></td>
+</tr>
+<tr>
+<td><sub><b>Brand</b> — re-skin the entire app from here, no code</sub></td>
+<td><sub><b>Analytics</b> — reach, impressions, engagement, follower growth</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/08-settings-morning-digest.png" alt="Morning Digest settings with per-platform section toggles" /></td>
+<td valign="top"><br /><sub><b>Morning Digest</b> — one email each morning, and you choose exactly which sections arrive. Instagram and YouTube are toggled independently, so the digest only carries what you actually want to read.</sub></td>
+</tr>
+</table>
+
+<sub>Shown with an empty database on a fresh install — no keys connected, no posts yet.</sub>
+
+</div>
+
+---
+
 ## 📑 Table of Contents
 
-1. [White-Label / Any-Niche](#-white-label--any-niche)
-2. [Key Features](#-key-features)
-3. [Multi-Account (Brands)](#-multi-account-brands)
-4. [Tech Stack](#-tech-stack)
-5. [Architecture](#-architecture)
-6. [Settings Reference](#-settings-reference)
-7. [Setup / Installation](#-setup--installation)
-8. [Deployment](#-deployment)
-9. [Project Structure](#-project-structure)
-10. [Security](#-security)
+1. [Screenshots](#-screenshots)
+2. [White-Label / Any-Niche](#-white-label--any-niche)
+3. [Key Features](#-key-features)
+4. [Multi-Account (Brands)](#-multi-account-brands)
+5. [Tech Stack](#-tech-stack)
+6. [Architecture](#-architecture)
+7. [Settings Reference](#-settings-reference)
+8. [Setup / Installation](#-setup--installation)
+9. [Deployment](#-deployment)
+10. [Project Structure](#-project-structure)
+11. [Security](#-security)
 
 ---
 
