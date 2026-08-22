@@ -56,13 +56,14 @@ npm run dev                    # http://localhost:3000
 
 <br />
 
-To **explore the dashboard and work on UI**, three variables are enough:
+To **explore the dashboard and work on UI**, four variables are enough:
 
 | Variable | What it's for |
 |---|---|
 | `DATABASE_URL` | Your Postgres connection string |
 | `APP_ACCESS_KEY` | The key you type to get past the login gate |
 | `SESSION_SECRET` | Any long random string |
+| `ATTRIBUTION_ACK` | Set to `https://github.com/ys941` — the server won't start without it ([why](#-attribution)) |
 
 Everything else in `.env.example` — AI providers, Instagram, YouTube, Cloudinary — is only
 needed for the feature it powers. **You never need working social accounts to contribute to
@@ -130,6 +131,26 @@ is worth more here than a redesign that stalls.
 - Includes a screenshot or clip if it touches the UI
 - Notes what you tested, honestly — *"tested locally, didn't test the YouTube path"* is a
   perfectly good sentence and far better than silence
+
+---
+
+## ⭐ Attribution
+
+This project is free to use, fork, self-host, rebrand and build a business on. There is
+one condition, and it is deliberately small:
+
+**Credit to the original author stays visible.**
+
+- The dashboard footer links to [@ys941](https://github.com/ys941). The app name above it
+  is fully white-label and follows your Brand settings — the author credit is not.
+- The server will not boot until `ATTRIBUTION_ACK="https://github.com/ys941"` is set in
+  your environment. Nothing is transmitted; the value is compared locally.
+
+The check lives in [`lib/attribution.ts`](lib/attribution.ts) and is, obviously, easy to
+delete. It is a speed bump and a request, not DRM. Please just leave the credit in — it
+costs nothing and it is the only thing asked in return.
+
+Full detail on what you may and may not do: [COPYRIGHT.md](COPYRIGHT.md).
 
 ---
 
