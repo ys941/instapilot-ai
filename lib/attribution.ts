@@ -1,19 +1,15 @@
 /**
  * lib/attribution.ts
  *
- * Attribution requirement.
+ * Attribution constants — safe to import from client components.
  *
- * This project is free to use, fork and build on. The one condition is that
- * credit to the original author stays visible: the dashboard footer links to
- * the author's GitHub profile, and the server refuses to boot until the
- * operator has acknowledged that condition.
+ * Keep this file free of Node built-ins (`node:fs`, `node:path`, …). The
+ * dashboard footer imports AUTHOR from here, and the footer is a client
+ * component, so anything Node-only would be pulled into the browser bundle
+ * and break the build. The filesystem checks live in `attribution.server.ts`.
  *
- * To run it, set this in your .env.local:
- *
- *     ATTRIBUTION_ACK="https://github.com/ys941"
- *
- * Removing this check is technically trivial — it is a deliberate speed bump,
- * not DRM. Please just leave the credit in.
+ * Clause 2 of the LICENCE requires that any deployment other people can see
+ * displays visible credit to the original author.
  */
 
 export const AUTHOR = {
@@ -31,43 +27,10 @@ const ACCEPTED = new Set([
   "ys941",
 ]);
 
-function normalise(value: string): string {
-  return value.trim().replace(/\/+$/, "").toLowerCase();
-}
+const normalise = (v: string) => v.trim().replace(/\/+$/, "").toLowerCase();
 
 /** True when the operator has acknowledged the attribution requirement. */
 export function hasAttributionAck(): boolean {
   const raw = process.env.ATTRIBUTION_ACK;
   return typeof raw === "string" && ACCEPTED.has(normalise(raw));
-}
-
-const FAILURE_MESSAGE = `
-────────────────────────────────────────────────────────────────────────
-  This project will not start without attribution.
-
-  It is free to use, fork and build on — the one condition is that
-  credit to the original author stays visible.
-
-  Add this to your .env.local (or your host's environment):
-
-      ATTRIBUTION_ACK="${AUTHOR.url}"
-
-  That is the whole requirement. Nothing is sent anywhere, no network
-  call is made, and no data leaves your machine — the value is only
-  compared locally.
-
-  Built by ${AUTHOR.name} · ${AUTHOR.url}
-────────────────────────────────────────────────────────────────────────
-`;
-
-/**
- * Throws unless the attribution requirement has been acknowledged.
- * Called once from instrumentation.ts when the server starts.
- */
-export function assertAttribution(): void {
-  if (hasAttributionAck()) return;
-  console.error(FAILURE_MESSAGE);
-  throw new Error(
-    `Attribution required: set ATTRIBUTION_ACK="${AUTHOR.url}" to start this app. See lib/attribution.ts.`,
-  );
 }

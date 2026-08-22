@@ -54,11 +54,13 @@ must stay, and the link must keep working.
 
 A purely private deployment that nobody else uses is exempt.
 
-The server also declines to start until you acknowledge this, by setting:
+The server also declines to start unless **both** are true:
 
 ```bash
-ATTRIBUTION_ACK="https://github.com/ys941"
+ATTRIBUTION_ACK="https://github.com/ys941"   # set in your environment
 ```
+
+...and the footer still contains the credit. Removing it stops the app from booting.
 
 Nothing is transmitted anywhere. No network call is made, no telemetry is collected,
 no licence server is contacted. The value is compared to a string in

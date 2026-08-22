@@ -143,8 +143,10 @@ one condition, and it is deliberately small:
 
 - The dashboard footer links to [@ys941](https://github.com/ys941). The app name above it
   is fully white-label and follows your Brand settings — the author credit is not.
-- The server will not boot until `ATTRIBUTION_ACK="https://github.com/ys941"` is set in
-  your environment. Nothing is transmitted; the value is compared locally.
+- The server runs two checks at start-up: `ATTRIBUTION_ACK="https://github.com/ys941"`
+  must be set in your environment, **and** the footer must still contain the credit.
+  Strip the credit and the app refuses to boot. Nothing is transmitted — both checks
+  are local.
 
 This is **clause 2 of the [licence](LICENSE)**, so it applies whether or not the check
 is present — deleting the check in [`lib/attribution.ts`](lib/attribution.ts) does not

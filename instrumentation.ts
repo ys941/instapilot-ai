@@ -14,7 +14,7 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     // Attribution gate — refuses to boot without credit to the original author.
     // See lib/attribution.ts for what this requires and why.
-    const { assertAttribution } = await import("@/lib/attribution");
+    const { assertAttribution } = await import("@/lib/attribution.server");
     assertAttribution();
 
     const runAndLog = async () => {
