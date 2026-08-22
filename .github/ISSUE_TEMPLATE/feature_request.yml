@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Ideas are welcome even if they're half-formed. If you'd rather think out
-        loud first, [start a discussion](https://github.com/ys941/cardioflow-ai/discussions) instead.
+        loud first, [start a discussion](https://github.com/ys941/instapilot-ai/discussions) instead.
 
   - type: textarea
     id: problem

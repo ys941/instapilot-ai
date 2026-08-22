@@ -65,7 +65,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" 
 
   <!-- footer -->
   <line x1="72" y1="530" x2="${W - 72}" y2="530" stroke="#30363D"/>
-  <text x="72" y="576" font-family="${MONO}" font-size="23" fill="#E6EDF3">github.com/ys941/cardioflow-ai</text>
+  <text x="72" y="576" font-family="${MONO}" font-size="23" fill="#E6EDF3">github.com/ys941/instapilot-ai</text>
   <text x="${W - 72}" y="576" font-family="${SANS}" font-size="21" fill="#7D8590" text-anchor="end">no API keys bundled</text>
 </svg>`;
 

@@ -43,7 +43,7 @@ Most of what makes this project better is ordinary, careful software work.
 **You need:** Node.js 20+, a PostgreSQL database, and a package manager. That's it to boot the UI.
 
 ```bash
-git clone https://github.com/ys941/cardioflow-ai.git
+git clone https://github.com/ys941/instapilot-ai.git
 cd instapilot-ai
 npm install
 cp .env.example .env.local     # fill in DATABASE_URL, APP_ACCESS_KEY, SESSION_SECRET
@@ -205,6 +205,6 @@ side is doing their best with the time they have.
 
 **Thank you for even reading this far.** 🤍
 
-<sub>Questions? Open a <a href="https://github.com/ys941/cardioflow-ai/issues">discussion or an issue</a> — no question is too small.</sub>
+<sub>Questions? Open a <a href="https://github.com/ys941/instapilot-ai/issues">discussion or an issue</a> — no question is too small.</sub>
 
 </div>
