@@ -12,6 +12,11 @@
 export async function register() {
   // Only run in the Node.js runtime (not Edge), and only in the main process
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // Attribution gate — refuses to boot without credit to the original author.
+    // See lib/attribution.ts for what this requires and why.
+    const { assertAttribution } = await import("@/lib/attribution");
+    assertAttribution();
+
     const runAndLog = async () => {
       try {
         const { runCatchup } = await import("@/lib/catchup");
