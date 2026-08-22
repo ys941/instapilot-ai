@@ -146,9 +146,9 @@ one condition, and it is deliberately small:
 - The server will not boot until `ATTRIBUTION_ACK="https://github.com/ys941"` is set in
   your environment. Nothing is transmitted; the value is compared locally.
 
-The check lives in [`lib/attribution.ts`](lib/attribution.ts) and is, obviously, easy to
-delete. It is a speed bump and a request, not DRM. Please just leave the credit in — it
-costs nothing and it is the only thing asked in return.
+This is **clause 2 of the [licence](LICENSE)**, so it applies whether or not the check
+is present — deleting the check in [`lib/attribution.ts`](lib/attribution.ts) does not
+remove the obligation. A purely private deployment nobody else uses is exempt.
 
 Full detail on what you may and may not do: [COPYRIGHT.md](COPYRIGHT.md).
 

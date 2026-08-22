@@ -3,7 +3,7 @@
 **InstaPilot AI**
 Copyright © 2026 **Yati Bhardwaj** ([@ys941](https://github.com/ys941))
 
-Licensed under the [MIT Licence](LICENSE).
+Licensed under the [MIT Licence with Attribution Requirement](LICENSE).
 
 ---
 
@@ -12,7 +12,8 @@ Licensed under the [MIT Licence](LICENSE).
 **You may:** use it, run it, self-host it, fork it, modify it, use it commercially,
 build a business on it, and re-skin it entirely as your own brand.
 
-**You must:** keep the copyright notice, and keep the author credit visible.
+**You must:** keep the copyright notice, and keep the author credit visible. Both are
+licence conditions, not requests.
 
 **You may not:** claim you wrote it, or strip the attribution and pass it off as
 original work.
@@ -37,15 +38,21 @@ That's the whole deal.
 
 ### 1. Keep the copyright notice
 
-The MIT licence requires the notice in [`LICENSE`](LICENSE) to travel with the software.
-Keep that file in any copy or substantial portion you distribute. This is the legally
-binding part.
+The licence requires the notice in [`LICENSE`](LICENSE) to travel with the software.
+Keep that file in any copy or substantial portion you distribute.
 
 ### 2. Keep the author credit visible
 
-The dashboard footer links to [github.com/ys941](https://github.com/ys941). Everything
-*around* that credit is yours to change — the app name above it follows your Brand
-settings — but the credit itself should stay.
+**This is clause 2 of the [licence](LICENSE), not a courtesy.** Any deployment other
+people can see must display legible credit to the author:
+
+> Built by Yati Bhardwaj — https://github.com/ys941
+
+The dashboard footer does this for you out of the box. Everything *around* it is yours
+to change — the app name above it follows your Brand settings — but the credit itself
+must stay, and the link must keep working.
+
+A purely private deployment that nobody else uses is exempt.
 
 The server also declines to start until you acknowledge this, by setting:
 
@@ -57,19 +64,18 @@ Nothing is transmitted anywhere. No network call is made, no telemetry is collec
 no licence server is contacted. The value is compared to a string in
 [`lib/attribution.ts`](lib/attribution.ts) and that is all.
 
-> **On honesty:** that check is trivial to delete, and this is an MIT-licensed
-> repository, so you would be within your rights to do so. It is a request and a
-> speed bump, not enforcement. It costs you a single line in a footer, and it is the
-> only thing asked in exchange for several months of work given away for free.
-> Please leave it in.
+> **A note on the check:** it is easy to delete, and you are free to modify this
+> code. But clause 2 of the licence requires the visible credit regardless of whether
+> the check is present — removing the check does not remove the obligation, it just
+> means the software stops reminding you of it.
 
 ---
 
 ## ❌ What is not okay
 
 - **Claiming authorship.** Don't present this as software you wrote.
-- **Removing the copyright notice** from copies you distribute — that one is an actual
-  licence violation, not just bad manners.
+- **Removing the copyright notice or the visible credit.** Both are licence violations,
+  not just bad manners.
 - **Re-uploading it as your own project** with the attribution stripped.
 - **Implying endorsement.** Building on this doesn't mean the author endorses, supports
   or is responsible for what you build.

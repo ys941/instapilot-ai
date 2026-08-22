@@ -14,7 +14,7 @@
 
 <p>
   <a href="COPYRIGHT.md"><img alt="Copyright and attribution" src="https://img.shields.io/badge/%E2%AD%90%20read%20first-Copyright%20%26%20attribution-7C3AED?style=for-the-badge" /></a>
-  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/licence-MIT-2ea44f?style=for-the-badge" /></a>
+  <a href="LICENSE"><img alt="MIT with attribution" src="https://img.shields.io/badge/licence-MIT%20%2B%20attribution-2ea44f?style=for-the-badge" /></a>
 </p>
 
 <p>
