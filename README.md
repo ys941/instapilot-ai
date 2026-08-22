@@ -13,6 +13,11 @@
 </p>
 
 <p>
+  <a href="COPYRIGHT.md"><img alt="Copyright and attribution" src="https://img.shields.io/badge/%E2%AD%90%20read%20first-Copyright%20%26%20attribution-7C3AED?style=for-the-badge" /></a>
+  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/licence-MIT-2ea44f?style=for-the-badge" /></a>
+</p>
+
+<p>
   <img alt="Instagram Graph API" src="https://img.shields.io/badge/Instagram-Graph%20API-E4405F?style=for-the-badge&logo=instagram&logoColor=white" />
   <img alt="YouTube Data API v3" src="https://img.shields.io/badge/YouTube-Data%20API%20v3-FF0000?style=for-the-badge&logo=youtube&logoColor=white" />
   <a href="#-deployment-railway"><img alt="Deploy on Railway" src="https://img.shields.io/badge/Deploy%20on-Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white" /></a>
