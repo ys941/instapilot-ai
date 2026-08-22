@@ -1,7 +1,7 @@
 blank_issues_enabled: true
 contact_links:
   - name: 💬 Ask a question
-    url: https://github.com/ys941/instapilot-ai/discussions
+    url: https://github.com/ys941/cardioflow-ai/discussions
     about: Not sure if it's a bug? Ask here first — no question is too small.
   - name: 🔐 Report a security issue
     url: mailto:ys9410017064@gmail.com
