@@ -52,8 +52,6 @@ The dashboard footer does this for you out of the box. Everything *around* it is
 to change — the app name above it follows your Brand settings — but the credit itself
 must stay, and the link must keep working.
 
-A purely private deployment that nobody else uses is exempt.
-
 The server also declines to start unless **both** are true:
 
 ```bash
