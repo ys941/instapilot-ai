@@ -8,8 +8,9 @@
  * component, so anything Node-only would be pulled into the browser bundle
  * and break the build. The filesystem checks live in `attribution.server.ts`.
  *
- * Clause 2 of the LICENCE requires that any deployment other people can see
- * displays visible credit to the original author.
+ * The project's attribution requirement (see COPYRIGHT.md) asks that any
+ * deployment other people can see displays visible credit to the original
+ * author.
  */
 
 export const AUTHOR = {

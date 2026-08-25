@@ -16,7 +16,7 @@
  * so a legitimate deployment is never broken by a check that simply could not
  * see the file.
  *
- * Removing these checks does not remove the obligation — see LICENSE clause 2.
+ * Removing these checks does not remove the ask — see COPYRIGHT.md.
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -112,8 +112,7 @@ const ackFailure = `
   This project will not start without attribution.
 
   It is free to use, fork, rebrand and sell — the one condition is that
-  credit to the original author stays visible. That is clause 2 of the
-  LICENCE, not a preference.
+  credit to the original author stays visible. See COPYRIGHT.md.
 
   Add this to your .env.local (or your host's environment):
 
@@ -131,8 +130,8 @@ const creditFailure = (where: string) => `
 ────────────────────────────────────────────────────────────────────────
   The author credit has been removed from ${where}.
 
-  Clause 2 of the LICENCE requires any deployment other people can see to
-  display visible credit to the original author:
+  This project's attribution requirement (COPYRIGHT.md) asks any
+  deployment other people can see to display visible credit:
 
       Built by ${AUTHOR.name} - ${AUTHOR.url}
 
@@ -152,7 +151,7 @@ export function assertAttribution(): void {
   if (!hasAttributionAck()) {
     console.error(ackFailure);
     throw new Error(
-      `Attribution required: set ATTRIBUTION_ACK="${AUTHOR.url}" to start this app. See LICENSE clause 2.`,
+      `Attribution required: set ATTRIBUTION_ACK="${AUTHOR.url}" to start this app. See COPYRIGHT.md.`,
     );
   }
 
@@ -161,14 +160,14 @@ export function assertAttribution(): void {
   if (credit.status === "missing") {
     console.error(creditFailure(credit.where));
     throw new Error(
-      `Attribution required: the author credit is missing from ${credit.where}. See LICENSE clause 2.`,
+      `Attribution required: the author credit is missing from ${credit.where}. See COPYRIGHT.md.`,
     );
   }
 
   if (credit.status === "unverifiable") {
     console.warn(
       `[attribution] Could not verify the visible credit (${credit.reason}). ` +
-        `Clause 2 of the LICENCE still requires it to be displayed.`,
+        `The project's attribution requirement (COPYRIGHT.md) still asks for it.`,
     );
   }
 }

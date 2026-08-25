@@ -3,7 +3,8 @@
 **InstaPilot AI**
 Copyright © 2026 **Yati Bhardwaj** ([@ys941](https://github.com/ys941))
 
-Licensed under the [MIT Licence with Attribution Requirement](LICENSE).
+Licensed under the [MIT Licence](LICENSE), with the visible-credit attribution
+requirement described below (the app checks it at startup).
 
 ---
 
@@ -12,8 +13,8 @@ Licensed under the [MIT Licence with Attribution Requirement](LICENSE).
 **You may:** use it, run it, self-host it, fork it, modify it, use it commercially,
 build a business on it, and re-skin it entirely as your own brand.
 
-**You must:** keep the copyright notice, and keep the author credit visible. Both are
-licence conditions, not requests.
+**You must:** keep the copyright notice (an MIT licence condition), and keep the
+author credit visible (this project's attribution requirement, checked at startup).
 
 **You may not:** claim you wrote it, or strip the attribution and pass it off as
 original work.
@@ -43,7 +44,7 @@ Keep that file in any copy or substantial portion you distribute.
 
 ### 2. Keep the author credit visible
 
-**This is clause 2 of the [licence](LICENSE), not a courtesy.** Any deployment other
+**This is the project's attribution requirement, not a courtesy.** Any deployment other
 people can see must display legible credit to the author:
 
 > Built by Yati Bhardwaj — https://github.com/ys941
@@ -65,7 +66,7 @@ no licence server is contacted. The value is compared to a string in
 [`lib/attribution.ts`](lib/attribution.ts) and that is all.
 
 > **A note on the check:** it is easy to delete, and you are free to modify this
-> code. But clause 2 of the licence requires the visible credit regardless of whether
+> code. But the attribution requirement stands regardless of whether
 > the check is present — removing the check does not remove the obligation, it just
 > means the software stops reminding you of it.
 
@@ -74,8 +75,9 @@ no licence server is contacted. The value is compared to a string in
 ## ❌ What is not okay
 
 - **Claiming authorship.** Don't present this as software you wrote.
-- **Removing the copyright notice or the visible credit.** Both are licence violations,
-  not just bad manners.
+- **Removing the copyright notice or the visible credit.** The first violates the
+  licence, the second violates this project's attribution requirement — neither is
+  just bad manners.
 - **Re-uploading it as your own project** with the attribution stripped.
 - **Implying endorsement.** Building on this doesn't mean the author endorses, supports
   or is responsible for what you build.

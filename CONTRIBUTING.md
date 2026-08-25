@@ -148,7 +148,7 @@ one condition, and it is deliberately small:
   Strip the credit and the app refuses to boot. Nothing is transmitted — both checks
   are local.
 
-This is **clause 2 of the [licence](LICENSE)**, so it applies whether or not the check
+This is the project's **attribution requirement** (see [COPYRIGHT.md](COPYRIGHT.md)), so it applies whether or not the check
 is present — deleting the check in [`lib/attribution.ts`](lib/attribution.ts) does not
 remove the obligation.
 
