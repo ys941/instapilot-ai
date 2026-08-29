@@ -1,652 +1,174 @@
 <div align="center">
 
-# 🚀 InstaPilot AI
+# InstaPilot AI
 
-### Autonomous, white-label AI content manager for **Instagram + YouTube Shorts** — for *any* niche
+**An AI worker that runs your Instagram and YouTube Shorts channels while you sleep.**
 
-<p>
-  <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" />
-  <img alt="React 18" src="https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
-  <img alt="TypeScript 5" src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
-  <img alt="PostgreSQL + Prisma" src="https://img.shields.io/badge/Postgres-Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white" />
-  <img alt="Grok + Gemini" src="https://img.shields.io/badge/AI-Grok%20%2B%20Gemini-7C3AED?style=for-the-badge&logo=google&logoColor=white" />
-</p>
+It picks the topic, writes the post, designs the slide cards, renders a real vertical
+video with an AI voiceover, publishes it on your schedule, cross-posts it as a Reel,
+and answers the comments and DMs it gets back. Any niche, your accounts, your API keys.
 
-<p>
-  <a href="COPYRIGHT.md"><img alt="Copyright and attribution" src="https://img.shields.io/badge/%E2%AD%90%20read%20first-Copyright%20%26%20attribution-7C3AED?style=for-the-badge" /></a>
-  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-2ea44f?style=for-the-badge" /></a>
-</p>
+[![MIT licence](https://img.shields.io/badge/licence-MIT-2ea44f?style=flat-square)](LICENSE)
+[![Attribution](https://img.shields.io/badge/read%20first-attribution-7C3AED?style=flat-square)](COPYRIGHT.md)
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-000?style=flat-square&logo=nextdotjs)](https://nextjs.org)
+[![Self-hosted](https://img.shields.io/badge/self--hosted-no%20keys%20bundled-2D3748?style=flat-square)](#quickstart)
 
-<p>
-  <img alt="Instagram Graph API" src="https://img.shields.io/badge/Instagram-Graph%20API-E4405F?style=for-the-badge&logo=instagram&logoColor=white" />
-  <img alt="YouTube Data API v3" src="https://img.shields.io/badge/YouTube-Data%20API%20v3-FF0000?style=for-the-badge&logo=youtube&logoColor=white" />
-  <a href="#-deployment-railway"><img alt="Deploy on Railway" src="https://img.shields.io/badge/Deploy%20on-Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white" /></a>
-  <img alt="Docker ready" src="https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
-</p>
+<img src="docs/shorts-filmstrip.png" alt="Cards from a Short this software wrote, rendered and published on its own" width="100%" />
 
-<a href="https://railway.com/new"><img src="https://railway.com/button.svg" alt="Deploy on Railway" height="44" /></a>
-
-<sub>One AI brain → branded image cards + carousels + Stories → vertical YouTube Shorts → cross-post Reels → auto-reply to comments &amp; DMs (incl. voice) → daily analytics digest — <b>fully unattended.</b></sub>
+<sub><b>Not a mockup.</b> These are frames from <a href="https://youtube.com/shorts/QhR8nuC3Dck">a real Short</a> —
+topic, script, cards, voiceover, video, title, caption and tags all generated and published unattended.</sub>
 
 </div>
 
 ---
 
-InstaPilot AI is a production SaaS that **fully automates** one or more content **brands** (paired Instagram + YouTube accounts) across **both platforms** — for **any niche** (cooking, fitness, finance, travel, education, tech, beauty, …). Everything that used to be hard-coded — app name, niche, topics, content-type labels, AI persona/prompts, account handles — is now configured entirely in **Settings**, so you can re-skin the whole product for your own brand **without touching code**. The env-seeded account is the **Primary** brand; you can add more paired IG + YouTube accounts in **Settings → Accounts**, and each runs **independently** with its own settings, prompts, schedule, topics, and brand skin.
+## What it actually does
+
+Every day, for each brand you configure, unattended:
+
+1. **Writes** an on-topic post with AI — rotating through your topics, and generating
+   fresh ones in the same style when they run out. It de-duplicates at the *theme*
+   level, not just the wording, because platforms suppress repetitive uploads.
+2. **Designs** branded image cards — posts, multi-slide carousels, Stories — rendered
+   server-side with Satori and Sharp.
+3. **Renders a vertical Short** from those cards with ffmpeg: a ~2s curiosity hook
+   cover (also uploaded as the custom thumbnail), large-text content slides, and a
+   subscribe outro — with mood-matched Creative Commons music, an optional AI
+   voiceover synced card-by-card, and optional word-by-word burned captions.
+4. **Publishes** to YouTube and Instagram on a per-weekday schedule you set, then
+   cross-posts the Short to Instagram as a Reel on its own deferred timing.
+5. **Replies** to Instagram comments and DMs (including **voice notes** — Whisper in,
+   TTS out) and to YouTube comments, in whatever language the person used.
+6. **Reports** — daily health email, morning digest, live SSE alerts, real analytics
+   pulled from the Graph and Data APIs.
+
+## See it running
+
+The pipeline runs a live channel end to end — topic, script, cards, video, title,
+caption, tags and upload:
+
+- **[The Cardio Doc AI](https://www.youtube.com/channel/UCbVZPr6jApgMGB_p28s9_6g/shorts)** — **105 Shorts** written, rendered and published on schedule.
+- **[Example Short](https://youtube.com/shorts/QhR8nuC3Dck)** — *"How a 6-Second Breath Can Drop Your Heart Rate"*, 33s, hook cover → four content slides → subscribe outro (the frames above).
+- **[The Instagram side](https://www.instagram.com/reel/DcKwp10lEGH/)** — the same renderer's output cross-posted as a Reel, carrying the AI-written rich caption: hook, six numbered stat-backed points, then the dual-account follow CTA the caption builder assembles.
+
+To be straight about it: this is proof the *machine* runs, not proof it will make you famous.
+The channel is small. What 105 unattended uploads demonstrate is that the scheduler, the
+renderer, the caption chain and the upload path hold up day after day without a babysitter.
+
+## Why it might be interesting
+
+- **It renders the video itself.** No Canva, no template service, no headless browser.
+  Cards are laid out with Satori, rasterised with Sharp, stitched to a 720×1280 H.264
+  MP4 with ffmpeg, then mixed with music and narration. See
+  [`lib/videoGenerator.ts`](lib/videoGenerator.ts).
+- **Per-task AI fallback chains.** Content, reply, and vision each get their own
+  ordered `provider · model` chain across Groq, Cerebras and Gemini, tried
+  top-to-bottom. One provider's outage or quota wall falls through instead of
+  failing the day.
+- **Genuinely white-label.** App name, niche, persona, handles, content-type labels
+  and prompts are all configured in Settings — nothing niche-specific is compiled in.
+  There is an AI Setup wizard that interviews you and writes the whole config.
+- **Multi-brand.** Each brand is a paired IG account + YouTube channel with its own
+  skin, schedule, topics and prompts. The engine runs the full pipeline independently
+  for every active brand.
+- **Bring your own keys.** Nothing is bundled. Groq, Gemini, Meta, Cloudinary, Resend,
+  and optionally YouTube and Jamendo — all yours.
+
+## Quickstart
 
-Every day, per brand, it writes on-topic content with AI, renders branded image cards (posts, carousels, stories), turns those cards into vertical **YouTube Shorts** — each a multi-slide **carousel** (a fast curiosity HOOK cover → large-text content slides → SUBSCRIBE outro), with a different theme per Short, mood-matched royalty-free music, an AI-written full caption, and an auto-posted engagement seed comment. It publishes everything on the **per-weekday schedule** you set, cross-posts YouTube Shorts to Instagram as **Reels** (opt-in, on their own deferred timing), replies to Instagram comments and DMs (including **voice notes**) and to YouTube comments — never to itself — syncs analytics for both platforms, and emails a daily health report. It runs unattended via an in-process automation loop, Instagram webhooks, and a daily job — you mostly just watch.
-
----
-
-## 📸 Screenshots
-
-<div align="center">
-
-<img src="docs/screenshots/02-ai-generator.png" alt="AI Generator — pick a platform, a post type and a tone, then generate" width="100%" />
-
-<sub><b>AI Generator</b> — eleven post types, five tones, Instagram / YouTube / both</sub>
-
-<br /><br />
-
-<table>
-<tr>
-<td width="50%"><img src="docs/screenshots/07-settings-auto-post.png" alt="Auto-Post settings: posts per day, post types, posting days and time slots" /></td>
-<td width="50%"><img src="docs/screenshots/06-settings-ai-config.png" alt="AI Configuration: per-lane provider with an ordered fallback chain" /></td>
-</tr>
-<tr>
-<td><sub><b>Auto-Post</b> — posts per day, which types, which weekdays, which times</sub></td>
-<td><sub><b>AI Config</b> — a provider per task lane, each with an ordered fallback chain</sub></td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/01-overview.png" alt="Overview dashboard with live stats and weekly charts" /></td>
-<td><img src="docs/screenshots/03-scheduler.png" alt="Scheduler calendar showing the content plan for the month" /></td>
-</tr>
-<tr>
-<td><sub><b>Overview</b> — live stats, weekly charts, AI performance insights</sub></td>
-<td><sub><b>Scheduler</b> — the month at a glance, colour-coded by post type</sub></td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/05-settings-brand.png" alt="Brand settings: app name, niche, tagline, audience, persona" /></td>
-<td><img src="docs/screenshots/04-analytics.png" alt="Analytics: reach, impressions, engagement, follower growth" /></td>
-</tr>
-<tr>
-<td><sub><b>Brand</b> — re-skin the entire app from here, no code</sub></td>
-<td><sub><b>Analytics</b> — reach, impressions, engagement, follower growth</sub></td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/08-settings-morning-digest.png" alt="Morning Digest settings with per-platform section toggles" /></td>
-<td valign="top"><br /><sub><b>Morning Digest</b> — one email each morning, and you choose exactly which sections arrive. Instagram and YouTube are toggled independently, so the digest only carries what you actually want to read.</sub></td>
-</tr>
-</table>
-
-<sub>Shown with an empty database on a fresh install — no keys connected, no posts yet.</sub>
-
-</div>
-
----
-
-## 📑 Table of Contents
-
-1. [Screenshots](#-screenshots)
-2. [White-Label / Any-Niche](#-white-label--any-niche)
-3. [Key Features](#-key-features)
-4. [Multi-Account (Brands)](#-multi-account-brands)
-5. [Tech Stack](#-tech-stack)
-6. [Architecture](#-architecture)
-7. [Settings Reference](#-settings-reference)
-8. [Setup / Installation](#-setup--installation)
-9. [Deployment](#-deployment)
-10. [Project Structure](#-project-structure)
-11. [Security](#-security)
-
----
-
-## 🎨 White-Label / Any-Niche
-
-InstaPilot ships **niche-neutral** and is re-skinnable for any brand entirely from the UI — **no code edits**.
-
-- **Brand skin (per account)** — in **Settings → Brand** set your **app name**, **niche/topic**, **persona/voice**, **Instagram handle**, **YouTube handle + channel name**, and the **dual-follow CTA**. The skin is stored *per account* (`BrandConfig`), so each brand you add can carry its own identity. A neutral default ("InstaPilot AI") ships out of the box.
-- **AI generators & prompts** — choose your content provider (**Grok**/Groq or **Gemini**), and override the **system prompt / persona** and **per-content-type prompts** in **Settings → AI** and **Settings → Prompts**. The brand's niche and persona are injected into every generation, so the AI writes about *your* topic in *your* voice.
-- **Rename content types** — the fixed content slots keep stable internal IDs (so your data never breaks), but their **user-facing labels** are fully renameable in **Settings → Content Types** (e.g. relabel "Clinical Pearl" → "Pro Tip", "Quiz" → "Trivia"). Captions, cards, and the generator all read the label.
-- **Bring your own keys** — no API keys are bundled. You supply your own Groq/Gemini/Meta/Cloudinary/Resend (and optional YouTube/Jamendo) credentials via env or the Settings UI. See [Environment variables](#environment-variables).
-- **Handles resolve at render time** — captions use a neutral `@__HANDLE__` placeholder resolved to the active brand's handle when published, so switching brands never leaks another account's handle.
-
-> **TL;DR for a new owner:** clone → set env keys → log in → **Settings → Brand** (name, niche, handles) → **Settings → AI/Prompts** (provider, voice) → **Settings → Content Types** (labels) → add your accounts → set the schedule. You're live in your own niche without editing a single file.
-
----
-
-## ✨ Key Features
-
-### 🧠 AI content generation
-- **AI Setup — describe your brand, the AI configures it (Groq-powered)** — **Settings → AI Setup** lets you set up a whole brand by describing it in plain English. Groq (via the content chain) first **asks the tailored questions** it needs (niche, audience, persona/voice, tone, language, Instagram + YouTube handles, channel name, posts/day, publishing days, which content types to enable, topic seeds), then **generates the full config** — brand skin, renamed/enabled content-type labels, topic seeds, per-weekday schedule, persona, dual-follow CTA, and default prompts. You **review a preview** (Brand incl. both handles, Content Types, Topics, Schedule, Persona) and **Apply** to persist it via the same per-brand preferences store — then refine anything in the individual tabs. **Niche-neutral** (works for any topic) and the **manual path is unchanged**. Powered by `POST /api/ai/setup` with stages `questions` / `generate` / `apply`.
-- **Per-task AI Config — provider + model + fallback chain (per brand)** — **Settings → AI** now configures **three independent task lanes**, each an ordered fallback **chain** of `provider · model` steps that are tried top-to-bottom until one succeeds:
-  - **Content** (`contentChain`) — posts, captions, hooks, stories.
-  - **Reply** (`replyChain`) — comment + DM auto-replies.
-  - **Vision** (`visionChain`) — image/video analysis for captions & music mood (**Gemini/Groq only** — text-only providers are excluded).
-  Providers are **Grok** (Groq Llama-3.3-70B), **Cerebras** (`gpt-oss-120b`, OpenAI-compatible), and **Google Gemini**. `resolveModel`/`analyzeMediaResilient` walk the configured chain (`lib/aiModels.ts` + `lib/ai-factory.ts`), so a single provider outage or quota exhaustion transparently falls through to the next step instead of failing. Defaults seed a Groq-first content/reply chain and a Gemini-first vision chain, so existing setups keep working unchanged. The auto-poster resolves each chain **per brand** via `getAIClient(task, brandId)`. **Known limitation:** vision **captions, hashtags, and YouTube tags** still call the factory with no brand id, so they use the **primary** brand's vision chain regardless of which brand is publishing.
-- **Cerebras support** — add a **Cerebras** key (`Settings → AI` `cerebrasApiKey`, or `CEREBRAS_API_KEY` env) and select it in any content/reply lane for very fast `gpt-oss-120b` inference; it has no vision model, so it's omitted from the vision lane.
-- **Brand-aware persona** — the active brand's **niche** and **persona/voice** are injected into the system prompt (`buildBrandSystemPrompt` / `buildBrandPersona`), so generated content matches your topic and tone.
-- **Topic rotation + auto-expansion** — every used topic is logged; once your configured topics run out, the AI generates fresh same-style topics so content never repeats. Shared across stories, IG posts, and YouTube posts.
-- **Theme-level anti-repetition + title-quality gate** — the auto-generators don't just avoid repeating *wording*; they steer away from recent posts at the **subject/theme** level, so two posts on the same idea with fresh words don't slip through (platforms suppress repetitive uploads). The YouTube generator compares against the last 40 titles, **enforces topic de-duplication**, and runs a **title-quality gate** that re-generates any weak title before publish (plus a subscribe/comment engagement loop on every upload).
-- **Many content types (renameable labels)** — stable internal IDs `EDUCATIONAL`, `CLINICAL_PEARL`, `PREVENTIVE`, `QUIZ` / `ECG_QUIZ` / `ANGIOGRAPHY_QUIZ`, `MYTH_FACT`, `CASE_STUDY`, `CAROUSEL` (multi-slide), `CTA`, `REEL`, `STORY` — each with a **user-facing label you can rename** in Settings → Content Types.
-- **Vision captions & hashtags** — Gemini multimodal reads uploaded media to write captions; AI-generated, relevance-scored hashtags via `hashtagEnricher` (live IG `ig_hashtag_search` + concise packs). The `/api/ai/hashtags` endpoint powers the generator.
-
-### 📅 Scheduling (per-weekday)
-All scheduling runs in a configurable timezone (per brand via `autoPost.timezone`; neutral default **UTC**). Both the Instagram auto-poster and the YouTube auto-poster share the same **per-weekday** model: each weekday can be set to **"Use global"** (inherit the global schedule) or **"Custom"** (override it).
-
-- **Per-day scheduling** — **Settings** lets you configure, **per weekday**, whether to post, how many posts, and at what times — **separately** for the Instagram auto-poster and the YouTube auto-poster. So Mondays can be 3 posts at `08:00 / 13:00 / 19:00` while weekends are off, etc. Days left on **"Use global"** fall back to the global **Publishing Days/Times**.
-- **Per-day on/off toggle** — each custom weekday row has an explicit **ON/OFF toggle** to enable or disable publishing on that day, independent of how many posts/times it carries (a day toggled OFF generates nothing).
-- **`customScheduleOnly` toggle (per platform)** — when this master toggle is **ON**, days **without** a Custom `dailySchedule` entry generate **nothing**: the global Publishing Days/Times fallback is **disabled** and only your custom-enabled days post. When **OFF** (default) days on "Use global" fall back to the global schedule as usual. Available **separately** for the Instagram and YouTube auto-posters.
-- **Per-day Instagram-Reel times** — in **Settings → YouTube**, each custom weekday can set its **OWN Instagram Reel publish time(s)** for the cross-posted Reel. When a day publishes **2+ Shorts**, you add **one Reel time per Short** so each Short's cross-posted Reel maps to its own slot (slots are filled in order). Days left on **"Use global"** fall back to the **global** `reelPublishTimes`.
-- **Global vs. per-day (fallback model)** — the top-level **"Instagram Reel publish times"**, **"Publishing Days"**, and **"Publish Times"** are the **GLOBAL** schedule (`scheduleTimes` + `postsPerDay`, and YouTube's `postTimes` + `postsPerDay`). They are used as the **fallback whenever a weekday is set to "Use global"** (unless `customScheduleOnly` is on); the per-day section **overrides** them per weekday, so existing configs keep working unchanged.
-- **Separate Instagram-Reel timing (deferred reels)** — when a YouTube Short cross-posts to Instagram as a Reel, the Reel can be **deferred to its own configurable time(s)** — globally, or **per weekday** (one slot per Short on multi-Short days) — independent of the YouTube publish time. The **Short publishes on its own schedule** and the **Reel publishes at the configured reel time**; with no Reel time set the Reel cross-posts **immediately** after the Short.
-- **`autoPublish` (Instagram) — heads-up** — when **Settings → Auto-Post → `autoPublish`** is **ON**, auto-generated IG posts publish **immediately at generation time** (`scheduledFor = now`) rather than waiting for the configured slot times. In other words, the per-day/global **publish-times act only as a generation cadence when `autoPublish` is OFF**; with it ON the slot times are bypassed and posts go out as soon as they are generated.
-
-### 📸 Instagram automation
-- **Daily auto-posts** — `runAutoGeneratePosts()` generates posts/day per each brand's **Auto-Post** settings (default 2/day), with type + topic rotation, branded image cards, scheduled at your configured per-weekday times/days (or the global fallback). A per-brand daily cap (`postsPerDay`) prevents over-posting (YouTube-only posts don't skew the IG cap).
-- **Carousels** — real multi-image carousels (cover + content slides + CTA), published as native IG carousels.
-- **Daily auto-story** — one Instagram Story/day on a rotating topic (off by default; enable in Settings → Stories).
-- **Large-media direct upload** — the **Media** page uploads big files (100 MB+ videos) **straight to Cloudinary from the browser** (unsigned preset, configured via `GET /api/upload`), then POSTs only the resulting URL + metadata as small JSON. This bypasses the server's multipart body limit, fixing the "Failed to parse body as FormData" crash on large videos; small files still fall back to the legacy server multipart path.
-- **Instant comment replies** — webhook-driven replies in under a minute via **Grok Llama-3.3-70B** (resolves the correct quiz answer and gives a real on-topic explanation).
-- **Instant DM replies** — webhook + polling fallback, context-aware (reads conversation history).
-- **Natural, human-voiced DM replies** — DM auto-replies read like a **real person casually texting back** from the account: relaxed, warm, specific to what was said, short (1-2 sentences), and it does **not** announce itself as an AI/bot or lecture like an expert. It still **never impersonates a specific named human** and, for anything personal or sensitive, gently points the follower to a qualified professional. (Comment replies keep the brand-voice persona built via `buildBrandPersona`.)
-- **Language mirroring** — both comment and DM replies answer in the **same language and script the person used** (e.g. Hinglish → Hinglish, Devanagari Hindi → Hindi, English → English, mixed → mirror the mix), sounding native rather than translated.
-- **Voice-note DMs** — incoming voice note → **Groq Whisper** transcription → AI reply → **Gemini TTS** → sent back as an `.m4a` voice note.
-
-### ▶️ YouTube Shorts automation
-- **Independent YouTube auto-poster** — `runAutoGenerateYouTube()` is a *separate* pipeline driven entirely by each brand's **Settings → YouTube**: its own topics, post types, post times, days, and posts-per-day.
-- **Every Short is a multi-slide carousel** — `publishPostToYouTubeShort()` → `buildShortForPost()` (`lib/youtubePublish.ts`) builds every Short as a vertical **carousel** video:
-  - a fast **~2s curiosity HOOK cover** (an AI-written curiosity-gap line — also set as the **custom YouTube thumbnail**) — front-loaded fast because ~70–90% of viewers swipe in the first ~2s. Hooks and titles are **audit-driven**: they win the first second with a concrete, specific opener and are held to an **anti-fabrication** rule — never inventing or exaggerating a statistic or magnitude claim (use a question or a concrete image when unsure),
-  - several **large-text CONTENT slides**, one point per slide (`buildContentSlideSpecs()` splits the post's full content; `CAROUSEL` posts render their authored slides, quiz types get setup/question/options slides and **never** reveal the answer),
-  - a **SUBSCRIBE outro** (`lib/hookCard.ts`).
-  Length is driven by a **selectable target** — **Settings → YouTube → Short length** (`targetShortSeconds`) lets you pick **15 / 20 / 30 / 45 / 60s** (default **30s**); `shortPlan()` (`lib/shortLength.ts`) paces the cards toward that target while still **adapting to the content** (longer card text → longer hold), hard-capped at YouTube's ~3-min Shorts ceiling (180s). Cards stitched into a vertical MP4 via **ffmpeg-static** (`lib/videoGenerator.ts`).
-- **A different theme per Short** — a rotating counter cycles through all `THEMES`, so consecutive Shorts are *guaranteed* distinct palettes; the one chosen theme is shared by the hook cover, every content slide, and the outro (cohesive within a Short, varied across Shorts). Cached per `post.id` so re-rendering the same post stays stable.
-- **1080×1920 design, 720×1280 render** — cards are designed full-frame vertical 9:16 (**1080×1920**) and the Short renders at **720×1280** H.264 (the memory/CPU-constrained production container can't reliably encode 1080p — it stalls ffmpeg at `frame=0`). Cards are rendered with **satori → SVG → sharp** (NOT raw SVG), because the container's librsvg rejects hand-written SVG strings; satori output rasterizes reliably.
-- **Card-faithful, stat-backed full caption (resilient fallback chain)** — `buildRichCaption()` writes one rich, detailed caption (hook → intro → expanded points → "💡 Why it matters" → dual-account CTA) that stays **faithful to the video cards**: it expands **every** card point in order, reuses each point's **exact figure** (never invents, rounds, or skips a number), and adds the mechanism + why-it-matters depth. It runs a tiered chain — **Gemini flash → Grok → Gemini reasoning** (`generateTextResilient`) — behind a **completeness gate** (≥1100 chars AND ≥3 numbered points) so a thin/degraded provider is skipped and the chain fails over to a fuller tier instead of shipping a stub. Generated once and cached per `post.id`, so Instagram and YouTube get byte-identical text.
-- **Engagement seed comment on every upload** — after upload, the channel auto-posts a friendly engagement-question top-level comment (`buildSeedComment()`) to kick-start comment velocity (a strong Shorts reach signal). The own-comment skip in the reply bot ignores this seed.
-- **Mood-matched music** — Gemini **vision** reads the cover card → picks a mood → **Jamendo** returns a CC-licensed instrumental, mixed under the video (faded) and credited in the description. Best-effort: any failure or missing `JAMENDO_CLIENT_ID` → silent Short.
-- **🎙️ AI voiceover + per-card-synced timing (opt-in, default OFF)** — each Short can be narrated by an AI voice and carry TikTok-style burned captions:
-  - **`voiceover`** (`Settings → YouTube`, default OFF) — narrates every Short with an AI voice mixed at full volume over the **auto-DUCKED** background music (it becomes the dominant track). **Each card is narrated as its own segment** (hook → each content slide's text → CTA, in card order) and **each card is shown exactly while ITS text is spoken**, so the voice never drifts from the card on screen. The pipeline builds one narration segment per card → **TTS each segment** → **assembles** the clips into one voice track with per-card silence padding (`lib/videoGenerator.ts` `assembleVoiceTrack`) → mixes the voice over the ducked music. Best-effort: any failure **falls back to a single narration + even split, then to the silent music-only Short**, so a Short is never lost.
-  - **Length adapts to content + paced by "Seconds per card"** (`secondsPerImage`) — with voiceover ON, each card's full text is narrated, so a card with **long text automatically holds longer** (and the Short grows) while a short card is briefer — the total scales with the content up to the ~3-min (180s) ceiling. "Seconds per card" becomes the **minimum hold per content card**: a card always stays at least that long; if its narration is longer it shows for the full narration; any extra time becomes a short **silence inserted into the audio** so the voice stays in sync. (With voiceover OFF it's simply the fixed per-card duration.)
-  - **`voiceoverVoice`** — the narration voice (**Orpheus**): male `daniel` (default), `austin`, `troy`; female `autumn`, `diana`, `hannah`.
-  - **`burnCaptions`** (default OFF) — **OFF** → no hardcoded captions, so **YouTube auto-generates AND auto-translates** captions to each viewer's language (the upload now declares `defaultLanguage` / `defaultAudioLanguage = "en"`). **ON** → burns **word-by-word** captions into the video (bundled Geist font `public/fonts/CFSans.ttf` via **libass**; the active word pops **gold + scales** in a lower-middle safe zone) using **Groq Whisper** word-level timestamps (`whisper-large-v3`) → ASS subtitles → a re-encode.
-  - **TTS providers** (`lib/tts.ts`; `TTS_PROVIDER` default `groq`, with auto-fallback to the other provider then **Gemini TTS**): **Groq Orpheus** (`canopylabs/orpheus-v1-english`; needs a one-time **org-admin terms acceptance** in the Groq console; tune via `GROQ_TTS_MODEL` / `GROQ_TTS_VOICE`), **Canopy self-hosted** (`CANOPY_TTS_URL` / `CANOPY_TTS_KEY` / `CANOPY_TTS_VOICE`, select with `TTS_PROVIDER=canopy`), and **Gemini TTS** (last-resort).
-  - **Cost:** adds one TTS call per Short (plus Whisper + a re-encode **only** when `burnCaptions` is ON) — heavier on memory, which is why both are **opt-in**.
-- **AI YouTube search tags** — `buildYouTubeTagsAI()` uses the selected AI provider to generate YouTube-search-optimized keyword tags (distinct from IG reach hashtags), with a deterministic `buildYouTubeTags()` fallback; `uploadShort()` adds the `#` prefix, appends `#Shorts`, and uploads via Data API v3.
-- **YouTube comment auto-replies** — `replyToYouTubeComments()` reads recent-video comment threads (and nested replies) and replies with **Grok**, deduped via the `Comment` table and an atomic claim. **Robust own-comment skipping**: it compares the channel id, channel title, and `@handle` so it never replies to itself (including the seed comment). Toggle in **Settings → YouTube**.
-- **Per-weekday scheduling** — YouTube posts are scheduled and published by the same catchup loop, routed by `platform`, on the YouTube auto-poster's own per-day plan (see [Scheduling](#-scheduling-per-weekday)).
-
-### 🔁 Cross-posting toggles
-- **YouTube → Instagram (Reels) — ✅ ON = cross-posted** — when **Settings → YouTube → Also publish to Instagram (as Reels)** (`publishToInstagram`) is on, each YouTube-native Short is **also** published to Instagram as a **Reel** (`crossPostYouTubeShortToInstagramReel()`) reusing the exact same rendered MP4 — no re-render, identical (cached) rich caption. The Reel can be **deferred to its own time(s)** (see [Scheduling](#-scheduling-per-weekday)); with no Reel time configured it posts immediately after the Short.
-- **Instagram → YouTube — ⛔ effectively disabled** — Instagram feed posts are **NOT** cross-posted to YouTube. (Community posts can't be created via the YouTube Data API — there's no endpoint for them.) Instagram posts therefore stay on Instagram; dedicated YouTube content comes from the independent YouTube auto-poster instead.
-- **Instagram → Facebook Page (opt-in)** — when **Settings → Auto-Post → Also publish to Facebook Page** (`autoPost.publishToFacebook`, default OFF) is on, each published post is **cross-posted to the linked Facebook Page** (`lib/facebook.ts`) — photos via `/{page}/photos`, and **videos as native Facebook Reels** via the resumable `/{page}/video_reels` upload (`publishFacebookReel()`, with a `/{page}/videos` fallback) — reusing the existing Page access token and the same Cloudinary media (before cleanup). Wired into both the scheduled/auto publish loop and the manual Publish-Now route. Best-effort: a Facebook failure never blocks the Instagram/YouTube publish; Stories are skipped.
-
-### 📝 Unified rich captions
-- **Identical caption on both platforms** — `buildRichCaption()` (`lib/richCaption.ts`) builds **one** rich, descriptive, **card-faithful** caption (hook → intro → expanded key points, each a **complete stat-backed sentence** mirroring a card point in order → "💡 Why it matters" → **dual-account CTA with clickable follow links**) used identically on Instagram and YouTube. It is generated once per post and cached on the post's `reelScript` field (`RICHCAP:`), so whichever platform publishes first pays the AI cost and the other reads byte-identical text.
-- **Sized for Instagram's limit** — the AI is instructed to stay under Instagram's **2200-character** caption limit, and `capIgCaption()` (`lib/captionBuilder.ts`) is a safety net that trims the caption if it is ever exceeded.
-- **Per-platform hashtags** — the caption itself carries no hashtags; each publisher appends platform-appropriate tags: **Instagram reach hashtags** vs. **AI-generated YouTube search tags** + `#Shorts`.
-- **Dual-account CTA with clickable follow links** — a configurable "follow us" block links **both** of the brand's accounts (its YouTube handle + its Instagram handle), with clickable URLs on YouTube. Both handles come from the brand skin.
-
-### 📊 Analytics & notifications
-- **Real-time analytics** — live IG followers/reach/top posts/engagement from the Graph API (synced to the DB), plus YouTube channel + per-video stats from the Data API, surfaced on Overview + Analytics.
-- **Daily health email** — health digest via Resend/Nodemailer: system health (DB / AI / Instagram), **Instagram webhook delivery status**, today's story status, **today's YouTube posts**, today's auto-generated posts, upcoming scheduled posts, 24h stats, failures, and rate-limit events.
-- **Morning Digest (configurable daily summary)** — an opt-in **once-a-day email summarising the last 24 hours across Instagram + YouTube** (`lib/morningDigest.ts` + `sendMorningDigestEmail`). In **Settings → Morning Digest** you set a master toggle, the **send time (IST)**, and per-section toggles for what's included: IG insights/comments/published/followers, YouTube insights/comments/published/subscribers, plus top performer, auto-engagement, today's schedule, failures, growth deltas, system health, and AI usage. Polled from `instrumentation.ts`, self-gated to the configured IST hour, once per day; settings round-trip through the notifications blob.
-- **System-Health surfaces AI rate-limits / 429s** — the digest's **System Health** section now reads the last 24h of logged rate-limit + error events (`getRecentRateLimitEvents` / `getRecentSystemErrors`). If any **AI provider (Groq/Gemini/Cerebras) was rate-limited**, the "AI provider" line is marked **degraded** and the specific `Rate limit · <service>` events are listed — so a bad day (e.g. a daily token cap silently killing generation) shows up instead of a false 🟢 all-clear.
-- **Generation-failure alert email** — when a day's content generation **produces no post at all** (every provider in the chain is exhausted/rate-limited), `notifyGenerationFailed()` (`lib/notifier.ts`) fires a **"No Post Generated"** alert email, **deduped to once per IST day per brand**, so a silent zero-output cycle can't go unnoticed while the scheduler keeps retrying.
-- **Activity + live alerts** — every publish/reply/topic-use logged to `ActivityLog`; real-time alerts stream over SSE (`/api/notifications/stream`) and email (publish, fail, YouTube published/failed, comment replied).
-
-### 🎨 Appearance (10 app-wide themes)
-- **Selectable dashboard theme** — **Settings → Appearance** offers **10 brand-neutral palettes** — Crimson (default), Amethyst, Sapphire, Emerald, Sunset, Rosé, Cyber Teal, Gold, Indigo Night, Slate Mono. Themes are applied entirely through **CSS variables** (`lib/themes.ts` + `[data-theme="…"]` token blocks in `app/globals.css`, wired through Tailwind), swapped instantly by **next-themes** (`attribute="data-theme"`) and **persisted per device** — no rebuild, no code edit. A live accent preview shows each palette before you pick it.
-- **Installable PWA** — the dashboard is an installable **Progressive Web App**: a brand-driven web app manifest (`app/manifest.ts`, served at `/manifest.webmanifest`) plus a registered service worker (`components/PWARegister.tsx` → `/sw.js`) enable **"Install app"** (Chrome/Edge) and **"Add to Home Screen"** (Safari), launching standalone. The manifest's name/short-name follow the configured brand (`NEXT_PUBLIC_APP_NAME` / `BRAND_NAME`) with white-label icons, so the installed app carries *your* identity.
-- **Slim "Powered by" footer** — a lightweight `Powered by <app name>` footer (`components/dashboard/Footer.tsx`) sits under the dashboard, brand-driven and unobtrusive.
-
----
-
-## 👥 Multi-Account (Brands)
-
-InstaPilot controls **multiple paired Instagram + YouTube "brand" accounts**. A *brand* = one Instagram account + one YouTube channel that run together, **each with its own brand skin** (name, niche, persona, handles).
-
-- **Primary brand** — the account seeded from environment variables. It always exists, always resolves its credentials from **ENV** (env wins; brand-row columns are only a fallback), and **cannot be deleted**. This preserves the exact original single-account behaviour. Its brand skin lives in the `Preferences` singleton.
-- **Add more brands** — in **Settings → Accounts**, click **Add Account** and paste that account's credentials:
-  - **Instagram:** access token · business-account ID · username · (optional) Facebook Page ID
-  - **YouTube:** client ID · client secret · refresh token
-  - Non-primary brands store their credentials **and brand skin** in their own `Brand` row (`lib/brands.ts`).
-- **Per-brand everything** — each brand has its **own** brand skin, settings, AI prompts, automation schedule, topics, and post types (stored in `Brand.settings`; the primary uses the `Preferences` singleton). The automation engine runs the **full pipeline independently for every active brand** every cycle.
-- **Brand switcher** — a switcher in the dashboard header (plus an **"All accounts"** aggregate) scopes every page to the selected brand. Media publishing asks which account to publish to.
-- **Data isolation** — `Post` / `ScheduledPost` / `Comment` / `Analytics` rows carry a `brandId`. A `null` brandId means "the primary brand"; non-primary brands are matched by their exact id, so each brand's content and analytics stay isolated.
-
----
-
-## 🛠 Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Framework | **Next.js 16** (App Router) + React 18, request gate in **`proxy.ts`** |
-| Language | TypeScript 5 |
-| Styling | Tailwind CSS + glassmorphism, Framer Motion, Radix UI, Recharts |
-| Content AI | Per-task fallback **chains** across **Grok** (Groq Llama-3.3-70B), **Cerebras** (`gpt-oss-120b`) & **Google Gemini** (configured in Settings → AI) |
-| Conversational AI | **Groq** — Llama-3.3-70B (comment/DM/YouTube replies), Llama-3.1-8B (fast fallback) |
-| Voice | Groq **Whisper** (speech→text) + Gemini **TTS** (text→speech) |
-| Vision | Gemini multimodal (captions + music-mood selection) |
-| Image rendering | **Satori + Sharp** (server-side cards) |
-| Video / Shorts | **ffmpeg-static** (cards → 720×1280 MP4) |
-| Music | **Jamendo** API (Creative-Commons instrumentals) |
-| YouTube | YouTube Data API v3 via **googleapis** (OAuth2 refresh token) |
-| Media hosting | Cloudinary (images + audio transcode to m4a) |
-| Database | **PostgreSQL + Prisma ORM** |
-| Data fetching | TanStack Query v5 |
-| Email | **Resend** / Nodemailer |
-| Instagram | **Facebook Graph API** (publish, comments, DMs, insights) + webhooks |
-| Deployment | **Railway** (Nixpacks) or **Docker** (Compose) |
-| Automation engine | In-process catch-up loop (`lib/catchup.ts`, per-brand) + Instagram webhooks + daily timer |
-| PWA | Installable web app — brand-driven manifest (`app/manifest.ts`) + service worker (`components/PWARegister.tsx`) |
-
----
-
-## 🏗 Architecture
-
-A single in-process loop (`lib/catchup.ts`) drives everything. It is started by `instrumentation.ts` on server boot (after a ~15s delay) and re-fired on an interval (`MIN_INTERVAL_MS`, 5 min), plus a separate daily timer. Dashboard polling (`/api/scheduler/check`, `/api/comments/check`, `/api/dms/check`) can also nudge it.
-
-Each cycle, `runCatchup()` lists all brands and runs the **full pipeline independently for every *active* brand** (primary first). With only the primary brand present this is a single iteration whose credentials resolve from ENV — identical to the original single-account behaviour.
-
-```
-runCatchup()  (every MIN_INTERVAL_MS; comment poll throttled when webhooks active)
- └─ for each ACTIVE brand (own credentials + own preferences + own brand skin):
-     ├─ scheduleAutoStory()          → create today's story (guarded against duplicates)
-     ├─ runAutoGeneratePosts()       → today's IG posts (per-day count/times, type + topic rotation; postsPerDay cap)
-     ├─ runAutoGenerateYouTube()     → independent YouTube Shorts (own per-day count/times/days/types/topics)
-     ├─ publishOverdueScheduled()    → publish due posts/stories/carousels, routed per platform
-     │     ├─ instagram  → igPublish / igPublishCarousel
-     │     └─ youtube    → publishPostToYouTubeShort  (no IG creds needed; optional IG Reel cross-post)
-     ├─ fetchMissedComments()        → IG comment reply fallback (webhook handles real-time)
-     ├─ syncInstagramInsights()      → refresh IG analytics (throttled ~6h/brand)
-     ├─ replyMissedDMs()             → IG DM reply fallback
-     └─ replyToYouTubeComments()     → Grok replies on the channel's recent Shorts/videos
-                                       (skips the channel's OWN comments — never replies to itself)
-
-Daily timer  (runDailyHealthCheck):
- ├─ runAutoGeneratePosts() / runAutoGenerateYouTube()  → also kicked here
- └─ sendDailyHealthReport()      → morning digest (DB / AI / Instagram health, IG webhook status,
-                                   today's YouTube posts + auto-posts, 24h stats, failures)
-
-Webhooks  (/api/webhooks/instagram, HMAC-verified):
- ├─ comments       → instant Grok reply
- ├─ messaging[]    → instant Grok DM reply (text or voice)
- └─ story_insights → real-time analytics sync
-```
-
-> The auto-generators self-gate per brand (date guard + DB de-dupe + in-flight guard + `postsPerDay` cap), so being called every cycle never double-generates.
-
-### Platform routing (`instagram` | `youtube`)
-Both `Post` and `ScheduledPost` carry a `platform` column (default `"instagram"`):
-- **Generator** sets it at creation; the **manual publish** route accepts a `{ platform }` override (persisted before routing).
-- **Settings → YouTube** `enabled` is the **auto-poster master switch** (independent generator + Grok comment replies); `publishToInstagram` cross-posts each YouTube Short to Instagram as a Reel.
-- **Note:** there is **no Instagram → YouTube cross-post** — IG feed posts stay on Instagram (community posts can't be created via the YouTube Data API). YouTube content is created independently by the YouTube auto-poster.
-
-| Path | Entry point | Behavior |
-|------|-------------|----------|
-| **Manual** | `POST /api/posts/[id]/publish` | `youtube` → render → Short → upload, skip IG. `instagram` → IG flow. |
-| **Scheduler / catchup** | `publishOverdueScheduled()` | Reads each overdue post's `platform`. `youtube` → `publishPostToYouTubeShort()` (+ optional IG Reel cross-post when `publishToInstagram` is on). YouTube-only posts publish even with **no** IG credentials. |
-| **Media folder** | `POST /api/media/[id]/publish-youtube` | Publishes the **actual uploaded file** (video → direct upload; image → rendered Short). |
-
-### Idempotency & self-healing
-- **`youtubeVideoId` / `instagramPostId`** are stored on both `ScheduledPost` and `Post`; every publish path re-reads the freshest value before uploading, so retries never double-post. **The id-persist write after a successful publish is itself retried** (`persistWithRetry`, 3 attempts w/ backoff) — a transient DB blip right after an upload can no longer lose the id and trigger a re-publish on the next tick.
-- **Claim lock + timestamped reaper** — `publishOverdueScheduled` and the manual route both atomically flip a `PENDING` `ScheduledPost` to `FAILED("__CLAIMING__")`; only the caller that gets `count===1` proceeds. The claim-lock **embeds a timestamp**, and the **reaper resets stale claims by that embedded claim time** (older than **45 min** — sized to exceed the worst-case legitimate render+upload so an *active* claim is never reaped mid-publish) — **not** by the row's `createdAt` — so genuinely-stuck claims recover while in-flight ones are left alone, stopping duplicate posts.
-- **Single-run catch-up** — a module-level in-flight guard makes `runCatchup()` **non-re-entrant**: if a cycle runs longer than the 5-min interval, the next tick early-returns instead of overlapping it, so DM replies and story creation can't double-fire.
-- **Atomic DM claim** — comment *and* DM auto-replies claim each message id (`claimDMForReply`/comment claim) before generating, so two overlapping ticks (or a catch-up racing a webhook redelivery) can never send two replies to the same message.
-- **Render lock (OOM guard)** — a **process-wide single-flight queue** wraps the **entire memory-heavy build** (card render + music + ffmpeg) for **both** the YouTube Short build **and** the IG carousel render, so only **one** render is ever in memory at a time on memory-limited hosts. Every remote fetch inside the lock carries a **60 s `AbortSignal` timeout** (a hung media URL can't deadlock the whole publish queue), and a 120s watchdog still SIGKILLs any wedged ffmpeg render.
-- **Black-frame render guard** — before a Short is encoded, every rendered card frame is variance-checked (`isBlankFrame` in `lib/videoGenerator.ts`): a transient satori→sharp rasterization glitch can emit valid-sized but visually **all-black** frames. If **every** frame is blank the render **aborts** (returns `null`), so the publish fails and **retries** with a proper render instead of ever shipping a dead all-black reel; a partial-blank render logs a warning and proceeds.
-- **JSON-resilient AI** — content-JSON generation tries the selected provider then **falls through to the other** on empty/quota-exhaustion responses (429 / `limit:0`), so Stories, IG posts, and Shorts never silently degrade to canned filler when a provider's free quota is gone.
-- **Passed slots publish today** — if a day's slot time has already passed when the auto-generator runs, the post is scheduled for **now (today)** instead of being pushed to tomorrow — fixing over-generation and the "N posts at one time" same-time collision (in **both** the IG and YouTube generators).
-- **AI fallback chains** everywhere; graceful degradation (silent Shorts, silent-Short voiceover fallback, default mood, branded fallback replies).
-
-### Instagram events: webhook + polling
-Real-time events arrive at `/api/webhooks/instagram` (HMAC-verified) for instant replies; the catchup loop's `fetchMissedComments()` / `replyMissedDMs()` provide a polling fallback for anything missed. Webhook subscription is **auto-ensured on startup**: the app-level + IG object-level fields are `comments` / `messages` / `mentions` (+ `story_insights`), and the **Page** object is auto-bound to `feed,messages,mention` via `POST /{page-id}/subscribed_apps`. That Page binding is what actually makes Meta deliver events and **requires a Page token with the `pages_manage_metadata` scope** — without it the bind is rejected and real-time delivery silently never starts (the polling fallback still works).
-
----
-
-## ⚙️ Settings Reference
-
-Settings persist per brand (`lib/preferences.ts`): the **Primary** brand uses the `Preferences` singleton row (id `"singleton"`); every other brand stores the same shape in its `Brand.settings`. They survive restarts. Every field below is wired into the automation, **per brand**.
-
-### Brand (`Settings → Brand`)
-| Field | Controls |
-|-------|----------|
-| `appName` | The product/app name shown in the UI |
-| `niche` | Your topic/niche — injected into every AI generation |
-| `persona` / voice | The AI's persona/voice for content + replies |
-| `igHandle` | Instagram `@handle` used in CTAs/watermarks |
-| `ytHandle` / `ytChannelName` | YouTube `@handle` + channel name used in CTAs/outros |
-| `dualFollowCTA` | The dual-account "follow us" CTA text/links |
-
-### AI Setup (`Settings → AI Setup`)
-Set up a whole brand by **describing it**. Groq asks the questions it needs, then generates the full config (brand skin + Instagram/YouTube handles + channel name + dual-follow CTA, content-type labels & which to enable, topic seeds, per-weekday schedule, persona/tone/language, and default prompts). Review the preview, then **Apply** to persist it (per brand) — or refine each area in the tabs below. Toggle to **Manual** for the hand-configured path (unchanged).
-
-### Content Types (`Settings → Content Types`)
-Rename the **user-facing label** of each fixed content slot (the internal ID is preserved so data never breaks). Labels flow into the generator, cards, and captions.
-
-### AI (`Settings → AI`)
-| Field | Controls |
-|-------|----------|
-| `contentChain` | **Content lane** — ordered `provider · model` fallback chain for posts/captions/hooks/stories (providers: `grok` \| `cerebras` \| `gemini`) |
-| `replyChain` | **Reply lane** — ordered fallback chain for comment + DM auto-replies |
-| `visionChain` | **Vision lane** — ordered fallback chain for image/video analysis (**`gemini`/`groq` only**) |
-| `cerebrasApiKey` | Cerebras key stored in DB (env `CEREBRAS_API_KEY` takes priority) |
-| `geminiApiKey` | Gemini key stored in DB (env `GEMINI_API_KEY` takes priority) |
-| `defaultTone` | Default content tone |
-| `defaultType` | Default post type in the generator |
-| `language` | Output language |
-| `aiProvider` | *(legacy)* single content provider — retained for back-compat; superseded by `contentChain` |
-
-### Auto-Post (`Settings → Auto-Post`)
-| Field | Controls |
-|-------|----------|
-| `enabled` | Master switch for daily IG post generation |
-| `postsPerDay` | 1–3 posts/day |
-| `postTypes[]` | Which post types may be generated |
-| `topics[]` | Rotating topic list (auto-expands when exhausted) |
-| `scheduleDays[]` | **Publishing Days** — the **GLOBAL** days to run (0=Sun … 6=Sat); used as the fallback for any day on "Use global" |
-| `scheduleTimes[]` | **Publish Times** — the **GLOBAL** publish times (e.g. `["08:00","19:00"]`); used as the fallback for any day on "Use global" |
-| `dailySchedule[]` | **Per-day overrides** — per weekday → **ON/OFF toggle** · how many posts · at what times. Each Custom day **overrides** the global `postsPerDay` / `scheduleTimes`; days left on **"Use global"** fall back to them. |
-| `customScheduleOnly` | When **ON**, only days with a Custom `dailySchedule` entry post — days without one generate **nothing** (the global Publishing Days/Times fallback is disabled). Default **OFF**. |
-| `timezone` | Schedule timezone (neutral default `UTC`) |
-| `autoPublish` | When **ON**, auto-generated posts publish **immediately at generation time** (`scheduledFor = now`) instead of waiting for the slot times — the publish-times act as a generation cadence only when this is **OFF**. |
-
-### Stories (`Settings → Stories`)
-| Field | Controls |
-|-------|----------|
-| `enabled` | Auto-post one story/day (off by default) |
-| `postTime` | `HH:MM` (default `09:00`) |
-| `scheduleDays[]` | Which days to post |
-| `topics[]` | Rotating story topics |
-| `customPromptExtra` | Extra prompt instructions |
-
-### YouTube (`Settings → YouTube`)
-
-**YouTube settings reference** — every field that drives the **independent YouTube auto-poster** (per brand):
-
-| Setting | What it does |
-|---------|--------------|
-| `enabled` | Master switch for the **independent YouTube auto-poster + Grok comment replies** |
-| `privacy` | Uploaded Short privacy: `public` \| `unlisted` \| `private` |
-| `postsPerDay` | YouTube auto-posts/day (1–5) — **GLOBAL**, used as the fallback for any day on "Use global" |
-| `postTimes[]` | **Publish Times** — the **GLOBAL** Short publish times (`HH:MM`); used as the fallback for any day on "Use global" |
-| `scheduleDays[]` | **Publishing Days** — the **GLOBAL** days the poster runs (0=Sun … 6=Sat); used as the fallback for any day on "Use global" |
-| `dailySchedule[]` | **Per-day overrides** — per weekday → **ON/OFF toggle** · how many posts · at what times · **own Instagram Reel time(s)** (`reelTimes`, below). Each Custom day **overrides** the global `postsPerDay` / `postTimes` / Reel times; days on "Use global" fall back to them. |
-| `dailySchedule[].reelTimes[]` | **Per-day Instagram Reel time(s)** for *this weekday's* cross-posted Reel. On days with **2+ Shorts**, add **one Reel time per Short** so each Reel maps to its own slot (filled in order). Empty → fall back to the global `reelPublishTimes`. |
-| `reelPublishTimes[]` | **GLOBAL** Instagram Reel publish time(s) for cross-posted Reels — the fallback whenever a weekday is on "Use global". Empty → cross-post the Reel immediately after the Short. |
-| `customScheduleOnly` | When **ON**, only weekdays with a Custom `dailySchedule` entry post — days without one generate **nothing** (the global Publishing Days/Times fallback is disabled). Default **OFF**. |
-| `publishToInstagram` | **YouTube → Instagram cross-post:** each YouTube Short is also published to Instagram as a **Reel** (deferred per the Reel times above, else immediate). |
-| `targetShortSeconds` | **Short length** — target Short duration: `15` \| `20` \| `30` \| `45` \| `60`s (default **30**). Paces the cards toward this target while still adapting to the content; hard-capped at 180s. |
-| `secondsPerImage` | Seconds each content slide shows (2–15, default 5; hook ≈2s, outro ≈3s) — the per-card **minimum**; `targetShortSeconds` sets the overall target |
-| `voiceover` | **AI voiceover (default OFF)** — narrate each Short with an AI voice over the **auto-ducked** music; each card is narrated as its own segment and shown exactly while its text is spoken (per-card sync). Length adapts to the content (≤180s); `secondsPerImage` becomes the **minimum** hold per card. Falls back to single-narration even split, then the silent music-only Short. |
-| `voiceoverVoice` | Narration voice (**Orpheus**): male `daniel` (default), `austin`, `troy`; female `autumn`, `diana`, `hannah` |
-| `burnCaptions` | **Word-by-word captions (default OFF)** — **OFF** lets YouTube auto-generate + auto-translate captions per viewer (upload declares `defaultLanguage`/`defaultAudioLanguage = "en"`); **ON** burns TikTok-style word-by-word captions (Groq Whisper `whisper-large-v3` timestamps → ASS → re-encode, active word pops gold) |
-| `descriptionSuffix` | Appended to every YouTube description (e.g. channel CTA) |
-| `replyToComments` | Grok auto-replies to comments on the channel's videos, skipping its own (default on) |
-| `topics[]` | Topics the **independent** YouTube poster writes about |
-| `postTypes[]` | Post types the YouTube poster may publish |
-| `customPromptExtra` | Extra prompt instructions appended for YouTube generation |
-
-Live connection status (Connected / channel name) is returned by `GET /api/settings/youtube` via `checkYouTubeHealth()`.
-
-### Notifications (`Settings → Notifications`)
-| Field | Controls |
-|-------|----------|
-| `notificationEmail` | Recipient for digests/alerts (falls back to `NOTIFICATION_EMAIL` env) |
-| `emailPublish` | Email on publish |
-| `emailFails` | Email on failures |
-| `emailAnalytics` | Email analytics / daily digest |
-| `pushPublish` / `pushComments` / `pushWeeklyReport` | In-app/push notification toggles |
-
-Other tabs: **Accounts** (add/edit/enable/delete brands — see [Multi-Account](#-multi-account-brands)), **Appearance** (pick one of 10 app-wide themes; per-device), **Prompts** (per-post-type system-prompt overrides + per-account default IG/YouTube content prompts), **Account / Instagram / Webhook / Danger** (tokens, webhook subscription, destructive actions). The Brand, Content Types, AI Config, Auto-Post, Stories, YouTube, Prompts, and Instagram tabs are scoped to the brand selected in the header switcher.
-
----
-
-## 🚀 Setup / Installation
-
-### Prerequisites
-- Node.js 20+, a PostgreSQL database, and accounts/keys for Groq, Gemini, Meta (Instagram/Facebook), Cloudinary, Resend, and (optionally) YouTube + Jamendo. **All keys are your own — none are bundled.**
-
-### Local development
 ```bash
+git clone https://github.com/ys941/instapilot-ai && cd instapilot-ai
 npm install
-cp .env.example .env.local        # fill in the variables below
+cp .env.example .env.local          # fill in your keys
 npm run db:generate && npm run db:push
-npm run dev                        # http://localhost:3000
+npm run dev                         # http://localhost:3000
 ```
 
-Then log in with your `APP_ACCESS_KEY`, open **Settings → Brand** and set your app name, niche, and handles — you're now running in your own niche.
+Log in with your `APP_ACCESS_KEY`, then open **Settings → AI Setup** and describe your
+brand in plain English — it generates the skin, content types, topics, schedule and
+persona for you. Or configure each tab by hand.
 
-> **Windows one-click launcher** — `start-all.bat` brings the whole stack up in one step: it checks Docker, starts **PostgreSQL + Redis** via Compose, waits for the DB, runs `prisma generate` + `db push`, launches the Next.js dev server, opens the dashboard, and (optionally, if `NGROK_AUTHTOKEN` is set) starts an ngrok tunnel for Meta webhooks.
+Prefer Docker:
 
-### Run with Docker (no Node setup needed)
 ```bash
-cp .env.example .env              # fill in your keys
-docker compose up -d              # app + PostgreSQL
-# app on http://localhost:3000
+cp .env.example .env && docker compose up -d
 ```
 
-### NPM scripts
-```bash
-npm run dev           # dev server (Turbo, port 3000)
-npm run build         # prisma generate && next build
-npm run start         # production server
-npm run lint          # ESLint
-npm run db:push       # push Prisma schema
-npm run db:generate   # regenerate Prisma client
-npm run db:studio     # Prisma Studio GUI
-npm run youtube:auth  # one-command YouTube OAuth → prints YOUTUBE_REFRESH_TOKEN
-```
+On Windows, `start-all.bat` brings up Postgres, Redis, Prisma and the dev server in one
+step.
 
-### Environment variables
-✅ = required, – = optional.
+## Screenshots
 
-| Variable | Req | Description |
-|----------|-----|-------------|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string |
-| `APP_ACCESS_KEY` | ✅ | Access key gating the dashboard login |
-| `SESSION_SECRET` | ✅ | HMAC secret for the auth session cookie (verified in `proxy.ts`) |
-| `BRAND_NAME` | – | Default app/brand name fallback (also overridable in Settings → Brand) |
-| `NEXT_PUBLIC_APP_NAME` | – | Public app name shown in the browser/title |
-| `NEXT_PUBLIC_APP_URL` | – | Public app URL |
-| `GROK_API_KEY` | ✅ | Groq key — comments, DMs, Whisper, content (tried first), YouTube descriptions |
-| `GROK_API_URL` | – | Default `https://api.groq.com/openai/v1` |
-| `AI_MODEL_MAIN` | – | Main Groq model (`llama-3.3-70b-versatile`) |
-| `AI_MODEL_FAST` | – | Fast Groq fallback (`llama-3.1-8b-instant`) |
-| `GEMINI_API_KEY` | ✅ | Gemini key — content fallback, vision, TTS, music mood |
-| `GEMINI_MODEL` | – | Optional override pinning the start of the Gemini chain |
-| `CEREBRAS_API_KEY` | – | Cerebras key for the per-task AI Config chains (can also be set in Settings → AI) |
-| `INSTAGRAM_ACCESS_TOKEN` | ✅ | Long-lived IG user token |
-| `INSTAGRAM_BUSINESS_ACCOUNT_ID` | ✅ | IG Business account ID |
-| `INSTAGRAM_USERNAME` | – | Account handle (self-reply suppression) |
-| `FACEBOOK_PAGE_ACCESS_TOKEN` | ✅ | **Page** token — required to send/read DMs |
-| `FACEBOOK_PAGE_ID` | ✅ | Linked Facebook Page ID |
-| `FACEBOOK_APP_ID` | ✅ | Meta app ID |
-| `FACEBOOK_APP_SECRET` | ✅ | Meta app secret — **also used to verify webhook HMAC** |
-| `WEBHOOK_VERIFY_TOKEN` | ✅ | Instagram webhook verification token (any random string you choose) |
-| `CLOUDINARY_CLOUD_NAME` | ✅ | Media hosting (images + audio) |
-| `CLOUDINARY_UPLOAD_PRESET` | ✅ | Unsigned upload preset |
-| `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | – | For deleting media after publish |
-| `RESEND_API_KEY` | ✅ | Daily report + alert emails |
-| `RESEND_FROM` | – | From address for Resend |
-| `NOTIFICATION_EMAIL` | ✅ | Default report recipient |
-| `DM_AUTO_REPLY` | – | Fallback DM text when AI is unavailable |
-| `YOUTUBE_CLIENT_ID` | – | OAuth client ID (only if YouTube is enabled) |
-| `YOUTUBE_CLIENT_SECRET` | – | OAuth client secret |
-| `YOUTUBE_REFRESH_TOKEN` | – | Long-lived channel refresh token (upload + readonly + force-ssl + yt-analytics) |
-| `YOUTUBE_CHANNEL_ID` | – | Channel ID — display only |
-| `JAMENDO_CLIENT_ID` | – | Free Jamendo client ID — enables vision-selected background music |
-| `FFMPEG_PATH` | – | Override path to an ffmpeg binary (fallback if `ffmpeg-static` is missing) |
-| `TTS_PROVIDER` | – | Voiceover TTS provider: `groq` (default) \| `canopy` — auto-falls back to the other provider, then Gemini TTS |
-| `GROQ_TTS_MODEL` | – | Groq Orpheus TTS model (default `canopylabs/orpheus-v1-english`) |
-| `GROQ_TTS_VOICE` | – | Default Groq Orpheus voice (overridden per brand by `voiceoverVoice`) |
-| `CANOPY_TTS_URL` | – | Self-hosted Canopy TTS endpoint (used when `TTS_PROVIDER=canopy`) |
-| `CANOPY_TTS_KEY` | – | Auth key for the self-hosted Canopy TTS endpoint |
-| `CANOPY_TTS_VOICE` | – | Default voice for the self-hosted Canopy TTS endpoint |
+<img src="docs/demo.gif" alt="Dashboard walkthrough" width="100%" />
 
-> `isYouTubeConfigured()` is true only when `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, and `YOUTUBE_REFRESH_TOKEN` are all set. Without all three, every YouTube path silently no-ops and Instagram is unaffected. Without `JAMENDO_CLIENT_ID`, Shorts render silently (no music). `FACEBOOK_PAGE_ACCESS_TOKEN` must be a **Page** token (from `GET /me/accounts`), not a User token.
+<sub>The dashboard, on a fresh install before any brand is connected.</sub>
 
-### Enabling YouTube (one-time OAuth)
-InstaPilot authenticates to YouTube with a long-lived **refresh token** (no interactive login at runtime).
+| | |
+|---|---|
+| <img src="docs/screenshots/01-overview.png" alt="Overview" /> | <img src="docs/screenshots/02-ai-generator.png" alt="AI generator" /> |
+| **Overview** — health, today's queue, live activity | **AI Generator** — pick platform, type and tone |
+| <img src="docs/screenshots/03-scheduler.png" alt="Scheduler" /> | <img src="docs/screenshots/04-analytics.png" alt="Analytics" /> |
+| **Scheduler** — per-weekday plan, per-platform | **Analytics** — live IG + YouTube stats |
 
-1. **Enable the API** — Google Cloud Console → APIs & Services → Library → "YouTube Data API v3" → Enable.
-2. **OAuth consent screen** → User type **External** → publishing status **In production** (NOT Testing — Testing-status refresh tokens expire in 7 days).
-3. **Credentials → Create OAuth client ID → Desktop app** → copy the Client ID + Secret.
-4. **Mint the refresh token** from the project root:
-   ```bash
-   YOUTUBE_CLIENT_ID=xxx YOUTUBE_CLIENT_SECRET=yyy npm run youtube:auth
-   # or: node scripts/youtube-auth.mjs --id xxx --secret yyy
-   ```
-   It opens the consent screen, catches the localhost redirect automatically, and prints `YOUTUBE_REFRESH_TOKEN`. Authorize with the Google account that **owns the channel**. Scopes: `youtube.upload`, `youtube.readonly`, `youtube.force-ssl`, `yt-analytics.readonly`.
-5. Set `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN` (and optionally `YOUTUBE_CHANNEL_ID`) in `.env.local` / your host.
-6. (Optional) Set `JAMENDO_CLIENT_ID` for background music.
-7. Open **Settings → YouTube**, confirm "Connected", configure topics/times/days, and **Save**.
+<details>
+<summary>More — brand skin, AI config, auto-post, digest</summary>
 
-> The free YouTube Data API quota (10,000 units/day) allows ~6 uploads/day (`videos.insert` ≈ 1,600 units each).
+<img src="docs/screenshots/05-settings-brand.png" alt="Brand settings" width="49%" /> <img src="docs/screenshots/06-settings-ai-config.png" alt="AI config" width="49%" />
+<img src="docs/screenshots/07-settings-auto-post.png" alt="Auto-post settings" width="49%" /> <img src="docs/screenshots/08-settings-morning-digest.png" alt="Morning digest" width="49%" />
 
----
+</details>
 
-## ☁️ Deployment
+## How it works
 
-### Option A — Railway (Nixpacks)
-```bash
-railway up --detach          # build + deploy
-railway logs --tail 40       # live logs
-railway status               # confirm "Online", not "Deploy failed"
-railway variables --kv       # list env vars
-```
+A single in-process loop (`lib/catchup.ts`) drives everything — started by
+`instrumentation.ts` on boot, re-fired every 5 minutes, plus a daily timer and
+Instagram webhooks. Each cycle it lists every active brand and runs the full pipeline
+for each one independently. Work is idempotent and self-healing: a crashed render or a
+provider outage is retried on the next pass rather than silently dropping the day.
 
-- **Build:** `prisma generate && next build` (`postinstall` also runs `prisma generate`). Push schema changes with `npm run db:push`.
-- **Fonts + ffmpeg:** `nixpacks.toml` installs the fonts the Satori card renderer needs and ensures ffmpeg is available; ffmpeg is primarily bundled via `ffmpeg-static`. If the bundled binary doesn't survive a build, install a system ffmpeg (`NIXPACKS_PKGS=ffmpeg`) and/or set `FFMPEG_PATH`.
-- **Database URL note:** use Railway's **`DATABASE_PUBLIC_URL`** when connecting/migrating from outside Railway's private network (e.g. local `db:push` against the hosted DB); the in-cluster app uses the private `DATABASE_URL`.
-- **Healthcheck:** `/api/health` (public for uptime probes) reports DB / AI / Instagram status.
-- **Typecheck before every deploy** — Railway keeps the old build running if the new one fails to compile:
-  ```bash
-  node_modules/.bin/tsc --noEmit
-  ```
+Stack: Next.js 16 · TypeScript · PostgreSQL + Prisma · Tailwind · Satori + Sharp ·
+ffmpeg-static · Groq / Cerebras / Gemini · Facebook Graph API · YouTube Data API v3 ·
+Cloudinary · Railway or Docker.
 
-### Option B — Docker / Docker Compose (self-host anywhere)
-```bash
-cp .env.example .env
-docker compose up -d --build     # app + PostgreSQL + (optional) Redis
-docker compose logs -f app
-```
-The bundled `Dockerfile` builds a standalone Next.js image; `docker-compose.yml` provisions PostgreSQL and wires `DATABASE_URL` automatically. Set your keys in `.env` before bringing it up.
+## Documentation
 
-### One-time Instagram webhook setup
-1. Set `WEBHOOK_VERIFY_TOKEN` (any random string).
-2. Meta App → Webhooks → Instagram → Callback `https://<app>/api/webhooks/instagram`, same verify token.
-3. Subscribe to **comments**, **messages**, **mentions**, **story_insights**.
-4. Ensure the IG account has Messaging permissions (App Review for non-tester DMs).
+| | |
+|---|---|
+| [Features](docs/FEATURES.md) | Every capability, in detail |
+| [Configuration](docs/CONFIGURATION.md) | All settings and environment variables |
+| [Architecture](docs/ARCHITECTURE.md) | Engine, routing, project structure |
+| [Deployment](docs/DEPLOYMENT.md) | Railway, Docker, webhook setup |
+| [Security](docs/SECURITY-MODEL.md) | Auth model, HMAC, SSRF guard |
+| [Contributing](CONTRIBUTING.md) | Five-minute setup and open issues |
 
----
+## Status and caveats
 
-## 📂 Project Structure
+This is a working system that publishes to real accounts, not a demo. Some things you
+should know before you run it:
 
-```
-instapilot-ai/
-├── app/
-│   ├── (dashboard)/
-│   │   ├── overview/          # Home: health, IG + YouTube stats, AI chat
-│   │   ├── generator/         # Manual AI generator (with platform picker)
-│   │   ├── scheduler/         # Calendar / schedule posts
-│   │   ├── analytics/         # IG + YouTube analytics + comments/DMs inbox
-│   │   ├── content-library/   # All posts: preview, schedule, publish, delete
-│   │   ├── media/             # Upload media → AI caption + hashtags → publish
-│   │   ├── activity/          # Activity feed
-│   │   └── settings/          # Accounts · Brand · Content Types · AI · Auto-Post · Stories · YouTube · Prompts · …
-│   ├── login/                 # Access-key login
-│   └── api/
-│       ├── webhooks/instagram/             # Real-time comments / DMs / insights (HMAC)
-│       ├── brands/{,[id]}/                 # Multi-account: list/add brand, edit/enable/delete
-│       ├── youtube/{overview,videos,comments}/   # YouTube stats + per-video + comments
-│       ├── ai/{generate,chat,hashtags}/    # generator + chat + hashtag endpoint
-│       ├── posts/[id]/publish/             # publish = platform routing
-│       ├── media/[id]/publish-youtube/     # publish real uploaded media as a Short
-│       ├── scheduler/{,[id],check,failed}/
-│       ├── analytics/{overview,live,top-posts,sync}/
-│       ├── instagram/{analytics,comments,dms,posts/insights,ai-reply,media}/
-│       ├── settings/{account,brand,ai,auto-post,stories,prompts,notifications,instagram,youtube,danger}/
-│       ├── stories/generate-now/ , catchup/ , auto-generate/ , comments/check , dms/check
-│       └── webhook/{setup,debug}/ , health/ , notifications/{count,stream}/ , auth/{login,logout}/
-│
-├── lib/
-│   ├── brandConfig.ts         # ★ White-label brand skin: BrandConfig, getBrand, persona/handle builders
-│   ├── catchup.ts             # ★ Automation engine: runCatchup (per-brand loop),
-│   │                          #   publishOverdueScheduled, crossPostYouTubeShortToInstagramReel,
-│   │                          #   runAutoGeneratePosts, runAutoGenerateYouTube,
-│   │                          #   scheduleAutoStory, replyToYouTubeComments, claim lock + reaper
-│   ├── brands.ts              # Multi-account: brand CRUD + per-brand credential resolution (ENV-first for primary)
-│   ├── youtube.ts             # YouTube Data API v3 client (upload/stats/comments/health, per-brand creds)
-│   ├── youtubePublish.ts      # Post → carousel Short MP4 (hook cover + content slides + outro, themes,
-│   │                          #   music, AI tags, seed comment); buildRichCaption + YT search-tag builders
-│   ├── hookCard.ts            # Hook cover + SUBSCRIBE outro cards + THEMES (satori → SVG → sharp, container-safe)
-│   ├── videoGenerator.ts      # Cards → 720×1280 MP4 (ffmpeg-static, watchdog, serialized single-flight)
-│   ├── music.ts               # Vision mood → Jamendo CC instrumental + attribution
-│   ├── richCaption.ts         # Unified IG/YouTube rich caption (cached on reelScript) + follow links
-│   ├── grok.ts                # Groq client — replies, quiz logic, content JSON
-│   ├── gemini.ts              # Gemini client — Grok-first JSON, vision, TTS, model chains
-│   ├── aiModels.ts            # ★ Provider/model catalogs + per-task fallback chains (Grok/Cerebras/Gemini)
-│   ├── ai-factory.ts          # Resolves each task's chain (content/reply/vision), Cerebras client
-│   ├── shortLength.ts         # Selectable Short length (15/20/30/45/60s) → shortPlan pacing
-│   ├── themes.ts              # ★ 10 app-wide themes (Settings → Appearance, CSS-variable driven)
-│   ├── audioReply.ts          # Whisper transcription + Gemini TTS → m4a (voice DMs)
-│   ├── hashtagEnricher.ts     # Live IG-trending + relevance hashtag builder
-│   ├── postTypeImageGenerator.ts / storyImageGenerator.ts / slideImageGenerator.ts  # Satori renderers
-│   ├── imageGenerator.ts      # Cloudinary upload + carousel image pipeline
-│   ├── captionBuilder.ts      # Structured Instagram captions + capIgCaption (2200-char trim) + applyBrand
-│   ├── notifier.ts            # Emails + SSE: daily report, publish/fail, YouTube events
-│   ├── preferences.ts         # Per-brand settings + brand skin (primary→Preferences singleton, others→Brand.settings)
-│   └── instagram.ts / prisma.ts / auth.ts / session.ts / webhookCounter.ts / utils.ts
-│
-├── prisma/schema.prisma       # Brand, Post, ScheduledPost (platform + youtubeVideoId + brandId),
-│                              #   Analytics, AccountAnalytics, Comment, ActivityLog, Preferences (+ brand skin), User, …
-├── scripts/youtube-auth.mjs   # One-command OAuth loopback → prints YOUTUBE_REFRESH_TOKEN
-├── proxy.ts                   # Auth gate (session cookie) for pages AND /api routes (Next 16 middleware)
-├── instrumentation.ts         # Starts the catch-up loop + daily timer on boot
-├── Dockerfile / docker-compose.yml   # Container build + Postgres for self-hosting
-├── nixpacks.toml              # Railway build: fonts + ffmpeg
-├── components/                # Dashboard UI (cards, charts, dialogs, forms; incl. BrandSwitcher + useSelectedBrand)
-└── README.md
-```
+- **You are responsible for what it publishes.** Meta and YouTube both have automation
+  policies; read them. Set the schedule conservatively.
+- **The Shorts pipeline is CPU-heavy.** Voiceover and burned captions are opt-in
+  because they add a TTS call, a Whisper call and a re-encode per Short.
+- **Vision captions, hashtags and YouTube tags** currently resolve the *primary*
+  brand's vision chain regardless of which brand is publishing.
+- There is no hosted demo, because a demo would have to publish to a real Instagram
+  account. The live channel linked above is the demo.
 
-> **Note (Next.js 16):** the request gate lives in **`proxy.ts`** (Next 16's renamed middleware). If a deploy fails on the gate, confirm this file's name/export matches what your Next version expects.
+## Licence
 
----
+Standard [MIT](LICENSE) — use it, fork it, re-skin it, run client channels on it, keep
+the money. Alongside it the project asks that credit to the original author stays
+visible: the dashboard footer links to [@ys941](https://github.com/ys941) (the app name
+above it stays fully white-label), and the app checks at startup that
+`ATTRIBUTION_ACK="https://github.com/ys941"` is set in your environment. Nothing is
+transmitted — the value is compared locally. See [COPYRIGHT.md](COPYRIGHT.md) and
+[`lib/attribution.ts`](lib/attribution.ts).
 
-## 🔒 Security
-
-- **Access-key login.** The dashboard is gated by `APP_ACCESS_KEY`. `POST /api/auth/login` validates the key and sets a signed session cookie (signed/verified with `SESSION_SECRET`).
-- **Session gate on everything** (`proxy.ts`). Every page **and every `/api` route** is checked against the session cookie. Unauthenticated page requests redirect to `/login`; unauthenticated API requests get `401 JSON`. (`getServerSession` is a local no-op, so this gate is the real protection for API routes.)
-- **Public allowlist only:** `/login`, `/api/auth/login`, `/api/webhooks` (Meta has no cookie — guarded by HMAC instead), `/api/health` (uptime probes), plus static asset paths (`/_next`, `/favicon`, `/fonts`, `/images`).
-- **Webhook HMAC — fail-closed.** `/api/webhooks/instagram` verifies Meta's `X-Hub-Signature-256` against `FACEBOOK_APP_SECRET` before processing any payload; if the secret is unset it **rejects** rather than processing, and the signature-check bypass switch is gated to non-production only.
-- **Login brute-force protection.** The access-key login uses a constant-time compare **plus** a per-IP rate limiter (≈8 failed attempts / 10 min → `429`), so the single shared `APP_ACCESS_KEY` can't be guessed at speed.
-- **SSRF guard on media URLs.** User-supplied `mediaUrl`s the server later fetches are validated against a host allowlist (Cloudinary / IG CDN / catbox / the app's own host) and reject private, link-local, and loopback addresses (`lib/urlSafety.ts`).
-- **No secret echo.** Diagnostic routes return booleans/redacted values only — the webhook verify-token and Facebook Page access tokens are never sent back in a response body.
-- **Security headers** (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`) on every authenticated/public response.
-- **No bundled secrets.** Ship the zip safely — every credential is supplied by the operator via env/Settings; nothing is hard-coded.
-
----
-
-## License
-### ⭐ One condition: attribution
-
-Free to use, fork, self-host and build on. The one condition is that credit to the
-original author stays visible:
-
-- the dashboard footer links to **[@ys941](https://github.com/ys941)** (the app name
-  above it stays fully white-label and follows your Brand settings), and
-- the server will not start until you set `ATTRIBUTION_ACK="https://github.com/ys941"`
-  in your environment — nothing is transmitted, the value is compared locally.
-
-See [`lib/attribution.ts`](lib/attribution.ts).
-
-
-Released under the **[MIT License](LICENSE)** — use it, fork it, ship it commercially. Just keep the copyright notice.
-
-Configure your own brand in **Settings → Brand** and supply your own API keys; none are bundled. All third-party API usage (Meta, Groq, Google, Cloudinary, Jamendo, Resend) remains subject to those providers' terms, and you are responsible for what the software publishes on your accounts. See the [LICENSE](LICENSE) for the full note on third-party services and generated content.
+All third-party API usage remains subject to those providers' terms.
 
 ## Contributing
 
-Contributions are genuinely welcome — including your first one. See **[CONTRIBUTING.md](CONTRIBUTING.md)** for a five-minute local setup, a map of the codebase, and a list of ideas currently looking for an owner.
+Contributions are genuinely welcome, including your first one.
+[CONTRIBUTING.md](CONTRIBUTING.md) has a five-minute local setup, a map of the
+codebase, and a list of ideas looking for an owner.
