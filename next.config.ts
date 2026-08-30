@@ -1,6 +1,14 @@
 ﻿﻿import type { NextConfig } from 'next'
+import path from 'node:path'
 
 const nextConfig: NextConfig = {
+  // Next.js infers the workspace root from the nearest lockfile, and can pick
+  // C:\Users\ys941\package-lock.json (an unrelated project in the home
+  // directory) instead of this one when running `next dev --turbo`. Pin the
+  // root so module resolution and file watching stay scoped to this project.
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
   images: {
     remotePatterns: [
       {
@@ -43,6 +51,13 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 3600,
   },
   experimental: {
+    // Turbopack's persistent filesystem cache is ON by default from Next 16.1.
+    // On this machine it stalls hard - measured "writing to filesystem cache
+    // in 39.1s" and "filesystem cache database compaction in 49s" on a dev
+    // start, which pushed first paint past 3 minutes. Its many small
+    // read/write ops don't pay off on a 2-core CPU-only laptop. Turning it off
+    // trades a slower warm restart for a dev server that actually comes up.
+    turbopackFileSystemCacheForDev: false,
     optimizePackageImports: [
       'lucide-react',
       'recharts',
