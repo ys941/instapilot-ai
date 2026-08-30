@@ -172,3 +172,8 @@ All third-party API usage remains subject to those providers' terms.
 Contributions are genuinely welcome, including your first one.
 [CONTRIBUTING.md](CONTRIBUTING.md) has a five-minute local setup, a map of the
 codebase, and a list of ideas looking for an owner.
+
+## Star the repo
+
+If InstaPilot is useful to you, star it. There is no marketing behind this
+project — a star is genuinely how the next person ends up finding it.
