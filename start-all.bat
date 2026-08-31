@@ -19,8 +19,36 @@ echo.
 :: Always run from this script's own folder, however it was invoked.
 cd /d "%~dp0"
 
-:: ── Step 1: Check Docker ─────────────────────────────────────────────────────
-echo  [1/6] Checking Docker Desktop...
+:: ── Step 1: Configuration file ───────────────────────────────────
+:: A fresh clone has no .env - it is gitignored, and correctly so. The Prisma CLI
+:: reads .env ONLY, never .env.local, so without this check the run dies further
+:: down with a bare P1012 "Environment variable not found: DATABASE_URL" that says
+:: nothing about the real cause: the file was never created.
+::
+:: All of the logic lives in scripts\check-env.mjs so there is a single
+:: implementation, shared with `npm run dev` and `npm run db:push`. On a fresh
+:: clone it writes .env from .env.example and generates the session secret and
+:: dashboard login key, then prints the key.
+echo  [1/7] Checking configuration...
+where node >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo  [ERROR] Node.js was not found on PATH.
+    echo          Install Node 18+ from https://nodejs.org and run this again.
+    echo.
+    pause
+    exit /b 1
+)
+call node "scripts\check-env.mjs"
+if errorlevel 1 (
+    pause
+    exit /b 1
+)
+echo  [OK] Configuration is ready.
+echo.
+
+:: ── Step 2: Check Docker ─────────────────────────────────────────────────────
+echo  [2/7] Checking Docker Desktop...
 docker info >nul 2>&1
 if %errorlevel% neq 0 (
     echo.
@@ -33,10 +61,10 @@ if %errorlevel% neq 0 (
 echo  [OK] Docker is running.
 echo.
 
-:: ── Step 2: Node dependencies ────────────────────────────────────────────────
+:: ── Step 3: Node dependencies ────────────────────────────────────────────────
 :: First run on a fresh machine (or after node_modules is deleted) installs
 :: everything automatically instead of failing later with "next is not recognized".
-echo  [2/6] Checking Node dependencies...
+echo  [3/7] Checking Node dependencies...
 where npm >nul 2>&1
 if %errorlevel% neq 0 (
     echo.
@@ -63,10 +91,10 @@ if not exist "node_modules" (
 echo  [OK] Dependencies are installed.
 echo.
 
-:: ── Step 3: Start PostgreSQL (+ Redis) ───────────────────────────────────────
+:: ── Step 4: Start PostgreSQL (+ Redis) ───────────────────────────────────────
 :: Creates the container, user, password and database automatically from
 :: docker-compose.yml the first time - nothing to set up by hand.
-echo  [3/6] Starting PostgreSQL + Redis...
+echo  [4/7] Starting PostgreSQL + Redis...
 
 :: A sibling project (e.g. youtubepilot) may already hold port 5432 with a
 :: different Postgres. Only one can own the port, so stand the other one down.
@@ -86,11 +114,11 @@ if %errorlevel% neq 0 (
 echo  [OK] PostgreSQL and Redis containers started.
 echo.
 
-:: ── Step 4: Wait for PostgreSQL to be ready ──────────────────────────────────
+:: ── Step 5: Wait for PostgreSQL to be ready ──────────────────────────────────
 :: Counter lives on its own lines (not inside a parenthesised block) so plain
 :: %VAR% expansion works on each re-entry via goto - no delayed expansion needed,
 :: which would otherwise swallow the "!" in this script's echo lines.
-echo  [4/6] Waiting for PostgreSQL to be ready...
+echo  [5/7] Waiting for PostgreSQL to be ready...
 set DB_TRIES=0
 :wait_db
 docker exec instapilot-postgres pg_isready -U instapilot -d instapilot_db >nul 2>&1
@@ -109,26 +137,27 @@ goto wait_db
 echo  [OK] PostgreSQL is ready.
 echo.
 
-:: ── Step 5: Generate Prisma Client + Push Schema ──────────────────────────────
+:: ── Step 6: Generate Prisma Client + Push Schema ──────────────────────────────
 :: NOTE: the Prisma CLI reads .env (NOT .env.local, which Next.js prefers). Both
 :: files must carry the same DATABASE_URL or this step silently targets the wrong
 :: database and the app starts with no tables.
-echo  [5/6] Preparing database...
+echo  [6/7] Preparing database...
 call npx prisma generate
 :: Schema sync should be a deliberate release step, not silently forced. Dropped
 :: --accept-data-loss (never auto-drop columns) and surface output so failures are visible.
 call npx prisma db push
 if errorlevel 1 (
     echo  [ERROR] Schema sync failed - the app would start with no tables.
-    echo          Check that DATABASE_URL in .env matches docker-compose.yml.
+    echo          Check that .env exists and its DATABASE_URL matches docker-compose.yml.
+    echo          Note: Prisma reads .env only - never .env.local.
     pause
     exit /b 1
 )
 echo  [OK] Prisma client generated and schema synced.
 echo.
 
-:: ── Step 6: Start Next.js Dev Server ─────────────────────────────────────────
-echo  [6/6] Starting InstaPilot AI dashboard...
+:: ── Step 7: Start Next.js Dev Server ─────────────────────────────────────────
+echo  [7/7] Starting InstaPilot AI dashboard...
 start "InstaPilot - Dashboard" cmd /k "color 0D && title InstaPilot AI Dev Server && echo. && echo  InstaPilot AI is starting... && echo  Open: http://localhost:3000 && echo. && npm run dev"
 echo  [OK] Next.js dev server starting...
 echo.

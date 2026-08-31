@@ -5,15 +5,18 @@
   "description": "AI-powered, white-label content automation platform for Instagram + YouTube",
   "private": true,
   "scripts": {
+    "predev": "node scripts/check-env.mjs",
     "dev": "next dev --turbo -p 3000",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint .",
     "postinstall": "prisma generate",
+    "predb:push": "node scripts/check-env.mjs",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
-    "youtube:auth": "node scripts/youtube-auth.mjs"
+    "youtube:auth": "node scripts/youtube-auth.mjs",
+    "check-env": "node scripts/check-env.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

@@ -79,10 +79,23 @@ renderer, the caption chain and the upload path hold up day after day without a 
 ```bash
 git clone https://github.com/ys941/instapilot-ai && cd instapilot-ai
 npm install
-cp .env.example .env.local          # fill in your keys
+cp .env.example .env                # fill in your keys
+docker compose up -d postgres       # or point DATABASE_URL at your own database
 npm run db:generate && npm run db:push
 npm run dev                         # http://localhost:3000
 ```
+
+You do not have to invent a login key. On the first run, `.env` is created for you from
+`.env.example` with a working `DATABASE_URL`, a random `SESSION_SECRET`, and a random
+`APP_ACCESS_KEY` that is **printed in the terminal** — change it in `.env` whenever you
+like. The AI features stay switched off until you add your own API keys.
+
+> **Use `.env`, not `.env.local`.** The Prisma CLI reads `.env` only — it never reads
+> `.env.local`, which Next.js prefers at runtime. Keeping your config in a single `.env`
+> avoids `db:push` writing the schema to one database while the running app reads another.
+> If you do keep a `.env.local` for overrides, `DATABASE_URL` must be identical in both.
+> `npm run dev` and `npm run db:push` both run `npm run check-env` first, which explains
+> anything still missing instead of failing later with an opaque Prisma or login error.
 
 Log in with your `APP_ACCESS_KEY`, then open **Settings → AI Setup** and describe your
 brand in plain English — it generates the skin, content types, topics, schedule and
