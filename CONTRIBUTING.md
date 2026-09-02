@@ -46,7 +46,7 @@ Most of what makes this project better is ordinary, careful software work.
 git clone https://github.com/ys941/instapilot-ai.git
 cd instapilot-ai
 npm install
-cp .env.example .env.local     # fill in DATABASE_URL, APP_ACCESS_KEY, SESSION_SECRET
+cp .env.example .env           # fill in DATABASE_URL, APP_ACCESS_KEY, SESSION_SECRET
 npm run db:push                # create the schema
 npm run dev                    # http://localhost:3000
 ```

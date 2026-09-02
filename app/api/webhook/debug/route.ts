@@ -314,16 +314,16 @@ export async function GET() {
       title: "Public HTTPS URL",
       done: !!urlOk,
       instruction: isLocalhost
-        ? "Run: npx ngrok http 3000  -  copy the https URL and set it as NEXT_PUBLIC_APP_URL in .env.local"
+        ? "Run: npx ngrok http 3000  -  copy the https URL and set it as NEXT_PUBLIC_APP_URL in .env"
         : urlOk
         ? `URL OK: ${webhookUrl}`
-        : "Set NEXT_PUBLIC_APP_URL in .env.local to your public HTTPS URL",
+        : "Set NEXT_PUBLIC_APP_URL in .env to your public HTTPS URL",
     },
     {
       step: 2,
       title: "App Secret correct",
       done: !!appToken,
-      instruction: "Go to: developers.facebook.com -> Your App -> App Settings -> Basic -> App Secret (click Show)\nPaste into .env.local as: FACEBOOK_APP_SECRET=<value>",
+      instruction: "Go to: developers.facebook.com -> Your App -> App Settings -> Basic -> App Secret (click Show)\nPaste into .env as: FACEBOOK_APP_SECRET=<value>",
     },
     {
       step: 3,
@@ -341,7 +341,7 @@ export async function GET() {
       step: 5,
       title: "Restart server after .env changes",
       done: webhookWorking || (hasComments && hasMessages),
-      instruction: "After updating .env.local, stop the dev server (Ctrl+C) and run: npm run dev\nThe new App Secret and Page Token will be picked up on restart.",
+      instruction: "After updating .env, stop the dev server (Ctrl+C) and run: npm run dev\nThe new App Secret and Page Token will be picked up on restart.",
     },
     {
       step: 6,
@@ -381,7 +381,7 @@ export async function GET() {
         // Never echo the token value — expose only whether it is set and whether it
         // matches the effective (fallback-aware) token used for verification.
         usingFallback:  !verifyToken,
-        note: !verifyToken ? "Using hardcoded fallback  -  set WEBHOOK_VERIFY_TOKEN in .env.local" : "Using env var",
+        note: !verifyToken ? "Using hardcoded fallback  -  set WEBHOOK_VERIFY_TOKEN in .env" : "Using env var",
       },
       subscriptions: {
         raw:      allFields,
@@ -427,7 +427,7 @@ export async function GET() {
               ? "custom-domain"               // proper domain, no tunnel needed
               : "unknown",
         hint: isLocalhost
-          ? "Run: npx ngrok http 3000  then set NEXT_PUBLIC_APP_URL in .env.local to the https URL"
+          ? "Run: npx ngrok http 3000  then set NEXT_PUBLIC_APP_URL in .env to the https URL"
           : isNgrokUrl && !ngrokReachable
             ? "ngrok URL is set but tunnel is not responding - restart ngrok and update NEXT_PUBLIC_APP_URL"
             : isNgrokUrl

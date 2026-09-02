@@ -110,7 +110,7 @@ export async function POST() {
   if (!appId || !appSecret) {
     return NextResponse.json({
       success: false,
-      error:   "FACEBOOK_APP_ID and FACEBOOK_APP_SECRET must be set in .env.local",
+      error:   "FACEBOOK_APP_ID and FACEBOOK_APP_SECRET must be set in .env",
     }, { status: 422 });
   }
 

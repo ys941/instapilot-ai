@@ -841,8 +841,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           "  APP_SECRET (last 4): ..." + APP_SECRET.slice(-4) + "  len=" + APP_SECRET.length + "\n" +
           "  Body size: " + rawBodyBuffer.length + " bytes\n" +
           "  FIX: go to Meta App Dashboard -> App Settings -> Basic -> App Secret -> Show\n" +
-          "       Copy the EXACT value into .env.local as FACEBOOK_APP_SECRET=<value>\n" +
-          "       OR set WEBHOOK_DISABLE_SIGNATURE_CHECK=true in .env.local to bypass (dev only)"
+          "       Copy the EXACT value into .env as FACEBOOK_APP_SECRET=<value>\n" +
+          "       OR set WEBHOOK_DISABLE_SIGNATURE_CHECK=true in .env to bypass (dev only)"
         );
         // Alert once per 10 min so we don't spam on every bad ping
         notifyWebhookIssue(
