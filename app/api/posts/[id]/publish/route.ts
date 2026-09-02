@@ -538,7 +538,7 @@ export async function POST(
         {
           success: false,
           error:
-            "Instagram account not connected. Add INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_BUSINESS_ACCOUNT_ID to .env.local.",
+            "Instagram account not connected. Add INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_BUSINESS_ACCOUNT_ID to .env.",
           data: null,
         },
         { status: 422 }
@@ -799,13 +799,13 @@ export async function POST(
           } else {
             throw new Error(
               `Image CDN is not publicly accessible (${recheck.reason}). ` +
-              "Add CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET to .env.local for reliable image hosting."
+              "Add CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET to .env for reliable image hosting."
             );
           }
         } else {
           throw new Error(
             `Image URL is not accessible by Instagram (${check.reason}). ` +
-            "Add CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET to .env.local for reliable image hosting."
+            "Add CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET to .env for reliable image hosting."
           );
         }
       } else {

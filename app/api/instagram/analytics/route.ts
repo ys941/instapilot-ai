@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     if (!token || !igId) {
       return NextResponse.json(
-        { success: false, error: "Instagram credentials not configured in .env.local", data: null },
+        { success: false, error: "Instagram credentials not configured in .env", data: null },
         { status: 422 }
       );
     }

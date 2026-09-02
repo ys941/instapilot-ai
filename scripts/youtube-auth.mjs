@@ -16,7 +16,7 @@
  *     (Testing-status apps issue refresh tokens that expire in 7 days).
  *   • Credentials → Create OAuth client ID → **Desktop app** → copy ID + secret.
  *
- * Usage (from the cardioflow-ai folder):
+ * Usage (from the project root):
  *   YOUTUBE_CLIENT_ID=xxx YOUTUBE_CLIENT_SECRET=yyy node scripts/youtube-auth.mjs
  * or pass them as flags:
  *   node scripts/youtube-auth.mjs --id xxx --secret yyy
@@ -117,11 +117,14 @@ const server = http.createServer(async (req, res) => {
       server.close(); process.exit(1);
     }
 
-    console.log("\n✓ Refresh token obtained. Add these to Railway / .env.local:\n");
+    console.log("\n✓ Refresh token obtained. Add these to .env:\n");
     console.log("YOUTUBE_CLIENT_ID="     + CLIENT_ID);
     console.log("YOUTUBE_CLIENT_SECRET=" + CLIENT_SECRET);
     console.log("YOUTUBE_REFRESH_TOKEN=" + tokens.refresh_token);
-    console.log("\n(Optional) YOUTUBE_CHANNEL_ID=<your channel ID — display only>\n");
+    console.log("\n(Optional) YOUTUBE_CHANNEL_ID=<your channel ID — display only>");
+    console.log("\nUse .env, not .env.local — the Prisma CLI reads .env only, so keeping");
+    console.log("config in one file avoids the split that check-env.mjs guards against.");
+    console.log("On Railway or another host, set them in the host environment instead.\n");
     server.close(); process.exit(0);
   } catch (e) {
     res.writeHead(500); res.end("Token exchange failed");

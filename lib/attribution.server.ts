@@ -114,7 +114,7 @@ const ackFailure = `
   It is free to use, fork, rebrand and sell — the one condition is that
   credit to the original author stays visible. See COPYRIGHT.md.
 
-  Add this to your .env.local (or your host's environment):
+  Add this to your .env (or your host's environment):
 
       ATTRIBUTION_ACK="${AUTHOR.url}"
 

@@ -2255,7 +2255,7 @@ function StoriesTab() {
             <li>• If not, {aiLabel} generates a headline + tip based on your topics above</li>
             <li>• A branded 1080×1920 card is generated and published to Instagram</li>
             <li>• Stories expire after 24 hours on Instagram automatically</li>
-            <li>• Requires Cloudinary credentials in .env.local for image hosting</li>
+            <li>• Requires Cloudinary credentials in .env for image hosting</li>
           </ul>
         </div>
       </div>
