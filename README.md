@@ -149,6 +149,7 @@ Cloudinary · Railway or Docker.
 |---|---|
 | [Features](docs/FEATURES.md) | Every capability, in detail |
 | [Configuration](docs/CONFIGURATION.md) | All settings and environment variables |
+| [Env setup guide (PDF)](docs/InstaPilot-AI-Env-Setup-Guide.pdf) | Step-by-step key generation, incl. Meta and YouTube OAuth |
 | [Architecture](docs/ARCHITECTURE.md) | Engine, routing, project structure |
 | [Deployment](docs/DEPLOYMENT.md) | Railway, Docker, webhook setup |
 | [Security](docs/SECURITY-MODEL.md) | Auth model, HMAC, SSRF guard |
