@@ -8,6 +8,7 @@ It picks the topic, writes the post, designs the slide cards, renders a real ver
 video with an AI voiceover, publishes it on your schedule, cross-posts it as a Reel,
 and answers the comments and DMs it gets back. Any niche, your accounts, your API keys.
 
+[![CI](https://github.com/ys941/instapilot-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/ys941/instapilot-ai/actions/workflows/ci.yml)
 [![MIT licence](https://img.shields.io/badge/licence-MIT-2ea44f?style=flat-square)](LICENSE)
 [![Attribution](https://img.shields.io/badge/read%20first-attribution-7C3AED?style=flat-square)](COPYRIGHT.md)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000?style=flat-square&logo=nextdotjs)](https://nextjs.org)
