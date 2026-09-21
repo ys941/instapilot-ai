@@ -118,7 +118,7 @@ export async function generateAICommentReply(
   brand?: BrandConfig | null,
 ): Promise<string | null> {
   try {
-    // Comment replies use GROK (llama-3.3-70b) directly — NOT the Gemini chain.
+    // Comment replies use GROK (gpt-oss-120b) directly — NOT the Gemini chain.
     // Gemini's flash models are thinking models that rate-limit and fall through to
     // Gemma (which dumps reasoning junk), producing truncated/poor replies. Grok 70B
     // is a clean, non-thinking model with sophisticated quiz handling → reliably

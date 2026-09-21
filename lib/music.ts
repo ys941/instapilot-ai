@@ -34,7 +34,7 @@ async function pickMoodFromImage(imageJpeg: Buffer): Promise<{ mood: string; que
   if (!key) return fallback;
 
   // Clean, multimodal-capable models (same family as gemini.ts VISION_CHAIN).
-  const VISION_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash-lite"];
+  const VISION_MODELS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
   try {
     const genAI = new GoogleGenerativeAI(key);
     const prompt =

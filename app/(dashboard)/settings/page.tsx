@@ -1023,7 +1023,7 @@ function AiTab() {
       {/* ── Lane 3: Vision (image / video analysis) ── */}
       <LaneEditor
         title="Vision — image & video analysis"
-        subtitle="Used when you upload media so the AI LOOKS at the image/video to write the caption. Gemini handles images + video; Groq llama-4 handles images."
+        subtitle="Used when you upload media so the AI LOOKS at the image/video to write the caption. Gemini handles images + video; Groq (Qwen 3.8) handles images."
         accent="brand"
         kind="vision"
         chain={visionChain}

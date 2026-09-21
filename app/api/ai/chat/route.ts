@@ -3,6 +3,8 @@ import { getServerSession } from "@/lib/auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { getAIClient } from "@/lib/ai-factory";
+import { currentModel, groqReasoningOpts } from "@/lib/aiModels";
+import { DEFAULT_GROK_MODEL } from "@/lib/grok";
 import { readPreferences, getBrand } from "@/lib/preferences";
 import { BrandConfig } from "@/lib/brandConfig";
 
@@ -111,19 +113,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
         .join("\n\n");
       assistantMessage = await ai.generateContent(userTurns, systemContent, 1500);
-      modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+      modelName = process.env.GEMINI_MODEL || "gemini-flash-latest";
     } else {
       const apiKey = process.env.GROK_API_KEY;
       if (!apiKey) throw new Error("GROK_API_KEY is not configured");
       const baseUrl = process.env.GROK_API_URL || "https://api.groq.com/openai/v1";
+      const grokModel = currentModel(process.env.AI_MODEL_MAIN || DEFAULT_GROK_MODEL);
       const response = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
-          model: process.env.AI_MODEL_MAIN || "llama-3.3-70b-versatile",
+          model: grokModel,
           messages: grokMessages,
           max_tokens: 1500,
           temperature: 0.7,
+          ...groqReasoningOpts(grokModel),
         }),
       });
       if (!response.ok) {
@@ -133,7 +137,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const data = await response.json();
       assistantMessage = data.choices?.[0]?.message?.content ?? "";
       tokensUsed = data.usage?.total_tokens ?? 0;
-      modelName = process.env.AI_MODEL_MAIN || "llama-3.3-70b-versatile";
+      modelName = grokModel;
     }
 
     return NextResponse.json({

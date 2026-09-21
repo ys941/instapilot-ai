@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { readPreferencesForBrand } from "@/lib/preferences";
 import { getAIClient } from "@/lib/ai-factory";
 import { DEFAULT_GROK_MODEL } from "@/lib/grok";
+import { currentModel, groqReasoningOpts } from "@/lib/aiModels";
 import { resolveBrandId } from "@/lib/brands";
 import { brandFromQuery, brandFromBody } from "@/lib/brandRequest";
 import { getBrand } from "@/lib/preferences";
@@ -662,10 +663,11 @@ async function callAI(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: process.env.AI_MODEL_MAIN || DEFAULT_GROK_MODEL,
+      model: currentModel(process.env.AI_MODEL_MAIN || DEFAULT_GROK_MODEL),
       messages,
       max_tokens: maxTokens,
       temperature: 0.8,
+      ...groqReasoningOpts(currentModel(process.env.AI_MODEL_MAIN || DEFAULT_GROK_MODEL)),
       response_format: { type: "json_object" },
     }),
   });
