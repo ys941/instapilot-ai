@@ -2,13 +2,15 @@ import axios, { AxiosInstance } from "axios";
 import { sleep } from "@/lib/utils";
 import { atHandle, buildBrandPersona } from "@/lib/brandConfig";
 import { getBrand } from "@/lib/preferences";
+import { currentModel, groqReasoningOpts } from "@/lib/aiModels";
 
 // --- Default Model IDs --------------------------------------------------------
 // Centralized so a Groq model deprecation is a one-line / env change instead of a
 // hunt across files. Reference these everywhere a default Groq model is needed.
 // (AI_MODEL_MAIN / AI_MODEL_FAST remain the per-instance overrides below.)
-export const DEFAULT_GROK_MODEL = process.env.GROK_MODEL ?? "llama-3.3-70b-versatile";
-export const DEFAULT_GROK_FAST_MODEL = process.env.GROK_FAST_MODEL ?? "llama-3.1-8b-instant";
+// currentModel() also rescues an .env still naming a model Groq has shut down.
+export const DEFAULT_GROK_MODEL = currentModel(process.env.GROK_MODEL || "openai/gpt-oss-120b");
+export const DEFAULT_GROK_FAST_MODEL = currentModel(process.env.GROK_FAST_MODEL || "openai/gpt-oss-20b");
 
 // --- Types -------------------------------------------------------------------
 
@@ -158,6 +160,17 @@ export class GrokClient {
         "Content-Type": "application/json",
       },
       timeout: 60000,
+    });
+
+    // Every chat call goes through this client: swap retired model IDs, and give
+    // gpt-oss a reasoning budget so short max_tokens calls don't come back empty.
+    this.client.interceptors.request.use((config) => {
+      const body = config.data;
+      if (body && typeof body === "object" && typeof body.model === "string") {
+        body.model = currentModel(body.model);
+        if (!body.reasoning_effort) Object.assign(body, groqReasoningOpts(body.model));
+      }
+      return config;
     });
 
     // Response interceptor for logging
@@ -316,8 +329,8 @@ export class GrokClient {
 
   /**
    * VISION (images only): analyse a base64 image via the OpenAI-compatible
-   * chat/completions `image_url` content part. Works for Groq AND Cerebras
-   * llama-4 vision models. Returns the raw model text (caller parses).
+   * chat/completions `image_url` content part. Works with Groq's vision model
+   * (Qwen 3.8). Returns the raw model text (caller parses).
    * (Video is NOT supported by these providers — the dispatcher routes video to Gemini.)
    */
   async visionRaw(

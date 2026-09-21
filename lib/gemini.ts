@@ -59,16 +59,14 @@ export const FLASH_MODELS: string[] = [
   "gemini-3-flash-preview",  // 2. Gemini 3 Flash (preview = valid id)
   "gemini-2.5-flash",        // 3. Gemini 2.5 Flash — reliable workhorse
   "gemini-3.1-flash-lite",   // 4. Lite — 15 RPM / 500 RPD (best availability)
-  "gemini-2.5-flash-lite",   // 5. 2.5 Flash Lite
-  "gemini-2.0-flash",        // 6. 2.0 Flash (free-tier limit:0 — fallback)
-  "gemini-2.0-flash-lite",   // 7. 2.0 Flash Lite (limit:0 — fallback)
+  "gemini-flash-lite-latest", // 5. tracks Google's current Flash-Lite (2.0 / 2.5 Lite are retired)
 ];
 
 // REASONING / "thinking" tier — slower, and they "think out loud" / truncate,
 // which produces messy captions. Per the owner's request these are the VERY LAST
 // resort: for caption/hook text the call layer tries Grok BEFORE falling to these.
 export const REASONING_MODELS: string[] = [
-  "gemini-2.5-pro",          // Gemini 2.5 Pro — reasoning, higher quality, slower
+  "gemini-pro-latest",       // tracks Google's current Pro (2.5 Pro is retired)
   "gemma-4-31b-it",          // Gemma 4 31B — unlimited (thinking model)
   "gemma-4-26b-a4b-it",      // Gemma 4 26B — unlimited (thinking model)
   "gemini-3-flash-live",     // Live API — last-resort only
