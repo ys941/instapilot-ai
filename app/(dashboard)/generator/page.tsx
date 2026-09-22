@@ -50,10 +50,10 @@ const postTypes = [
   { id: "QUIZ",             label: "Quiz",            emoji: "❓" },
   { id: "CAROUSEL",         label: "Carousel",        emoji: "🖼️" },
   { id: "MYTH_FACT",        label: "Myth vs Fact",    emoji: "⚖️" },
-  { id: "CLINICAL_PEARL",   label: "Pro Tip",         emoji: "💎" },
+  { id: "PRO_TIP",   label: "Pro Tip",         emoji: "💎" },
   { id: "CASE_STUDY",       label: "Story / Example", emoji: "🔬" },
-  { id: "ANGIOGRAPHY_QUIZ", label: "Image Quiz",      emoji: "🖼️" }, // must match API enum
-  { id: "ECG_QUIZ",         label: "Knowledge Quiz",  emoji: "📈" },
+  { id: "IMAGE_QUIZ", label: "Image Quiz",      emoji: "🖼️" }, // must match API enum
+  { id: "KNOWLEDGE_QUIZ",         label: "Knowledge Quiz",  emoji: "📈" },
   { id: "PREVENTIVE",       label: "How-To / Tips",   emoji: "🛡️" },
   { id: "CTA",              label: "Call to Action",  emoji: "📣" },
   { id: "REEL",             label: "Reel Script",     emoji: "🎬" },
@@ -324,7 +324,7 @@ export default function GeneratorPage() {
       ? primaryId
       : (genBrandTouched ? genBrand : globalBrandId);
 
-  const [postType, setPostType] = useState("CLINICAL_PEARL");
+  const [postType, setPostType] = useState("PRO_TIP");
   const [platform, setPlatform] = useState<Platform>("instagram");
   const [tone, setTone] = useState("professional");
   const [topic, setTopic] = useState("");

@@ -6,8 +6,8 @@
  * Output: 1080x1080 JPEG buffer.
  *
  * Post types handled:
- *   EDUCATIONAL, QUIZ, MYTH_FACT, CLINICAL_PEARL, CASE_STUDY,
- *   ECG_QUIZ, ANGIOGRAPHY_QUIZ, PREVENTIVE, CTA, REEL
+ *   EDUCATIONAL, QUIZ, MYTH_FACT, PRO_TIP, CASE_STUDY,
+ *   KNOWLEDGE_QUIZ, IMAGE_QUIZ, PREVENTIVE, CTA, REEL
  */
 
 import satori from "satori";
@@ -15,7 +15,7 @@ import sharp from "sharp";
 import fs from "fs";
 import path from "path";
 import { getBrand } from "@/lib/preferences";
-import { atHandle } from "@/lib/brandConfig";
+import { atHandle, normalizeContentTypeId } from "@/lib/brandConfig";
 
 // -- Theme system: 12 distinct card backgrounds, randomly selected per render --
 interface CardTheme {
@@ -172,14 +172,14 @@ function bulletQualityFilters(lines: string[]): string[] {
     .filter(Boolean)
     .filter((l) => !l.endsWith(":") && !l.match(/include[s]?:?\s*$/i))
     // Quality filter only — keep short noise out and very long junk out, but raise
-    // the upper bound generously so a long clinical fact is never silently dropped.
+    // the upper bound generously so a long fact is never silently dropped.
     // The renderer (numberedRow/letterRow/etc.) auto-shrinks the font to fit long text.
     .filter((l) => l.length >= 8)   // no upper cap — long lines auto-shrink to fit (no truncation)
     .filter((l) => !/\breports?\s+that\b|\bstudies?\s+show\b|\baccording\s+to\b|\bevery\s+minute\b/i.test(l))
     .filter((l) => !(l.endsWith("?") && /^(what|which|how|when|do you|have you|can you|drop|comment|follow|save|share|tag)/i.test(l)))
     .filter((l) => !/^(save this|share this|follow for|drop your|comment below|let me know|tag a|like if)/i.test(l))
-    .filter((l) => !/^(CLINICAL\s+PEARL|EDUCATIONAL|PREVENTIVE|MYTH\s+VS?\s+FACT|CASE\s+STUDY|ECG\s+QUIZ|ANGIOGRAPHY\s+QUIZ|CARDIOLOGY\s+CHALLENGE|REEL|CTA)\b/i.test(l))
-    .filter((l) => !/^(THE\s+EVIDENCE|CLINICAL\s+APPLICATION|REMEMBER|KEY\s+POINTS?|SUMMARY|OVERVIEW|INTRODUCTION)\s*[:\-–]/i.test(l))
+    .filter((l) => !/^(PRO\s+TIP|STORY|IMAGE\s+(?:QUIZ|CHALLENGE)|KNOWLEDGE\s+(?:QUIZ|CHALLENGE)|EDUCATIONAL|PREVENTIVE|MYTH\s+VS?\s+FACT|CASE\s+STUDY|REEL|CTA|CLINICAL\s+PEARL|ECG\s+QUIZ|ANGIOGRAPHY\s+QUIZ|CARDIOLOGY\s+CHALLENGE)\b/i.test(l))
+    .filter((l) => !/^(THE\s+EVIDENCE|HOW\s+TO\s+APPLY\s+IT|CLINICAL\s+APPLICATION|REMEMBER|KEY\s+POINTS?|SUMMARY|OVERVIEW|INTRODUCTION)\s*[:\-–]/i.test(l))
     // ── Quiz / answer / CTA hygiene — these belong only on QUIZ-type cards ──────
     // Drop A)/B)/C)/D) option lines so quiz content never leaks onto an
     // educational/preventive/pearl/carousel card as numbered points.
@@ -254,33 +254,32 @@ function buildConcentricCirclesSvg(): object {
   };
 }
 
-// -- ECG polyline path ---------------------------------------------------------
-function buildEcgStripSvg(): object {
-  const points = "0,66 66,66 90,66 102,18 114,114 126,66 180,66 264,66 288,66 300,12 312,120 324,66 378,66 462,66 486,66 498,9 510,117 522,66 576,66 672,66 696,66 708,18 720,114 732,66 786,66 900,66 1080,66";
+// -- Accent strip: a row of rising bars (decorative, niche-neutral) ------------
+function buildAccentStripSvg(): object {
+  // Rising bars along a faint grid — reads as "insight / progress" in any niche.
+  const bars = [30, 46, 38, 60, 52, 74, 66, 88, 80, 100, 92, 112];
+  // The strip sits in a ~960px card, so keep the bars inside that width.
+  const w = 940 / bars.length;
   return {
     type: "svg",
     props: {
       viewBox: "0 0 1080 132",
       style: { width: "1080px", height: "132px", position: "absolute", top: 0, left: 0 },
       children: [
-        ...[1,2,3,4,5].map((i) => ({
-          type: "line",
-          props: { x1: String(i * 180), y1: "0", x2: String(i * 180), y2: "132", stroke: `${RED}30`, strokeWidth: "1" },
-        })),
         ...[1,2].map((i) => ({
           type: "line",
           props: { x1: "0", y1: String(i * 44), x2: "1080", y2: String(i * 44), stroke: `${RED}30`, strokeWidth: "1" },
         })),
-        {
-          type: "polyline",
-          props: { points, fill: "none", stroke: RED, strokeWidth: "5", strokeLinecap: "round", strokeLinejoin: "round" },
-        },
+        ...bars.map((h, i) => ({
+          type: "rect",
+          props: { x: String(i * w + w * 0.28), y: String(122 - h), width: String(w * 0.44), height: String(h), rx: "6", fill: RED, opacity: String(0.35 + (i / bars.length) * 0.65) },
+        })),
       ],
     },
   };
 }
 
-// -- Gold divider header ( ECG CHALLENGE style) -----------------------------
+// -- Gold divider header (challenge-card style) -------------------------------
 function goldHeader(label: string): object {
   return {
     type: "div",
@@ -688,7 +687,7 @@ function factRow(num: number, text: string): object {
 function parseMythFactLines(content: string): string[] {
   // Extract FACT section  -  multi-line aware, stops at EVIDENCE or double-newline heading
   const factMatch = content.match(
-    /FACT\s*[:\-]\s*([\s\S]+?)(?=\n\s*(?:THE\s+)?EVIDENCE\s*[:\-]|\n\s*CLINICAL\s+APPLICATION|\n\s*REMEMBER|\n\n[A-Z]{3}|$)/i
+    /FACT\s*[:\-]\s*([\s\S]+?)(?=\n\s*(?:THE\s+)?EVIDENCE\s*[:\-]|\n\s*(?:HOW\s+TO\s+APPLY\s+IT|CLINICAL\s+APPLICATION)|\n\s*REMEMBER|\n\n[A-Z]{3}|$)/i
   );
   const factText = factMatch
     ? factMatch[1].replace(/\*\*/g, "").replace(/\n+/g, " ").trim()
@@ -696,7 +695,7 @@ function parseMythFactLines(content: string): string[] {
 
   // Extract EVIDENCE / THE EVIDENCE section bullets
   const evidenceMatch = content.match(
-    /(?:THE\s+)?EVIDENCE\s*[:\-]\s*([\s\S]+?)(?=\n\n[A-Z]{3}|\n\s*CLINICAL\s+APPLICATION|\n\s*REMEMBER|$)/i
+    /(?:THE\s+)?EVIDENCE\s*[:\-]\s*([\s\S]+?)(?=\n\n[A-Z]{3}|\n\s*(?:HOW\s+TO\s+APPLY\s+IT|CLINICAL\s+APPLICATION)|\n\s*REMEMBER|$)/i
   );
   let evidenceBullets: string[] = [];
   if (evidenceMatch) {
@@ -822,8 +821,8 @@ function buildMythFact(hook: string, content: string): object {
   ]);
 }
 
-// 4. CLINICAL PEARL
-function buildClinicalPearl(hook: string, content: string): object {
+// 4. PRO TIP
+function buildProTip(hook: string, content: string): object {
   const rows     = parseBullets(content, 10); // no artificial cap
   const hookText = cleanText(hook) || "Key Insight";
   const mini     = rows.length >= 8;
@@ -871,20 +870,26 @@ function buildClinicalPearl(hook: string, content: string): object {
 
 // -- Smart section parser for CASE STUDY --------------------------------------
 function parseCaseStudySections(content: string): string[] {
-  // Strip post-type category header lines (e.g. "CASE STUDY  -  ECG Interpretation")
+  // Strip post-type category header lines (e.g. "STORY  -  How we doubled sales")
   const cleaned = content
-    .replace(/^(?:CASE\s+STUDY|TEACHING\s+CASE)\s*[-– - ][^\n]*\n?/im, "")
+    .replace(/^(?:STORY|CASE\s+STUDY|TEACHING\s+CASE)\s*[-– - ][^\n]*\n?/im, "")
     .replace(/^#+\s*[^\n]*\n?/m, "")          // strip markdown headings
     .replace(/^\*\*[^\n]*\*\*\n?/m, "")        // strip bold headings
     .trim();
 
   // Section patterns  -  use multi-line lookaheads so they span across newlines
-  const sectionPatterns: RegExp[] = [
-    /(?:PATIENT\s+)?(?:PRESENTATION|CHIEF\s+COMPLAINT|HISTORY|CASE\s+DETAILS?)\s*[:\- - ]\s*([\s\S]+?)(?=\n\s*(?:KEY\s+FINDINGS?|ECG\s+FINDINGS?|DIAGNOSIS|CLINICAL\s+FINDINGS?|MANAGEMENT|TREATMENT|OUTCOME|LEARNING)|$)/i,
-    /(?:KEY\s+FINDINGS?|ECG\s+FINDINGS?|DIAGNOSIS|CLINICAL\s+FINDINGS?|INTERPRETATION)\s*[:\- - ]\s*([\s\S]+?)(?=\n\s*(?:MANAGEMENT|TREATMENT|PLAN|OUTCOME|RESULT|LEARNING|CONCLUSION)|$)/i,
-    /(?:MANAGEMENT|TREATMENT|PLAN)\s*[:\- - ]\s*([\s\S]+?)(?=\n\s*(?:OUTCOME|RESULT|LEARNING\s+POINT|LEARNING|CONCLUSION)|$)/i,
-    /(?:OUTCOME|RESULT|LEARNING\s+POINT|LEARNING|CONCLUSION|PEARL)\s*[:\- - ]\s*([\s\S]+?)$/i,
+  // Current headings first; the rest are what older posts used for each section.
+  const SECTION_HEADINGS = [
+    String.raw`(?:THE\s+SETUP|SETUP|(?:PATIENT\s+)?PRESENTATION|CHIEF\s+COMPLAINT|HISTORY|CASE\s+DETAILS?)`,
+    String.raw`(?:KEY\s+DETAILS?|WHAT\s+HAPPENED|KEY\s+FINDINGS?|ECG\s+FINDINGS?|DIAGNOSIS|CLINICAL\s+FINDINGS?|INTERPRETATION)`,
+    String.raw`(?:THE\s+APPROACH|APPROACH|MANAGEMENT|TREATMENT|PLAN)`,
+    String.raw`(?:OUTCOME|RESULT|TAKEAWAY|LEARNING\s+POINTS?|LEARNING|CONCLUSION|PEARL)`,
   ];
+  const sectionPatterns: RegExp[] = SECTION_HEADINGS.map((heading, i) => {
+    const next = SECTION_HEADINGS.slice(i + 1).join("|");
+    const stop = next ? String.raw`(?=\n\s*(?:${next})\s*[:\-–]|$)` : "$";
+    return new RegExp(String.raw`${heading}\s*[:\-–]\s*([\s\S]+?)${stop}`, "i");
+  });
 
   const sections: string[] = [];
   for (const pattern of sectionPatterns) {
@@ -893,7 +898,7 @@ function parseCaseStudySections(content: string): string[] {
       const text = match[1]
         .replace(/\*\*/g, "")
         // Strip ONLY leading list markers (start of string or after a newline) — never
-        // mid-word hyphens, so "drug-eluting", "V2-V4", "door-to-balloon" stay intact.
+        // mid-word hyphens, so "step-by-step", "V2-V4", "year-over-year" stay intact.
         .replace(/(^|\n)\s*[-•●]\s+/g, "$1")
         .replace(/\n+/g, " ")
         .trim();
@@ -954,7 +959,7 @@ function buildCaseStudy(hook: string, content: string): object {
         ],
       },
     },
-    // Patient card (hook)
+    // Scenario card (hook)
     {
       type: "div",
       props: {
@@ -1053,8 +1058,8 @@ function buildCaseStudy(hook: string, content: string): object {
   ]);
 }
 
-// -- ECG hook splitter  -  separates findings from the question -----------------
-function splitEcgHook(hook: string): { findings: string[]; question: string } {
+// -- Quiz hook splitter  -  separates key points from the question -------------
+function splitQuizHook(hook: string): { findings: string[]; question: string } {
   const cleaned = cleanText(hook);
   // Split into sentences by ". "
   const sentences = cleaned.split(/\.\s+/).map((s) => s.trim()).filter(Boolean);
@@ -1080,12 +1085,12 @@ function splitEcgHook(hook: string): { findings: string[]; question: string } {
   return { findings: [], question: cleaned };
 }
 
-// -- ECG content parser  -  extracts CASE and ECG FINDINGS from content body ----
-function parseEcgContent(content: string): { caseInfo: string; ecgFindings: string[] } {
-  // -- CASE section ----------------------------------------------------------
+// -- Quiz content parser  -  extracts the SETUP and KEY POINTS from the body ----
+function parseQuizContent(content: string): { caseInfo: string; keyPoints: string[] } {
+  // -- SETUP section (older posts: CASE) -------------------------------------
   // Matches "CASE:" or "CASE DETAILS:" followed by text until the next labelled section
   const caseMatch = content.match(
-    /(?:^|\n)\s*CASE(?:\s*DETAILS?)?\s*[:\-]\s*([\s\S]+?)(?=\n\s*(?:ECG\s*FINDINGS?|CLINICAL\s*SCENARIO|[A-D][).:]|\bQUESTION\b|\bASK\b|$))/i
+    /(?:^|\n)\s*(?:SETUP|CASE(?:\s*DETAILS?)?)\s*[:\-]\s*([\s\S]+?)(?=\n\s*(?:KEY\s*POINTS?|ECG\s*FINDINGS?|CLINICAL\s*SCENARIO|[A-D][).:]|\bQUESTION\b|\bASK\b|$))/i
   );
   const caseInfo = caseMatch
     // Strip leading list markers only (after a space/newline) so mid-word hyphens
@@ -1093,29 +1098,30 @@ function parseEcgContent(content: string): { caseInfo: string; ecgFindings: stri
     ? caseMatch[1].replace(/\*\*/g, "").replace(/\n+/g, " ").replace(/(^|\s)[-•●]\s+/g, "$1").trim()
     : "";
 
-  // -- ECG FINDINGS section --------------------------------------------------
-  const ecgMatch = content.match(
-    /(?:^|\n)\s*ECG\s*FINDINGS?\s*[:\-]\s*([\s\S]+?)(?=\n\s*(?:[A-D][).:]|\bQUESTION\b|\bASK\b|ANSWER|$))/i
+  // -- KEY POINTS section (older posts: ECG FINDINGS) ------------------------
+  const pointsMatch = content.match(
+    /(?:^|\n)\s*(?:KEY\s*POINTS?|ECG\s*FINDINGS?)\s*[:\-]\s*([\s\S]+?)(?=\n\s*(?:[A-D][).:]|\bQUESTION\b|\bASK\b|ANSWER|$))/i
   );
-  let ecgFindings: string[] = [];
-  if (ecgMatch) {
-    const raw = ecgMatch[1].replace(/\*\*/g, "").trim();
-    ecgFindings = raw
-      .split(/[,\n•●]+/)
+  let keyPoints: string[] = [];
+  if (pointsMatch) {
+    const raw = pointsMatch[1].replace(/\*\*/g, "").trim();
+    // One point per line; a single-line list (older posts) is split on commas.
+    keyPoints = raw
+      .split(raw.includes("\n") ? /[\n•●]+/ : /[,•●]+/)
       .map((s) => s.trim().replace(/^[-\s]+/, ""))
       .filter((s) => s.length > 3)
       .slice(0, 5);
   }
 
-  return { caseInfo, ecgFindings };
+  return { caseInfo, keyPoints };
 }
 
-// 6. ECG QUIZ
-function buildEcgQuiz(hook: string, content: string): object {
+// 6. KNOWLEDGE QUIZ
+function buildKnowledgeQuiz(hook: string, content: string): object {
   const safe           = stripAnswerSections(content);
   const opts           = parseOptions(safe);
-  const { findings: hookFindings, question } = splitEcgHook(cleanText(hook) || "What's the answer?");
-  const { caseInfo, ecgFindings: contentFindings } = parseEcgContent(safe);
+  const { findings: hookFindings, question } = splitQuizHook(cleanText(hook) || "What's the answer?");
+  const { caseInfo, keyPoints: contentFindings } = parseQuizContent(safe);
 
   // Prefer content-parsed findings (richer) over hook-parsed findings
   const findings = contentFindings.length > 0 ? contentFindings : hookFindings;
@@ -1152,7 +1158,7 @@ function buildEcgQuiz(hook: string, content: string): object {
       },
     },
 
-    // ECG strip card
+    // Accent strip card
     {
       type: "div",
       props: {
@@ -1163,35 +1169,35 @@ function buildEcgQuiz(hook: string, content: string): object {
             type: "div",
             props: {
               style: { height: "90px", background: `${RED}08`, position: "relative", overflow: "hidden", display: "flex" },
-              children: buildEcgStripSvg(),
+              children: buildAccentStripSvg(),
             },
           },
         ],
       },
     },
 
-    // -- CASE INFO  -  patient demographics (from content CASE: section) -----
+    // -- SETUP  -  the scenario (from the content's SETUP: section) ----------
     ...(caseInfo
       ? [{
           type: "div",
           props: {
             style: { display: "flex", flexDirection: "row", alignItems: "flex-start", gap: "10px", background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.28)", borderRadius: "12px", padding: "10px 16px", marginBottom: "10px", flexShrink: 0 },
             children: [
-              { type: "div", props: { style: { color: "#60a5fa", fontSize: "12px", fontWeight: "700", letterSpacing: "2px", marginTop: "2px", flexShrink: 0 }, children: "CASE" } },
+              { type: "div", props: { style: { color: "#60a5fa", fontSize: "12px", fontWeight: "700", letterSpacing: "2px", marginTop: "2px", flexShrink: 0 }, children: "SETUP" } },
               { type: "div", props: { style: { color: BODY_TXT, fontSize: "19px", lineHeight: "1.4", flex: "1" }, children: caseInfo } },
             ],
           },
         }]
       : []),
 
-    // -- ECG FINDINGS chips ------------------------------------------------
+    // -- KEY POINTS chips --------------------------------------------------
     ...(findings.length > 0
       ? [{
           type: "div",
           props: {
             style: { display: "flex", flexDirection: "column", background: `${RED}08`, border: `1px solid ${RED}28`, borderRadius: "12px", padding: "10px 16px", marginBottom: "10px", flexShrink: 0 },
             children: [
-              { type: "div", props: { style: { color: RED, fontSize: "12px", fontWeight: "700", letterSpacing: "2.5px", marginBottom: "8px" }, children: "KEY FINDINGS" } },
+              { type: "div", props: { style: { color: RED, fontSize: "12px", fontWeight: "700", letterSpacing: "2.5px", marginBottom: "8px" }, children: "KEY POINTS" } },
               {
                 type: "div",
                 props: {
@@ -1235,21 +1241,21 @@ function buildEcgQuiz(hook: string, content: string): object {
   ]);
 }
 
-// 7. ANGIOGRAPHY QUIZ
-function buildAngiographyQuiz(hook: string, content: string): object {
+// 7. IMAGE QUIZ
+function buildImageQuiz(hook: string, content: string): object {
   const stripped = stripAnswerSections(content);
   const opts     = parseOptions(stripped);
   const hookText = cleanText(hook) || "What is this?";
   const hookSize = hookText.length > 70 ? "28px" : hookText.length > 50 ? "32px" : "36px";
 
-  // -- Extract CASE section -----------------------------------------------
-  const caseMatch = stripped.match(/CASE\s*[:\-]\s*([\s\S]+?)(?=ANGIOGRAPHIC|QUESTION|\bQUESTION\b|[A-D][).:]|$)/i);
+  // -- Extract SETUP section (older posts: CASE) -------------------------
+  const caseMatch = stripped.match(/(?:SETUP|CASE)\s*[:\-]\s*([\s\S]+?)(?=WHAT\s+YOU\s+SEE|ANGIOGRAPHIC|QUESTION|\bQUESTION\b|[A-D][).:]|$)/i);
   const caseText  = caseMatch
     ? caseMatch[1].replace(/\*\*/g, "").replace(/\n+/g, " ").trim()
     : "";
 
-  // -- Extract ANGIOGRAPHIC FINDINGS ---------------------------------------
-  const findMatch = stripped.match(/ANGIOGRAPHIC\s*FINDINGS?\s*[:\-]?\s*([\s\S]+?)(?=QUESTION|\bQUESTION\b|[A-D][).:]|$)/i);
+  // -- Extract WHAT YOU SEE (older posts: ANGIOGRAPHIC FINDINGS) ----------
+  const findMatch = stripped.match(/(?:WHAT\s+YOU\s+SEE|ANGIOGRAPHIC\s*FINDINGS?)\s*[:\-]?\s*([\s\S]+?)(?=QUESTION|\bQUESTION\b|[A-D][).:]|$)/i);
   const findings: string[] = findMatch
     ? findMatch[1]
         .split(/\n/)
@@ -1296,19 +1302,19 @@ function buildAngiographyQuiz(hook: string, content: string): object {
       props: {
         style: { display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.06)", border: `1px solid ${ORANGE}60`, borderRadius: "14px", padding: "10px 18px", marginBottom: "8px", flexShrink: 0 },
         children: [
-          { type: "div", props: { style: { display: "flex", fontSize: "12px", fontWeight: "700", color: ORANGE, letterSpacing: "2.5px", marginBottom: "5px" }, children: "CASE" } },
+          { type: "div", props: { style: { display: "flex", fontSize: "12px", fontWeight: "700", color: ORANGE, letterSpacing: "2.5px", marginBottom: "5px" }, children: "SETUP" } },
           { type: "div", props: { style: { display: "flex", color: "rgba(255,255,255,0.85)", fontSize: "19px", fontWeight: "400", lineHeight: "1.35" }, children: caseText } },
         ],
       },
     }] : []),
 
-    // ANGIOGRAPHIC FINDINGS section
+    // WHAT YOU SEE section
     ...(findings.length > 0 ? [{
       type: "div",
       props: {
         style: { display: "flex", flexDirection: "column", background: `${RED}0d`, border: `1px solid ${RED}40`, borderRadius: "14px", padding: "10px 18px", marginBottom: "8px", flexShrink: 0 },
         children: [
-          { type: "div", props: { style: { display: "flex", fontSize: "12px", fontWeight: "700", color: RED, letterSpacing: "2.5px", marginBottom: "6px" }, children: "KEY FINDINGS" } },
+          { type: "div", props: { style: { display: "flex", fontSize: "12px", fontWeight: "700", color: RED, letterSpacing: "2.5px", marginBottom: "6px" }, children: "WHAT YOU SEE" } },
           { type: "div", props: { style: { display: "flex", flexDirection: "column", gap: "4px" }, children: findings.map(findingRow) } },
         ],
       },
@@ -1671,7 +1677,7 @@ export async function renderPostToJpeg(opts: {
   HANDLE       = atHandle(brand);                                  // "@handle" for watermark
   HANDLE_PLAIN = (brand.persona.handle || "").replace(/^@/, "");   // plain corner label
   // Neutral eyebrow for the title-card slot: prefer the brand's content-type label.
-  EYEBROW      = (brand.contentTypes?.[postType as keyof typeof brand.contentTypes]?.label
+  EYEBROW      = (brand.contentTypes?.[normalizeContentTypeId(postType) as keyof typeof brand.contentTypes]?.label
                   || brand.niche || "Educational").toUpperCase();
   COVER_TITLE_FALLBACK = brand.niche && brand.niche !== "your topic"
     ? `${brand.niche} insights`.replace(/\b\w/g, (c) => c.toUpperCase())
@@ -1703,14 +1709,15 @@ export async function renderPostToJpeg(opts: {
   try {
     let element: object;
 
-    switch (postType) {
+    // Legacy type IDs still reach here from scheduled posts saved before the rename.
+    switch (normalizeContentTypeId(postType)) {
       case "EDUCATIONAL":      element = buildEducational(hook, content);                   break;
       case "QUIZ":             element = buildQuiz(hook, content);                          break;
       case "MYTH_FACT":        element = buildMythFact(hook, content);                      break;
-      case "CLINICAL_PEARL":   element = buildClinicalPearl(hook, content);                 break;
+      case "PRO_TIP":          element = buildProTip(hook, content);                        break;
       case "CASE_STUDY":       element = buildCaseStudy(hook, content);                     break;
-      case "ECG_QUIZ":         element = buildEcgQuiz(hook, content);                       break;
-      case "ANGIOGRAPHY_QUIZ": element = buildAngiographyQuiz(hook, content);               break;
+      case "KNOWLEDGE_QUIZ":   element = buildKnowledgeQuiz(hook, content);                 break;
+      case "IMAGE_QUIZ":       element = buildImageQuiz(hook, content);                     break;
       case "PREVENTIVE":       element = buildPreventive(hook, content);                    break;
       case "CTA":              element = buildCta(hook, cta);                               break;
       case "CAROUSEL":         element = buildCarousel(hook, content);                      break;

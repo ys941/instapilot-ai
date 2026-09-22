@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveBrandId } from "@/lib/brands";
 import { brandFromQuery } from "@/lib/brandRequest";
 import { validateMediaUrl } from "@/lib/urlSafety";
+import { normalizeContentTypeId } from "@/lib/brandConfig";
 
 export const dynamic = "force-dynamic";
 
@@ -172,10 +173,11 @@ export async function POST(request: NextRequest) {
     const primaryId       = await resolveBrandId(null);
     const postBrandId     = resolvedBrandId === primaryId ? null : resolvedBrandId;
 
-    const resolvedType = (n.postType as any) in {
-      EDUCATIONAL: 1, QUIZ: 1, CAROUSEL: 1, MYTH_FACT: 1, CLINICAL_PEARL: 1,
-      CASE_STUDY: 1, ANGIOGRAPHY_QUIZ: 1, ECG_QUIZ: 1, PREVENTIVE: 1, CTA: 1, REEL: 1,
-    } ? n.postType : (n.isVideo ? "REEL" : "EDUCATIONAL");
+    const requestedType = normalizeContentTypeId(n.postType);
+    const resolvedType = (requestedType as any) in {
+      EDUCATIONAL: 1, QUIZ: 1, CAROUSEL: 1, MYTH_FACT: 1, PRO_TIP: 1,
+      CASE_STUDY: 1, IMAGE_QUIZ: 1, KNOWLEDGE_QUIZ: 1, PREVENTIVE: 1, CTA: 1, REEL: 1,
+    } ? requestedType : (n.isVideo ? "REEL" : "EDUCATIONAL");
 
     const hashtagArray = n.hashtags
       .split(/[\s,]+/)
@@ -186,7 +188,7 @@ export async function POST(request: NextRequest) {
     const scheduledFor = n.scheduledForRaw ? new Date(n.scheduledForRaw) : null;
     const postStatus   = scheduledFor ? "SCHEDULED" : "DRAFT";
 
-    const isQuizType    = ["QUIZ", "ECG_QUIZ", "ANGIOGRAPHY_QUIZ"].includes(resolvedType);
+    const isQuizType    = ["QUIZ", "KNOWLEDGE_QUIZ", "IMAGE_QUIZ"].includes(resolvedType);
     const reelScriptVal = (isQuizType && n.quizAnswer.trim()) ? `QUIZ_ANS:${n.quizAnswer.trim()}` : undefined;
 
     const post = await prisma.post.create({

@@ -58,3 +58,7 @@ public/uploads/*
 
 # local screenshot staging (source files for docs/screenshots)
 /image/
+
+# Runtime media the app writes, and local card previews (scripts/preview-cards.mjs)
+/public/uploads/
+/public/previews/

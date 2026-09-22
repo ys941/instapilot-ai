@@ -79,7 +79,7 @@ export async function GET() {
       if (!post.instagramPostId) continue;
 
       // Build full post context for AI (prefers QUIZ_ANS: from reelScript, falls back to caption parse)
-      const isQuiz = ["QUIZ","ECG_QUIZ","ANGIOGRAPHY_QUIZ"].includes(post.type);
+      const isQuiz = ["QUIZ","KNOWLEDGE_QUIZ","IMAGE_QUIZ"].includes(post.type);
       let correctLetter: string | undefined;
       let correctAnswer: string | undefined;
       if (isQuiz) {

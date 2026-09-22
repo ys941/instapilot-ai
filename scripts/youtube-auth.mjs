@@ -16,7 +16,7 @@
  *     (Testing-status apps issue refresh tokens that expire in 7 days).
  *   • Credentials → Create OAuth client ID → **Desktop app** → copy ID + secret.
  *
- * Usage (from the cardioflow-ai folder):
+ * Usage (from the project folder):
  *   YOUTUBE_CLIENT_ID=xxx YOUTUBE_CLIENT_SECRET=yyy node scripts/youtube-auth.mjs
  * or pass them as flags:
  *   node scripts/youtube-auth.mjs --id xxx --secret yyy

@@ -277,7 +277,7 @@ export async function renderHookCard(input: HookCardInput): Promise<Buffer | nul
             props: {
               style: { display: "flex", flexDirection: "column", alignItems: "center", gap: "40px", paddingTop: "150px" },
               children: [
-                // Brand "THE CARDIO DOC" lockup with pulse rules flanking it
+                // Brand lockup with rules flanking it
                 {
                   type: "div",
                   props: {

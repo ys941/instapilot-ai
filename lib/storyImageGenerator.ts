@@ -2,10 +2,10 @@
  * lib/storyImageGenerator.ts
  *
  * Generates 1080x1920 Instagram Story cards using Satori + Sharp.
- * Premium luxury-wellness aesthetic, branded per the active brand config.
+ * Premium, minimal aesthetic, branded per the active brand config.
  *
  * Story types:
- *   - "health_awareness" : Tips card (the premium full layout)
+ *   - "checklist"        : Tips card (the premium full layout)
  *   - "tip"              : Daily tip card
  *   - "fact"             : Quick fact card
  *   - "quiz"             : Quiz teaser card
@@ -77,27 +77,24 @@ export interface StoryInput {
   headline: string;
   /** Body text  -  1–3 sentences (max ~200 chars) */
   body: string;
-  /** Optional label shown at top (e.g. "DAILY TIP", "DID YOU KNOW?", "HEART HEALTH") */
+  /** Optional label shown at top (e.g. "DAILY TIP", "DID YOU KNOW?", "MONEY HABITS") */
   label?: string;
   /** Optional emoji to display large in the card */
   emoji?: string;
   /**
    * Story layout variant.
-   * "health_awareness" = premium tips layout with checklist.
+   * "checklist" = premium tips layout with a checklist. ("health_awareness"
+   * is its old name and is still accepted.)
    * "tip" | "fact" | "quiz" | "quote" = simple branded card.
    */
-  type?: "health_awareness" | "tip" | "fact" | "quiz" | "quote";
-  /** Health tips for the health_awareness layout (max 6) */
+  type?: "checklist" | "health_awareness" | "tip" | "fact" | "quiz" | "quote";
+  /** Tips for the checklist layout (max 6) */
   tips?: string[];
   /** Emotional tagline shown below tips */
   tagline?: string;
   /** CTA text at the bottom */
   cta?: string;
 }
-
-// -- ECG path (simplified SVG path for a heartbeat line) --------------------
-// Pure SVG path data for an ECG waveform (flat -> P wave -> QRS spike -> T wave -> flat)
-const ECG_PATH = "M0,50 L80,50 L90,50 L100,40 L110,50 L120,50 L130,50 L140,50 L145,50 L148,10 L151,90 L154,10 L157,50 L160,50 L170,50 L180,45 L195,35 L210,45 L220,50 L280,50";
 
 // -- Shared sub-components ---------------------------------------------------
 
@@ -118,7 +115,7 @@ function brandHeader(label: string, handle: string, subtitle: string) {
           props: {
             style: { display: "flex", alignItems: "center", gap: "16px" },
             children: [
-              // Heart circle avatar
+              // Avatar: the brand's initial (from its handle)
               {
                 type: "div",
                 props: {
@@ -126,21 +123,9 @@ function brandHeader(label: string, handle: string, subtitle: string) {
                     width: "56px", height: "56px", borderRadius: "50%",
                     background: `linear-gradient(135deg, ${RED}, ${RED_DEEP})`,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "26px", border: `2px solid ${RED_LIGHT}`,
+                    fontSize: "26px", fontWeight: 700, color: WHITE, border: `2px solid ${RED_LIGHT}`,
                   },
-                  // Inline SVG heart — Satori has no emoji font, so a "❤️" glyph
-                  // renders as a black block. This draws a crisp white heart.
-                  children: {
-                    type: "svg",
-                    props: {
-                      viewBox: "0 0 24 24",
-                      style: { width: "28px", height: "28px" },
-                      children: {
-                        type: "path",
-                        props: { d: "M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z", fill: "#ffffff" },
-                      },
-                    },
-                  },
+                  children: (handle.replace(/[^A-Za-z0-9]/g, "").charAt(0) || "•").toUpperCase(),
                 },
               },
               {
@@ -174,7 +159,8 @@ function brandHeader(label: string, handle: string, subtitle: string) {
   };
 }
 
-function ecgLine(color = RED) {
+/** A soft accent wave used as a divider. */
+function accentLine(color = RED) {
   return {
     type: "div",
     props: {
@@ -191,8 +177,8 @@ function ecgLine(color = RED) {
             {
               type: "path",
               props: {
-                d: "M0,30 L60,30 L70,30 L76,24 L82,30 L90,30 L100,30 L104,30 L108,4 L112,56 L116,4 L120,30 L128,30 L136,30 L148,22 L165,14 L182,22 L196,30 L250,30 L310,30 L316,24 L322,30 L330,30 L340,30 L344,30 L348,4 L352,56 L356,4 L360,30 L368,30 L376,30 L388,22 L405,14 L422,22 L436,30 L490,30 L550,30 L556,24 L562,30 L570,30 L580,30 L584,30 L588,4 L592,56 L596,4 L600,30 L608,30 L616,30 L628,22 L645,14 L662,22 L676,30 L730,30 L790,30 L796,24 L802,30 L810,30 L820,30 L824,30 L828,4 L832,56 L836,4 L840,30 L848,30 L856,30 L868,22 L885,14 L902,22 L916,30 L936,30",
-                stroke: color, strokeWidth: "2.5", fill: "none", strokeLinecap: "round", strokeLinejoin: "round",
+                d: "M0,30 C78,6 156,6 234,30 C312,54 390,54 468,30 C546,6 624,6 702,30 C780,54 858,54 936,30",
+                stroke: color, strokeWidth: "2.5", fill: "none", strokeLinecap: "round",
               },
             },
           ],
@@ -225,9 +211,9 @@ function redAccent() {
   };
 }
 
-// -- Health Awareness Layout -------------------------------------------------
+// -- Checklist Layout ---------------------------------------------------------
 
-function healthAwarenessCard(input: StoryInput, brandHandle: string, brandSubtitle: string, niche: string) {
+function checklistCard(input: StoryInput, brandHandle: string, brandSubtitle: string, niche: string) {
   const {
     headline = "One small habit, every day",
     body = "1 small positive habit today can shape a better tomorrow.",
@@ -300,8 +286,8 @@ function healthAwarenessCard(input: StoryInput, brandHandle: string, brandSubtit
         // Spacer
         { type: "div", props: { style: { height: "32px", display: "flex" }, children: "" } },
 
-        // ECG line strip
-        ecgLine(RED),
+        // Accent wave
+        accentLine(RED),
 
         // Spacer
         { type: "div", props: { style: { height: "28px", display: "flex" }, children: "" } },
@@ -416,8 +402,8 @@ function healthAwarenessCard(input: StoryInput, brandHandle: string, brandSubtit
         // Flex spacer
         { type: "div", props: { style: { flex: "1", display: "flex" }, children: "" } },
 
-        // Second ECG line
-        ecgLine("rgba(230,57,70,0.6)"),
+        // Second accent wave
+        accentLine("rgba(230,57,70,0.6)"),
 
         // Spacer
         { type: "div", props: { style: { height: "20px", display: "flex" }, children: "" } },
@@ -503,11 +489,11 @@ function simpleBrandedCard(input: StoryInput, brandHandle: string, brandSubtitle
             },
             children: [
 
-              // ECG line accent
-              ecgLine(RED),
+              // Accent wave
+              accentLine(RED),
 
-              // Big heart — inline SVG (Satori has no emoji font loaded, so an
-              // emoji glyph renders as a black block; this draws a crisp heart).
+              // Big sparkle — inline SVG (Satori has no emoji font loaded, so an
+              // emoji glyph would render as a black block).
               {
                 type: "div",
                 props: {
@@ -519,7 +505,7 @@ function simpleBrandedCard(input: StoryInput, brandHandle: string, brandSubtitle
                       style: { width: "130px", height: "130px" },
                       children: {
                         type: "path",
-                        props: { d: "M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z", fill: RED },
+                        props: { d: "M12 1.5 L14.4 9.6 L22.5 12 L14.4 14.4 L12 22.5 L9.6 14.4 L1.5 12 L9.6 9.6 Z", fill: WHITE },
                       },
                     },
                   },
@@ -636,8 +622,8 @@ export async function renderStoryToJpeg(input: StoryInput): Promise<Buffer | nul
     const H = 1920;
 
     // Choose layout
-    const layout = input.type === "health_awareness"
-      ? healthAwarenessCard(input, brandHandleText, brandSubtitle, niche)
+    const layout = input.type === "checklist" || input.type === "health_awareness"
+      ? checklistCard(input, brandHandleText, brandSubtitle, niche)
       : simpleBrandedCard(input, brandHandleText, brandSubtitle, niche);
 
     const svg = await satori(

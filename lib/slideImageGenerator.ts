@@ -328,8 +328,8 @@ function buildLastSlide(headline: string, body: string, slideNum: number, totalS
               {
                 type: "div",
                 props: {
-                  style: { color: BODY_TXT, fontSize: ((cleanText(body) || "Tag a colleague who needs to see this!").length > 360 ? "20px" : (cleanText(body) || "Tag a colleague who needs to see this!").length > 220 ? "24px" : (cleanText(body) || "Tag a colleague who needs to see this!").length > 140 ? "27px" : "30px"), textAlign: "center", lineHeight: "1.5", marginBottom: "36px" },
-                  children: cleanText(body) || "Tag a colleague who needs to see this!",
+                  style: { color: BODY_TXT, fontSize: ((cleanText(body) || "Tag a friend who needs to see this!").length > 360 ? "20px" : (cleanText(body) || "Tag a friend who needs to see this!").length > 220 ? "24px" : (cleanText(body) || "Tag a friend who needs to see this!").length > 140 ? "27px" : "30px"), textAlign: "center", lineHeight: "1.5", marginBottom: "36px" },
+                  children: cleanText(body) || "Tag a friend who needs to see this!",
                 },
               },
               {

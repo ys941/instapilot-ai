@@ -6,16 +6,13 @@
  * so encoding can never corrupt the output.
  */
 
-import { BrandConfig, atHandle, typeLabel } from "@/lib/brandConfig";
-
-// Neutral fallback labels when no brand is supplied (white-label: the header is
-// the user's renameable type label, resolved via typeLabel(brand, postType)).
-const NEUTRAL_TYPE_LABEL: Record<string, string> = {
-  EDUCATIONAL: "Did You Know", QUIZ: "Quiz", MYTH_FACT: "Myth vs Fact",
-  CLINICAL_PEARL: "Pro Tip", CASE_STUDY: "Story", ECG_QUIZ: "Knowledge Quiz",
-  ANGIOGRAPHY_QUIZ: "Image Quiz", PREVENTIVE: "How-To", CTA: "Take Action",
-  REEL: "Reel", CAROUSEL: "Carousel",
-};
+import {
+  BrandConfig,
+  ContentTypeId,
+  DEFAULT_CONTENT_TYPES,
+  atHandle,
+  normalizeContentTypeId,
+} from "@/lib/brandConfig";
 
 // -- Helpers ------------------------------------------------------------------
 function clean(t: string): string {
@@ -131,15 +128,11 @@ const DIVIDER = "─".repeat(22);
 // Common emojis as constants (all Unicode escapes -- encoding-safe)
 const E = {
   heart:        "❤️",        // ❤️
-  anatomHeart:  "\u{1FAC0}",           // 🫀
-  stethoscope:  "\u{1FA7A}",           // 🩺
   pushpin:      "\u{1F4CC}",           // 📌
   floppy:       "\u{1F4BE}",           // 💾
   pointDown:    "\u{1F447}",           // 👇
-  hospital:     "\u{1F3E5}",           // 🏥
   muscle:       "\u{1F4AA}",           // 💪
   microscope:   "\u{1F52C}",           // 🔬
-  pill:         "\u{1F48A}",           // 💊
   books:        "\u{1F4DA}",           // 📚
   clipboard:    "\u{1F4CB}",           // 📋
   person:       "\u{1F464}",           // 👤
@@ -185,7 +178,7 @@ function educational(hook: string, content: string, cta: string): string {
   const numbered = [E.n1, E.n2, E.n3, E.n4, E.n5, E.n6];
   const bulletLines = bullets.map((b, i) => `${numbered[i] ?? E.bullet} ${b}`).join("\n\n");
   return [
-    `${E.anatomHeart} ${clean(hook) || "Key Insight"}`,
+    `${E.sparkles} ${clean(hook) || "Key Insight"}`,
     "",
     DIVIDER,
     "",
@@ -221,14 +214,14 @@ function extractAnswer(content: string): { answerLine: string; explanation: stri
   return { answerLine, explanation: explanationLines.join(" ") };
 }
 
-function quiz(hook: string, content: string, cta: string): string {
+function quiz(hook: string, content: string, cta: string, label: string): string {
   const opts    = parseOptions(stripAnswerSections(content));
   const optText = opts.length
     ? opts.map(({ letter, text }) => `${LETTER_EMOJI[letter]} ${text}`).join("\n\n")
     : "";
 
   return [
-    `${E.hospital} CHALLENGE`,
+    `${E.target} ${label}`,
     "",
     `${E.question} ${clean(hook) || "Test your knowledge"}`,
     "",
@@ -238,9 +231,9 @@ function quiz(hook: string, content: string, cta: string): string {
     "",
     `${E.thought} Comment your answer below!`,
     "",
-    clean(cta) || `${E.floppy} Save this for revision | ${E.memo} Tag a colleague to test them!`,
+    clean(cta) || `${E.floppy} Save this for later | ${E.memo} Tag a friend to test them!`,
     "",
-    `${E.pointDown} Drop your answer  -  A, B, C or D? ${E.anatomHeart}${E.heart}`,
+    `${E.pointDown} Drop your answer  -  A, B, C or D? ${E.heart}`,
   ].join("\n");
 }
 
@@ -313,7 +306,7 @@ function mythFact(hook: string, content: string, cta: string): string {
   return parts.join("\n");
 }
 
-function clinicalPearl(hook: string, content: string, cta: string, label = "PRO TIP"): string {
+function proTip(hook: string, content: string, cta: string, label: string): string {
   const parseSectionBullets = (text: string, max = 3): string[] =>
     text
       .split(/\n/)
@@ -321,10 +314,13 @@ function clinicalPearl(hook: string, content: string, cta: string, label = "PRO 
       .filter((l) => l.length > 10)
       .slice(0, max);
 
-  const evidenceMatch     = content.match(/THE\s+EVIDENCE\s*[:\-]\s*([\s\S]+?)(?=CLINICAL\s+APPLICATION|REMEMBER\s*[:\-]|$)/i);
+  // "HOW TO APPLY IT" is what the prompt asks for; "CLINICAL APPLICATION" is how
+  // posts written before the white-label rename labelled the same section.
+  const APPLY = String.raw`(?:HOW\s+TO\s+APPLY\s+IT|CLINICAL\s+APPLICATION)`;
+  const evidenceMatch     = content.match(new RegExp(String.raw`THE\s+EVIDENCE\s*[:\-]\s*([\s\S]+?)(?=${APPLY}|REMEMBER\s*[:\-]|$)`, "i"));
   const evidenceBullets   = evidenceMatch ? parseSectionBullets(evidenceMatch[1], 3) : [];
 
-  const applicationMatch  = content.match(/CLINICAL\s+APPLICATION\s*[:\-]\s*([\s\S]+?)(?=REMEMBER\s*[:\-]|$)/i);
+  const applicationMatch  = content.match(new RegExp(String.raw`${APPLY}\s*[:\-]\s*([\s\S]+?)(?=REMEMBER\s*[:\-]|$)`, "i"));
   const applicationBullets = applicationMatch ? parseSectionBullets(applicationMatch[1], 3) : [];
 
   const rememberMatch     = content.match(/REMEMBER\s*[:\-]\s*([^\n]+)/i);
@@ -347,9 +343,9 @@ function clinicalPearl(hook: string, content: string, cta: string, label = "PRO 
       "",
       DIVIDER,
       "",
-      clean(cta) || `${E.floppy} Save this for later  -  share it with someone who'd find it useful!`,
+      clean(cta) || `${E.floppy} Save this for later  -  share it with someone who needs it!`,
       "",
-      `${E.pointDown} Got something to add? Drop it below! ${E.sparkles}`,
+      `${E.pointDown} Got a tip to add? Drop it below! ${E.sparkles}`,
       "",
       `${E.heart} Follow @__HANDLE__ for more!`,
     ].join("\n");
@@ -375,7 +371,7 @@ function clinicalPearl(hook: string, content: string, cta: string, label = "PRO 
     parts.push("");
     parts.push(DIVIDER);
     parts.push("");
-    parts.push(`${E.pushpin} HOW TO APPLY IT`);
+    parts.push(`${E.target} HOW TO APPLY IT`);
     applicationBullets.forEach((b) => parts.push(`${E.bullet} ${b}`));
   }
 
@@ -390,60 +386,59 @@ function clinicalPearl(hook: string, content: string, cta: string, label = "PRO 
   parts.push("");
   parts.push(DIVIDER);
   parts.push("");
-  parts.push(clean(cta) || `${E.floppy} Save this for later  -  share it with someone who'd find it useful!`);
+  parts.push(clean(cta) || `${E.floppy} Save this for later  -  share it with someone who needs it!`);
   parts.push("");
-  parts.push(`${E.pointDown} What would you add? Comment below! ${E.sparkles}`);
+  parts.push(`${E.pointDown} Which tip do you wish you knew earlier? Comment below! ${E.sparkles}`);
   parts.push("");
   parts.push(`${E.heart} Follow @__HANDLE__ for more!`);
 
   return parts.join("\n");
 }
 
+// Story / Example sections, in display order. Each pattern accepts the heading
+// the prompt asks for plus the headings older posts used for the same section.
+const CASE_SECTIONS: Array<[string, string, string]> = [
+  ["THE SETUP",    String.raw`(?:THE\s+SETUP|SETUP|(?:PATIENT\s+)?PRESENTATION|CHIEF\s+COMPLAINT|HISTORY|CASE\s+DETAILS?)`, "\u{1F4CB}"],
+  ["KEY DETAILS",  String.raw`(?:KEY\s+DETAILS?|WHAT\s+HAPPENED|KEY\s+FINDINGS?|ECG\s+FINDINGS?|DIAGNOSIS|CLINICAL\s+FINDINGS?|INTERPRETATION)`, "\u{1F50D}"],
+  ["THE APPROACH", String.raw`(?:THE\s+APPROACH|APPROACH|MANAGEMENT|TREATMENT|PLAN)`, "\u{1F6E0}️"],
+  ["OUTCOME",      String.raw`(?:OUTCOME|RESULT|TAKEAWAY|LEARNING\s+POINTS?|LEARNING|CONCLUSION|PEARL)`, "\u{1F4DA}"],
+];
+
 function parseCaseSections(content: string): Record<string, string> {
   const result: Record<string, string> = {};
 
   const cleaned = content
-    .replace(/^(?:CASE\s+STUDY|TEACHING\s+CASE)\s*[-– - ][^\n]*\n?/im, "")
+    .replace(/^(?:STORY|CASE\s+STUDY|TEACHING\s+CASE)\s*[-– - ][^\n]*\n?/im, "")
     .replace(/^#+\s*[^\n]*\n?/m, "")
     .trim();
 
-  const patterns: Array<[string, RegExp]> = [
-    ["PRESENTATION", /(?:PATIENT\s+)?(?:PRESENTATION|CHIEF\s+COMPLAINT|HISTORY|CASE\s+DETAILS?)\s*[:\-–]\s*([\s\S]+?)(?=\n\s*(?:KEY\s+FINDINGS?|ECG\s+FINDINGS?|DIAGNOSIS|CLINICAL\s+FINDINGS?|MANAGEMENT|TREATMENT|OUTCOME|LEARNING)|$)/i],
-    ["DIAGNOSIS",    /(?:KEY\s+FINDINGS?|ECG\s+FINDINGS?|DIAGNOSIS|CLINICAL\s+FINDINGS?|INTERPRETATION)\s*[:\-–]\s*([\s\S]+?)(?=\n\s*(?:MANAGEMENT|TREATMENT|PLAN|OUTCOME|RESULT|LEARNING|CONCLUSION)|$)/i],
-    ["MANAGEMENT",   /(?:MANAGEMENT|TREATMENT|PLAN)\s*[:\-–]\s*([\s\S]+?)(?=\n\s*(?:OUTCOME|RESULT|LEARNING\s+POINT|LEARNING|CONCLUSION|PEARL)|$)/i],
-    ["OUTCOMES",     /(?:OUTCOME|RESULT|LEARNING\s+POINT|LEARNING|CONCLUSION|PEARL)\s*[:\-–]\s*([\s\S]+?)$/i],
-  ];
-
-  for (const [key, pattern] of patterns) {
-    const m = cleaned.match(pattern);
+  CASE_SECTIONS.forEach(([key, heading], i) => {
+    const next = CASE_SECTIONS.slice(i + 1).map(([, h]) => h).join("|");
+    const stop = next ? String.raw`(?=\n\s*(?:${next})\s*[:\-–]|$)` : "$";
+    const m = cleaned.match(new RegExp(String.raw`${heading}\s*[:\-–]\s*([\s\S]+?)${stop}`, "i"));
     if (m) result[key] = m[1].replace(/\*\*/g, "").replace(/[-•◦]\s*/g, "").replace(/\n+/g, " ").trim();
-  }
+  });
 
   if (Object.keys(result).length < 2) {
     const lines = parseBullets(content, 4);
-    const keys  = ["PRESENTATION", "DIAGNOSIS", "MANAGEMENT", "OUTCOMES"];
-    lines.forEach((l, i) => { if (keys[i]) result[keys[i]] = l; });
+    CASE_SECTIONS.forEach(([key], i) => { if (lines[i]) result[key] = lines[i]; });
   }
 
   return result;
 }
 
-function caseStudy(hook: string, content: string, cta: string): string {
+function caseStudy(hook: string, content: string, cta: string, label: string): string {
   const sections = parseCaseSections(content);
-  const sectionEmojis: Record<string, string> = {
-    PRESENTATION: E.stethoscope,
-    DIAGNOSIS:    E.microscope,
-    MANAGEMENT:   E.pill,
-    OUTCOMES:     E.books,
-  };
+  const emoji = Object.fromEntries(CASE_SECTIONS.map(([key, , e]) => [key, e]));
 
-  const body = Object.entries(sections)
+  const body = CASE_SECTIONS
+    .map(([key]) => [key, sections[key]] as const)
     .filter(([, text]) => text)
-    .map(([key, text]) => `${sectionEmojis[key] || E.pushpin} ${key}\n${text}`)
+    .map(([key, text]) => `${emoji[key] || E.pushpin} ${key}\n${text}`)
     .join("\n\n");
 
   return [
-    `${E.clipboard} TEACHING CASE`,
+    `${E.clipboard} ${label}`,
     "",
     `${E.person} ${clean(hook)}`,
     "",
@@ -453,7 +448,7 @@ function caseStudy(hook: string, content: string, cta: string): string {
     "",
     DIVIDER,
     "",
-    clean(cta) || `${E.floppy} Save this. Quiz a friend!`,
+    clean(cta) || `${E.floppy} Save this one for later!`,
     "",
     `${E.pointDown} What would YOU have done differently? Comment below! ${E.brain}`,
     "",
@@ -461,172 +456,102 @@ function caseStudy(hook: string, content: string, cta: string): string {
   ].join("\n");
 }
 
-function parseEcgCase(content: string): { caseInfo: string; ecgFindings: string[] } {
-  const caseMatch = content.match(
-    /CASE(?:\s*DETAILS?)?\s*[:\-]\s*([\s\S]+?)(?=ECG\s*FINDINGS?|[A-D][).:]\s|\bQUESTION\b|$)/i
+/**
+ * The context and the list of points for a knowledge or image quiz. Accepts the
+ * headings the prompts ask for (SETUP + KEY POINTS / WHAT YOU SEE) and the ones
+ * older posts used (CASE + ECG / ANGIOGRAPHIC FINDINGS).
+ */
+function parseQuizSections(content: string): { setup: string; points: string[] } {
+  const POINTS = String.raw`(?:KEY\s+POINTS?|WHAT\s+YOU\s+SEE|(?:KEY\s+|ECG\s+|ANGIOGRAPHIC\s+)?FINDINGS?)`;
+  const setupMatch = content.match(
+    new RegExp(String.raw`(?:SETUP|CASE(?:\s*DETAILS?)?)\s*[:\-]\s*([\s\S]+?)(?=${POINTS}\s*[:\-]|[A-D][).:]\s|\bQUESTION\b|$)`, "i")
   );
-  const caseInfo = caseMatch
-    ? caseMatch[1].replace(/\*\*/g, "").replace(/\n+/g, " ").replace(/[-•◦]\s*/g, "").trim()
+  const setup = setupMatch
+    ? setupMatch[1].replace(/\*\*/g, "").replace(/\n+/g, " ").replace(/[-•◦]\s*/g, "").trim()
     : "";
 
-  const ecgMatch = content.match(
-    /ECG\s*FINDINGS?\s*[:\-]\s*([\s\S]+?)(?=[A-D][).:]\s|\bQUESTION\b|\bANSWER\b|$)/i
+  const pointsMatch = content.match(
+    new RegExp(String.raw`${POINTS}\s*[:\-]\s*([\s\S]+?)(?=[A-D][).:]\s|\bQUESTION\b|\bANSWER\b|$)`, "i")
   );
-  let ecgFindings: string[] = [];
-  if (ecgMatch) {
-    ecgFindings = ecgMatch[1]
-      .replace(/\*\*/g, "")
-      .split(/[,\n•◦\-]+/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 3)
-      .slice(0, 5);
-  }
-  return { caseInfo, ecgFindings };
-}
-
-/** Assign a visual emoji prefix to each ECG finding label */
-function ecgFindingEmoji(finding: string): string {
-  const f = finding.toLowerCase();
-  if (/rate|bpm|hr\b/.test(f))                      return E.lightning;
-  if (/rhythm/.test(f))                             return E.arrows;
-  if (/p.wave|p-wave/.test(f))                      return E.wavy;
-  if (/qrs/.test(f))                                return E.chartBar;
-  if (/qt\b|qtc/.test(f))                           return E.timer;
-  if (/axis/.test(f))                               return E.magnify;
-  if (/st.seg|st-seg|st elev|st dep/.test(f))       return E.arrowUp;
-  if (/t.wave|t-wave/.test(f))                      return E.wavy;
-  if (/block|bundle/.test(f))                       return E.noEntry;
-  if (/hypertrophy|lvh|rvh/.test(f))                return E.muscle;
-  return E.bullet;
-}
-
-function ecgQuiz(hook: string, content: string, cta: string, label = "KNOWLEDGE QUIZ"): string {
-  const stripped = stripAnswerSections(content);
-  const opts     = parseOptions(stripped);
-  const { caseInfo, ecgFindings } = parseEcgCase(stripped);
-
-  const LETTER_BOX: Record<string, string> = {
-    A: "\u{1F150}", B: "\u{1F151}", C: "\u{1F152}", D: "\u{1F153}",
-  };
-
-  const parts: string[] = [];
-
-  // -- Header ----------------------------------------------------------------
-  parts.push(`${E.chartUp} ${label}  -  Can you crack this one? ${E.brain}`);
-  parts.push("");
-  parts.push(DIVIDER);
-
-  // -- Case ------------------------------------------------------------------
-  if (caseInfo) {
-    parts.push("");
-    parts.push(`${E.stethoscope} THE CASE`);
-    parts.push(caseInfo);
-  }
-
-  // -- ECG Findings ----------------------------------------------------------
-  if (ecgFindings.length > 0) {
-    parts.push("");
-    parts.push(DIVIDER);
-    parts.push("");
-    parts.push(`${E.chartBar} THE FINDINGS`);
-    ecgFindings.forEach((f) => {
-      parts.push(`${ecgFindingEmoji(f)} ${f}`);
-    });
-  }
-
-  // -- Question --------------------------------------------------------------
-  parts.push("");
-  parts.push(DIVIDER);
-  parts.push("");
-  parts.push(`${E.question} WHAT'S THE ANSWER?`);
-  parts.push("");
-
-  if (opts.length > 0) {
-    opts.forEach(({ letter, text }) => {
-      parts.push(`${LETTER_BOX[letter] ?? letter} ${text}`);
-      parts.push("");
-    });
-  } else {
-    ["A", "B", "C", "D"].forEach((l) => {
-      parts.push(`${LETTER_BOX[l]}  - `);
-      parts.push("");
-    });
-  }
-
-  // -- CTA -------------------------------------------------------------------
-  parts.push(DIVIDER);
-  parts.push("");
-  parts.push(`${E.speech} Drop your answer  -  A, B, C or D below!`);
-  parts.push(`${E.pointDown} I reveal the full explanation in the comments ${E.sparkles}`);
-  parts.push("");
-  parts.push(clean(cta) || `${E.floppy} Save this for later! Share it with a friend`);
-  parts.push("");
-  parts.push(`${E.heart} Follow @__HANDLE__ for more!`);
-
-  return parts.join("\n");
-}
-
-function angiographyQuiz(hook: string, content: string, cta: string, label = "IMAGE QUIZ"): string {
-  const stripped = stripAnswerSections(content);
-  const opts     = parseOptions(stripped);
-  const LETTER_BOX: Record<string, string> = {
-    A: "\u{1F150}", B: "\u{1F151}", C: "\u{1F152}", D: "\u{1F153}",
-  };
-
-  const caseMatch = stripped.match(/CASE\s*[:\-]\s*([\s\S]+?)(?=ANGIOGRAPHIC|[A-D][).:]|\bQUESTION\b|$)/i);
-  const caseInfo  = caseMatch
-    ? caseMatch[1].replace(/\*\*/g, "").replace(/\n+/g, " ").trim()
-    : "";
-
-  const findingsMatch = stripped.match(/ANGIOGRAPHIC\s*FINDINGS?\s*[:\-]\s*([\s\S]+?)(?=[A-D][).:]|\bQUESTION\b|$)/i);
-  const angiFindings: string[] = findingsMatch
-    ? findingsMatch[1]
-        .split(/[\n•\-]+/)
-        .map((s) => s.replace(/\*\*/g, "").trim())
-        .filter((s) => s.length > 4)
-        .slice(0, 4)
+  const points = pointsMatch
+    ? pointsMatch[1]
+        .replace(/\*\*/g, "")
+        .split(/\n|[•◦]/)
+        .map((s) => s.replace(/^[\s\-]+/, "").trim())
+        .filter((s) => s.length > 3)
+        .slice(0, 5)
     : [];
+  return { setup, points };
+}
+
+const LETTER_BOX: Record<string, string> = {
+  A: "\u{1F150}", B: "\u{1F151}", C: "\u{1F152}", D: "\u{1F153}",
+};
+
+/** Knowledge Quiz and Image Quiz share one layout; only the wording differs. */
+function challengeQuiz(
+  hook: string,
+  content: string,
+  cta: string,
+  label: string,
+  pointsHeading: string,
+  fallbackQuestion: string,
+): string {
+  const stripped = stripAnswerSections(content);
+  const opts     = parseOptions(stripped);
+  const { setup, points } = parseQuizSections(stripped);
+  const numbered = [E.n1, E.n2, E.n3, E.n4, E.n5];
 
   const parts: string[] = [];
 
-  parts.push(`${E.sparkles} ${label}`);
+  parts.push(`${E.brain} ${label}  -  Can you crack this one?`);
   parts.push("");
   parts.push(DIVIDER);
 
-  if (caseInfo) {
+  if (setup) {
     parts.push("");
-    parts.push(`${E.pushpin} THE SETUP`);
-    parts.push(caseInfo);
+    parts.push(`${E.clipboard} THE SETUP`);
+    parts.push(setup);
   }
 
-  if (angiFindings.length > 0) {
+  if (points.length > 0) {
     parts.push("");
     parts.push(DIVIDER);
     parts.push("");
-    parts.push(`${E.microscope} THE FINDINGS`);
-    angiFindings.forEach((f) => parts.push(`${E.bullet} ${f}`));
+    parts.push(`${E.magnify} ${pointsHeading}`);
+    points.forEach((p, i) => parts.push(`${numbered[i] ?? E.bullet} ${p}`));
   }
 
   parts.push("");
   parts.push(DIVIDER);
   parts.push("");
-  parts.push(`${E.question} ${clean(hook) || "What's your answer?"}`);
+  parts.push(`${E.question} ${clean(hook) || fallbackQuestion}`);
   parts.push("");
-  opts.forEach(({ letter, text }) => {
+
+  const letters = opts.length ? opts : ["A", "B", "C", "D"].map((letter) => ({ letter, text: "" }));
+  letters.forEach(({ letter, text }) => {
     parts.push(`${LETTER_BOX[letter] ?? letter} ${text}`);
     parts.push("");
   });
 
   parts.push(DIVIDER);
   parts.push("");
-  parts.push(`${E.speech} Comment your answer  -  A, B, C or D!`);
-  parts.push(`${E.pointDown} Tag a friend  -  can they crack it? ${E.sparkles}`);
+  parts.push(`${E.speech} Drop your answer  -  A, B, C or D below!`);
+  parts.push(`${E.pointDown} I reveal the full explanation in the comments ${E.sparkles}`);
   parts.push("");
-  parts.push(clean(cta) || `${E.floppy} Save for later! I reveal the answer in the comments`);
+  parts.push(clean(cta) || `${E.floppy} Save this for later  -  and tag a friend to try it!`);
   parts.push("");
   parts.push(`${E.heart} Follow @__HANDLE__ for more!`);
 
   return parts.join("\n");
+}
+
+function knowledgeQuiz(hook: string, content: string, cta: string, label: string): string {
+  return challengeQuiz(hook, content, cta, label, "KEY POINTS", "What's your answer?");
+}
+
+function imageQuiz(hook: string, content: string, cta: string, label: string): string {
+  return challengeQuiz(hook, content, cta, label, "WHAT YOU SEE", "What do you think it is?");
 }
 
 function preventive(hook: string, content: string, cta: string): string {
@@ -666,7 +591,7 @@ function ctaPost(hook: string, content: string, ctaText: string): string {
     "",
     clean(ctaText) || `${E.speech} Comment below & ${E.memo} Follow for more!`,
     "",
-    `${E.memo} Share this with someone who'd find it useful ${E.anatomHeart}`,
+    `${E.memo} Share this with someone who'd find it useful ${E.sparkles}`,
   ].join("\n");
 }
 
@@ -725,19 +650,21 @@ export function buildBeautifulCaption(input: CaptionInput, brand?: BrandConfig):
   const { postType, hook, content, cta: ctaText, reelScript, hashtags } = input;
   const h   = hook    ?? "";
   const ct  = ctaText ?? "";
-  // White-label: the caption's type header is the user's RENAMEABLE label, not a
-  // hardcoded niche word. Falls back to a neutral label when no brand is supplied.
-  const label = (brand ? typeLabel(brand, postType) : NEUTRAL_TYPE_LABEL[postType] || "Post").toUpperCase();
+
+  // Legacy type IDs still reach here from scheduled posts saved before the rename.
+  const typeId = normalizeContentTypeId(postType) as ContentTypeId;
+  // Section headers use the account's own name for each content type.
+  const label  = (brand?.contentTypes?.[typeId]?.label || DEFAULT_CONTENT_TYPES[typeId]?.label || typeId).toUpperCase();
 
   let body: string;
-  switch (postType) {
+  switch (typeId) {
     case "EDUCATIONAL":      body = educational(h, content, ct);              break;
-    case "QUIZ":             body = quiz(h, content, ct);                     break;
+    case "QUIZ":             body = quiz(h, content, ct, label);              break;
     case "MYTH_FACT":        body = mythFact(h, content, ct);                 break;
-    case "CLINICAL_PEARL":   body = clinicalPearl(h, content, ct, label);     break;
-    case "CASE_STUDY":       body = caseStudy(h, content, ct);                break;
-    case "ECG_QUIZ":         body = ecgQuiz(h, content, ct, label);           break;
-    case "ANGIOGRAPHY_QUIZ": body = angiographyQuiz(h, content, ct, label);   break;
+    case "PRO_TIP":          body = proTip(h, content, ct, label);            break;
+    case "CASE_STUDY":       body = caseStudy(h, content, ct, label);         break;
+    case "KNOWLEDGE_QUIZ":   body = knowledgeQuiz(h, content, ct, label);     break;
+    case "IMAGE_QUIZ":       body = imageQuiz(h, content, ct, label);         break;
     case "PREVENTIVE":       body = preventive(h, content, ct);               break;
     case "CTA":              body = ctaPost(h, content, ct);                  break;
     case "REEL":             body = reel(h, content, reelScript, ct);         break;

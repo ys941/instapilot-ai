@@ -48,10 +48,10 @@ export default function LoginPage() {
         pointerEvents: "none",
       }} />
 
-      {/* Animated ECG SVG */}
+      {/* Background wave */}
       <svg style={{ position: "absolute", top: "50%", left: 0, right: 0, width: "100%", opacity: 0.07, transform: "translateY(-50%)" }} viewBox="0 0 1440 80" preserveAspectRatio="none">
-        <polyline
-          points="0,40 160,40 200,40 220,8 240,72 260,40 360,40 480,40 520,40 540,4 560,76 580,40 680,40 800,40 840,40 860,10 880,70 900,40 1000,40 1120,40 1160,40 1180,6 1200,74 1220,40 1440,40"
+        <path
+          d="M0,40 C180,8 360,8 540,40 C720,72 900,72 1080,40 C1260,8 1350,8 1440,24"
           fill="none" stroke="rgb(var(--accent-rgb))" strokeWidth="2.5" strokeLinecap="round"
         />
       </svg>

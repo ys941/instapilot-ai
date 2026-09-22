@@ -3,6 +3,7 @@ import { getServerSession } from "@/lib/auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { normalizeContentTypeId } from "@/lib/brandConfig";
 
 // ─────────────────────────────────────────────
 // VALIDATION
@@ -10,10 +11,10 @@ import { prisma } from "@/lib/prisma";
 
 const UpdatePostSchema = z.object({
   type: z
-    .enum([
-      "EDUCATIONAL", "QUIZ", "CAROUSEL", "MYTH_FACT", "CLINICAL_PEARL",
-      "CASE_STUDY", "ANGIOGRAPHY_QUIZ", "ECG_QUIZ", "PREVENTIVE", "CTA", "REEL",
-    ])
+    .preprocess(normalizeContentTypeId, z.enum([
+      "EDUCATIONAL", "QUIZ", "CAROUSEL", "MYTH_FACT", "PRO_TIP",
+      "CASE_STUDY", "IMAGE_QUIZ", "KNOWLEDGE_QUIZ", "PREVENTIVE", "CTA", "REEL",
+    ]))
     .optional(),
   title: z.string().min(1).max(200).optional(),
   content: z.string().min(1).max(5000).optional(),

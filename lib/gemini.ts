@@ -485,10 +485,10 @@ export class GeminiClient {
     const brand = await getBrand();
     const typeInstructions: Record<string, string> = {
       QUIZ:             "Write a quiz caption — pose a question and prompt followers to 'Drop your answer below!' (80-120 words, no answer in caption)",
-      ECG_QUIZ:         "Describe what you see and ask 'What's the answer?' (80-120 words)",
-      ANGIOGRAPHY_QUIZ: "Describe what you see and ask followers to identify it (80-120 words)",
+      KNOWLEDGE_QUIZ:         "Describe what you see and ask 'What's the answer?' (80-120 words)",
+      IMAGE_QUIZ: "Describe what you see and ask followers to identify it (80-120 words)",
       EDUCATIONAL:      "Write an educational caption with a bold hook, 3-4 bullet insights, and a save/share CTA (150-220 words)",
-      CLINICAL_PEARL:   "Write a pro-tip caption — one high-value insight from this image, then context (100-150 words)",
+      PRO_TIP:   "Write a pro-tip caption — one high-value insight from this image, then context (100-150 words)",
       CASE_STUDY:       "Write a story/example caption — brief scenario based on this image, key takeaways, an engaging CTA (150-200 words)",
       CAROUSEL:         "Write a carousel caption with a powerful hook that makes followers swipe. End with 'Save this for later' (100-150 words)",
       PREVENTIVE:       "Write a how-to/tips caption with a shocking statistic hook, actionable tips, and share CTA (150-200 words)",
@@ -553,10 +553,10 @@ Return ONLY valid JSON: { "caption": "...", "hashtags": ["#tag1","#tag2","#tag3"
     const brand = await getBrand();
     const typeInstructions: Record<string, string> = {
       QUIZ:             "Write a quiz caption — pose a question about what you see and prompt followers to 'Drop your answer below!' (80-120 words, no answer in caption)",
-      ECG_QUIZ:         "Describe what you see and ask 'What's the answer?' (80-120 words)",
-      ANGIOGRAPHY_QUIZ: "Describe what you see and ask followers to identify it (80-120 words)",
+      KNOWLEDGE_QUIZ:         "Describe what you see and ask 'What's the answer?' (80-120 words)",
+      IMAGE_QUIZ: "Describe what you see and ask followers to identify it (80-120 words)",
       EDUCATIONAL:      "Write an educational caption with a bold hook, 3-4 bullet insights from this image, and a save/share CTA (150-220 words)",
-      CLINICAL_PEARL:   "Write a pro-tip caption — one high-value insight from this image, then context (100-150 words)",
+      PRO_TIP:   "Write a pro-tip caption — one high-value insight from this image, then context (100-150 words)",
       CASE_STUDY:       "Write a story/example caption — brief scenario based on this image, key takeaways, an engaging CTA (150-200 words)",
       CAROUSEL:         "Write a carousel caption with a powerful hook about this image that makes followers swipe. End with 'Save this for later' (100-150 words)",
       PREVENTIVE:       "Write a how-to/tips caption using insights from this image, a shocking statistic hook, actionable tips, share CTA (150-200 words)",
@@ -629,7 +629,7 @@ Return ONLY valid JSON: { "caption": "...", "hashtags": ["#tag1","#tag2","#tag3"
   ): Promise<string> {
     const brand = await getBrand();
     const ctx  = postContext ?? {};
-    const isQuizType = ["QUIZ","ECG_QUIZ","ANGIOGRAPHY_QUIZ"].includes(ctx.postType ?? "");
+    const isQuizType = ["QUIZ","KNOWLEDGE_QUIZ","IMAGE_QUIZ"].includes(ctx.postType ?? "");
 
     const trimmedComment    = commentText.trim();
     const singleLetterMatch = trimmedComment.match(/^([A-Da-d])[.)!?\s]*$/);

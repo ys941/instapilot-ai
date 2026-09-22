@@ -521,7 +521,7 @@ async function handleCommentEvent(value: any, igToken: string, igAcctId: string)
     } catch { /* ignore — reply generically */ }
 
     // Build context for the AI reply
-    const isQuizLike = ["QUIZ", "ECG_QUIZ", "ANGIOGRAPHY_QUIZ"].includes(postType);
+    const isQuizLike = ["QUIZ", "KNOWLEDGE_QUIZ", "IMAGE_QUIZ"].includes(postType);
     const postCtx: any = {
       postType,
       postTitle,

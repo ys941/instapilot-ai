@@ -18,10 +18,10 @@ const POST_TYPES = [
   { id: "QUIZ",             label: "Quiz",            emoji: "❓" },
   { id: "CAROUSEL",         label: "Carousel",        emoji: "🖼️" },
   { id: "MYTH_FACT",        label: "Myth vs Fact",    emoji: "⚖️" },
-  { id: "CLINICAL_PEARL",   label: "Pro Tip",         emoji: "💎" },
+  { id: "PRO_TIP",   label: "Pro Tip",         emoji: "💎" },
   { id: "CASE_STUDY",       label: "Story / Example", emoji: "🔬" },
-  { id: "ANGIOGRAPHY_QUIZ", label: "Image Quiz",      emoji: "🖼️" },
-  { id: "ECG_QUIZ",         label: "Knowledge Quiz",  emoji: "📈" },
+  { id: "IMAGE_QUIZ", label: "Image Quiz",      emoji: "🖼️" },
+  { id: "KNOWLEDGE_QUIZ",         label: "Knowledge Quiz",  emoji: "📈" },
   { id: "PREVENTIVE",       label: "How-To / Tips",   emoji: "🛡️" },
   { id: "CTA",              label: "Call to Action",  emoji: "📣" },
   { id: "REEL",             label: "Reel",            emoji: "🎬" },
@@ -38,7 +38,7 @@ interface QueuedFile {
   hashtags:     string;
   hashtagList:  string[];   // individual tags array
   postType:     string;
-  /** For QUIZ/ECG_QUIZ/ANGIOGRAPHY_QUIZ: user-provided correct answer.
+  /** For QUIZ/KNOWLEDGE_QUIZ/IMAGE_QUIZ: user-provided correct answer.
    *  Format: "<letter>|<full answer text>"  e.g. "B|Atrial Fibrillation with RVR"
    *  Stored in Post.reelScript as "QUIZ_ANS:..." — never appears in Instagram caption. */
   quizAnswer:   string;
@@ -834,7 +834,7 @@ export default function MediaFolderPage() {
                     </div>
 
                     {/* ── Quiz Answer (shown only for quiz post types) ── */}
-                    {["QUIZ","ECG_QUIZ","ANGIOGRAPHY_QUIZ"].includes(selectedItem.postType) && (
+                    {["QUIZ","KNOWLEDGE_QUIZ","IMAGE_QUIZ"].includes(selectedItem.postType) && (
                       <div
                         className="rounded-xl p-3 space-y-2"
                         style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}

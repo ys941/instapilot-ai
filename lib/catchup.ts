@@ -2166,7 +2166,7 @@ async function fetchMissedComments(
     dbPosts
       .filter((p) => p.instagramPostId)
       .map((p) => {
-        const isQuiz = ["QUIZ","ECG_QUIZ","ANGIOGRAPHY_QUIZ"].includes(p.type);
+        const isQuiz = ["QUIZ","KNOWLEDGE_QUIZ","IMAGE_QUIZ"].includes(p.type);
         // Priority 1: user-provided answer stored in reelScript as "QUIZ_ANS:<letter>|<text>"
         let correctLetter: string | undefined;
         let correctAnswer: string | undefined;
@@ -3101,7 +3101,7 @@ export async function runCommentCheck(): Promise<FastCommentResult> {
   // Build context map from DB posts
   const igIdToCtx = new Map<string, PostCommentContext & { dbId?: string }>(
     dbPosts.filter((p) => p.instagramPostId).map((p) => {
-      const isQuiz = ["QUIZ","ECG_QUIZ","ANGIOGRAPHY_QUIZ"].includes(p.type);
+      const isQuiz = ["QUIZ","KNOWLEDGE_QUIZ","IMAGE_QUIZ"].includes(p.type);
       // Priority 1: user-provided answer in reelScript as "QUIZ_ANS:<letter>|<text>"
       let correctLetter: string | undefined;
       let correctAnswer: string | undefined;
@@ -3145,7 +3145,7 @@ export async function runCommentCheck(): Promise<FastCommentResult> {
     if (!postCtx.correctLetter && (postCtx.postContent || postCtx.postTitle)) {
       const caption = postCtx.postContent ?? postCtx.postTitle ?? "";
       const isQuizLike =
-        ["QUIZ","ECG_QUIZ","ANGIOGRAPHY_QUIZ"].includes(postCtx.postType ?? "") ||
+        ["QUIZ","KNOWLEDGE_QUIZ","IMAGE_QUIZ"].includes(postCtx.postType ?? "") ||
         /\bA[.)]\s*\w[\s\S]*?\bB[.)]\s*\w/i.test(caption) ||
         /\b(option|choice|quiz|mcq)\b/i.test(caption) ||
         /\bcomment\s+(a|b|c|d)\b|\bdrop.*answer|\b(a|b|c|d)\s+below/i.test(caption);
@@ -3353,15 +3353,15 @@ function cardSpecFor(brand: BrandConfig): Record<string, string> {
   return {
   EDUCATIONAL:
     "7 numbered points (1.–7.), each on its own line. Each point is a COMPLETE, self-contained factual statement: a SPECIFIC number/stat/detail/percentage, PLUS why it matters (what it means AND why it's significant) — write the FULL, detailed informative line with no length limit (the card auto-fits; do NOT abbreviate or truncate). No vague steps.",
-  CLINICAL_PEARL:
+  PRO_TIP:
     "ONE high-value key insight as a bold 1-2 line takeaway, then 5 numbered supporting points (1.–5.). Each supporting point is a COMPLETE, self-contained factual statement with a specific number/detail/criterion PLUS why it matters — write the FULL, detailed informative line with no length limit (the card auto-fits; do NOT abbreviate or truncate).",
   PREVENTIVE:
     "7 numbered points (1.–7.), each on its own line. Each is a COMPLETE, self-contained actionable statement with a real number, target value, or concrete detail PLUS brief context explaining the action AND its benefit — write the FULL, detailed informative line with no length limit (the card auto-fits; do NOT abbreviate or truncate).",
   QUIZ:
     "Format the card content EXACTLY with these labelled sections (each on its own line):\nSCENARIO: <the relevant setup/context>\nQUESTION: <the question>\nA) <option>\nB) <option>\nC) <option>\nD) <option>\nDo NOT reveal or mark the correct answer anywhere. No asterisks.",
-  ECG_QUIZ:
+  KNOWLEDGE_QUIZ:
     "Format the card content EXACTLY with these labelled sections (each on its own line):\nSCENARIO: <the relevant setup/context>\nKEY DETAILS:\n- <detail 1>\n- <detail 2>\n- <detail 3>\nQUESTION: <the question>\nA) <option>\nB) <option>\nC) <option>\nD) <option>\nDo NOT reveal or mark the correct answer anywhere. No asterisks.",
-  ANGIOGRAPHY_QUIZ:
+  IMAGE_QUIZ:
     "Format the card content EXACTLY with these labelled sections (each on its own line):\nSCENARIO: <the relevant setup/context>\nKEY DETAILS:\n- <detail 1>\n- <detail 2 if relevant>\nQUESTION: <the specific decision>\nA) <option>\nB) <option>\nC) <option>\nD) <option>\nDo NOT reveal or mark the correct answer anywhere. No asterisks.",
   MYTH_FACT:
     "Line 1: 'MYTH: <common misconception>'. Line 2: 'FACT: <the evidence-based truth>'. Then 4 numbered supporting facts (1.–4.), each a full, detailed informative line with real data AND why it matters — no length limit (the card auto-fits).",
@@ -3375,7 +3375,7 @@ function cardSpecFor(brand: BrandConfig): Record<string, string> {
 }
 
 // Quiz-family types keep their question + A/B/C/D options on the card.
-const QUIZ_TYPES = ["QUIZ", "ECG_QUIZ", "ANGIOGRAPHY_QUIZ"];
+const QUIZ_TYPES = ["QUIZ", "KNOWLEDGE_QUIZ", "IMAGE_QUIZ"];
 
 // Is this line quiz/option/answer/CTA noise that must NOT appear on a
 // non-quiz (educational/preventive/pearl/carousel) card or its caption?
@@ -3576,19 +3576,19 @@ export async function runAutoGeneratePosts(ctxArg?: BrandContext): Promise<Gener
 
     // ── Post-type strategy ──────────────────────────────────────────────────
     // Desired mix per day:
-    //   • Post 1  → EDUCATIONAL or CLINICAL_PEARL (alternates day to day)
+    //   • Post 1  → EDUCATIONAL or PRO_TIP (alternates day to day)
     //   • Post 2+ → one of the OTHER 7 types, rotating through them across days
     //     so every non-core type gets used over time.
     // (Previously `i % length` always picked the first `postsPerDay` types every
     //  single day, so the other types were never generated.)
     const dayNumber = Math.floor(Date.now() / 86_400_000);
-    const CORE = ["EDUCATIONAL", "CLINICAL_PEARL"];
+    const CORE = ["EDUCATIONAL", "PRO_TIP"];
     const coreGroup  = cfg.postTypes.filter((t) => CORE.includes(t));
     const otherGroup = cfg.postTypes.filter((t) => !CORE.includes(t));
 
     const pickType = (i: number): string => {
       if (i === 0) {
-        // First post: a core type (Educational / Clinical Pearl), alternating daily
+        // First post: a core type (Educational / Pro Tip), alternating daily
         if (coreGroup.length) return coreGroup[dayNumber % coreGroup.length];
         if (otherGroup.length) return otherGroup[dayNumber % otherGroup.length];
       } else {
@@ -3598,7 +3598,7 @@ export async function runAutoGeneratePosts(ctxArg?: BrandContext): Promise<Gener
       }
       // Fallback (config has types but neither group matched). When even that is
       // empty, fall back to the user's AI defaultType (#7), normalised to the enum
-      // form (e.g. "Clinical Pearl" → "CLINICAL_PEARL"), else EDUCATIONAL.
+      // form (e.g. "Pro Tip" → "PRO_TIP"), else EDUCATIONAL.
       if (cfg.postTypes.length) return cfg.postTypes[(dayNumber + i) % cfg.postTypes.length];
       const dt = ((ctx.prefs.ai as any)?.defaultType ?? "").trim();
       return dt ? dt.toUpperCase().replace(/\s+/g, "_") : "EDUCATIONAL";
@@ -4081,8 +4081,8 @@ export async function runAutoGenerateYouTube(ctxArg?: BrandContext): Promise<Gen
     const YT_TYPES = (Array.isArray(yt.postTypes) && yt.postTypes.length)
       ? yt.postTypes
       : (ytDefaultType
-          ? [ytDefaultType, "EDUCATIONAL", "CLINICAL_PEARL", "PREVENTIVE"]
-          : ["EDUCATIONAL", "CLINICAL_PEARL", "PREVENTIVE"]);
+          ? [ytDefaultType, "EDUCATIONAL", "PRO_TIP", "PREVENTIVE"]
+          : ["EDUCATIONAL", "PRO_TIP", "PREVENTIVE"]);
     const dayNumber = Math.floor(Date.now() / 86_400_000);
 
     const customExtra = (yt.customPromptExtra ?? "").trim();

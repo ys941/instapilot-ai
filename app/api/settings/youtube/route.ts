@@ -8,6 +8,7 @@ import { checkYouTubeHealth } from "@/lib/youtube";
 import { getBrandCredentials } from "@/lib/brands";
 import { brandFromQuery, brandFromBody } from "@/lib/brandRequest";
 import { normalizeShortSeconds } from "@/lib/shortLength";
+import { normalizeContentTypeIds } from "@/lib/brandConfig";
 
 // Probes the YouTube API on every load — never let upstream cache it.
 export const dynamic = "force-dynamic";
@@ -62,12 +63,12 @@ export async function POST(request: NextRequest) {
       : [];
 
     const KNOWN_POST_TYPES = [
-      "EDUCATIONAL", "QUIZ", "CAROUSEL", "MYTH_FACT", "CLINICAL_PEARL",
-      "CASE_STUDY", "ANGIOGRAPHY_QUIZ", "ECG_QUIZ", "PREVENTIVE", "CTA", "REEL",
+      "EDUCATIONAL", "QUIZ", "CAROUSEL", "MYTH_FACT", "PRO_TIP",
+      "CASE_STUDY", "IMAGE_QUIZ", "KNOWLEDGE_QUIZ", "PREVENTIVE", "CTA", "REEL",
     ];
-    const DEFAULT_POST_TYPES = ["EDUCATIONAL", "CLINICAL_PEARL", "PREVENTIVE"];
+    const DEFAULT_POST_TYPES = ["EDUCATIONAL", "PRO_TIP", "PREVENTIVE"];
     const postTypes = Array.isArray(body.postTypes)
-      ? Array.from(new Set(body.postTypes.filter((t: unknown) => typeof t === "string" && KNOWN_POST_TYPES.includes(t as string)))) as string[]
+      ? Array.from(new Set(normalizeContentTypeIds(body.postTypes).filter((t: unknown) => typeof t === "string" && KNOWN_POST_TYPES.includes(t as string)))) as string[]
       : [];
 
     const updated = await writePreferencesForBrand(brand, {

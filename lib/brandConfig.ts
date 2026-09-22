@@ -25,14 +25,50 @@ export type ContentTypeId =
   | "QUIZ"
   | "CAROUSEL"
   | "MYTH_FACT"
-  | "CLINICAL_PEARL"
+  | "PRO_TIP"
   | "CASE_STUDY"
-  | "ANGIOGRAPHY_QUIZ"
-  | "ECG_QUIZ"
+  | "IMAGE_QUIZ"
+  | "KNOWLEDGE_QUIZ"
   | "PREVENTIVE"
   | "CTA"
   | "REEL"
   | "STORY";
+
+/**
+ * Content-type IDs that were renamed. Posts in the database are unaffected (the
+ * Prisma enum @maps the new names onto the old stored values), but settings,
+ * scheduled posts and saved prompts written before the rename still carry the
+ * old IDs as plain strings — so every read passes through normalizeContentTypeId.
+ */
+export const LEGACY_CONTENT_TYPE_IDS: Record<string, ContentTypeId> = {
+  CLINICAL_PEARL:   "PRO_TIP",
+  ANGIOGRAPHY_QUIZ: "IMAGE_QUIZ",
+  ECG_QUIZ:         "KNOWLEDGE_QUIZ",
+};
+
+/** A content-type ID with any legacy name swapped for the current one. */
+export function normalizeContentTypeId<T>(id: T): T | ContentTypeId {
+  return (typeof id === "string" && LEGACY_CONTENT_TYPE_IDS[id]) || id;
+}
+
+/** normalizeContentTypeId over a list, de-duplicated. Non-arrays pass through. */
+export function normalizeContentTypeIds<T>(ids: T): T {
+  if (!Array.isArray(ids)) return ids;
+  return Array.from(new Set(ids.map((id) => normalizeContentTypeId(id)))) as unknown as T;
+}
+
+/** Re-key an object whose keys are content-type IDs (legacy keys → current). */
+export function normalizeContentTypeKeys<T extends Record<string, any> | null | undefined>(obj: T): T {
+  if (!obj || typeof obj !== "object") return obj;
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    const id = normalizeContentTypeId(k);
+    // If both the legacy and the current key exist, the current one wins.
+    if (id !== k && id in obj) continue;
+    out[id] = v;
+  }
+  return out as T;
+}
 
 export interface ContentTypeConfig {
   /** User-facing name, e.g. "Recipe Quiz". Shown everywhere in the UI. */
@@ -127,10 +163,10 @@ export const DEFAULT_CONTENT_TYPES: Record<ContentTypeId, ContentTypeConfig> = {
   QUIZ:             { label: "Quiz",          description: "An interactive multiple-choice question (A–D) with no answer in the caption.", prompt: "", enabled: true  },
   CAROUSEL:         { label: "Carousel",      description: "A multi-slide breakdown of a topic, step by step.",          prompt: "", enabled: true  },
   MYTH_FACT:        { label: "Myth vs Fact",  description: "Debunk a common misconception in your niche.",               prompt: "", enabled: true  },
-  CLINICAL_PEARL:   { label: "Pro Tip",       description: "One high-value, save-worthy tip or insight.",                prompt: "", enabled: true  },
+  PRO_TIP:   { label: "Pro Tip",       description: "One high-value, save-worthy tip or insight.",                prompt: "", enabled: true  },
   CASE_STUDY:       { label: "Story / Example", description: "A real-world example or story with a takeaway.",           prompt: "", enabled: true  },
-  ANGIOGRAPHY_QUIZ: { label: "Image Quiz",    description: "An image-based 'can you spot it / what is this?' challenge.", prompt: "", enabled: false },
-  ECG_QUIZ:         { label: "Knowledge Quiz", description: "A deeper interpretation/knowledge challenge with options.",  prompt: "", enabled: false },
+  IMAGE_QUIZ: { label: "Image Quiz",    description: "An image-based 'can you spot it / what is this?' challenge.", prompt: "", enabled: false },
+  KNOWLEDGE_QUIZ:         { label: "Knowledge Quiz", description: "A deeper interpretation/knowledge challenge with options.",  prompt: "", enabled: false },
   PREVENTIVE:       { label: "How-To / Tips", description: "Actionable steps or a checklist your audience can apply.",   prompt: "", enabled: true  },
   CTA:              { label: "Call to Action", description: "Community-building, follow-for-more, value-forward post.",  prompt: "", enabled: true  },
   REEL:             { label: "Reel",          description: "A short-form video script with on-screen text + voiceover.", prompt: "", enabled: true  },
@@ -217,7 +253,8 @@ function envBrandSeed(): Partial<BrandConfig> {
  */
 export function mergeBrand(partial?: Partial<BrandConfig> | null): BrandConfig {
   const env = envBrandSeed();
-  const p = partial ?? {};
+  const p = { ...(partial ?? {}) };
+  if (p.contentTypes) p.contentTypes = normalizeContentTypeKeys(p.contentTypes);
 
   const mergedContentTypes = {} as Record<ContentTypeId, ContentTypeConfig>;
   for (const id of Object.keys(DEFAULT_CONTENT_TYPES) as ContentTypeId[]) {

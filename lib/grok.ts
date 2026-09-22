@@ -19,10 +19,10 @@ export type PostType =
   | "quiz"
   | "carousel"
   | "myth-fact"
-  | "clinical-pearl"
+  | "pro-tip"
   | "case-study"
-  | "angiography-quiz"
-  | "ecg-quiz"
+  | "image-quiz"
+  | "knowledge-quiz"
   | "preventive"
   | "cta";
 
@@ -102,20 +102,20 @@ const POST_TYPE_PROMPTS: Record<PostType, string> = {
     "Create a 10-slide carousel breaking down a topic step by step",
   "myth-fact":
     "Create a myth vs fact post debunking a common misconception",
-  "clinical-pearl":
+  "pro-tip":
     "Share a high-value, save-worthy tip that helps your audience",
   "case-study":
     "Present a compelling real-world example or story with a clear takeaway",
-  "angiography-quiz":
+  "image-quiz":
     "Create an image-based 'can you spot it / what is this?' challenge",
-  "ecg-quiz": "Create an interpretation/knowledge quiz with a detailed analysis",
+  "knowledge-quiz": "Create an interpretation/knowledge quiz with a detailed analysis",
   preventive: "Create actionable how-to content with practical tips your audience can apply",
   cta: "Create a call-to-action post for audience engagement and community building",
 };
 
 // -- Post context passed to comment reply generator --------------------------
 export interface PostCommentContext {
-  postType?:      string;   // QUIZ | ECG_QUIZ | ANGIOGRAPHY_QUIZ | EDUCATIONAL | ...
+  postType?:      string;   // QUIZ | KNOWLEDGE_QUIZ | IMAGE_QUIZ | EDUCATIONAL | ...
   postTitle?:     string;
   postHook?:      string;   // The question text shown on the post
   postContent?:   string;   // First 800 chars of post content for AI context
@@ -391,7 +391,7 @@ export class GrokClient {
   /**
    * Generate a complete Instagram post for the configured brand/niche.
    */
-  async generateCardioPost(
+  async generatePost(
     type: PostType,
     tone: string = "professional",
     topic?: string
@@ -575,7 +575,7 @@ Best times should be 7:00, 12:00, 18:00, or 20:00 based on your audience's engag
       ctx = postContext;
     }
 
-    const isQuizType = ["QUIZ","ECG_QUIZ","ANGIOGRAPHY_QUIZ"].includes(ctx.postType ?? "");
+    const isQuizType = ["QUIZ","KNOWLEDGE_QUIZ","IMAGE_QUIZ"].includes(ctx.postType ?? "");
 
     // -- Detect commenter's answer letter(s) (A/B/C/D) -----------------------
     // Single-letter comments ("B", "B!", "b)") are almost always quiz answers
@@ -988,13 +988,13 @@ Return JSON:
   /**
    * Generate knowledge-quiz content (image/interpretation challenge).
    */
-  async generateECGQuiz(): Promise<{
+  async generateKnowledgeQuiz(): Promise<{
     question: string;
     options: string[];
     answer: number;
     explanation: string;
-    keyFindings: string[];
-    diagnosis: string;
+    keyPoints: string[];
+    finalAnswer: string;
   }> {
     const brand = await getBrand();
     const prompt = `Create a high-quality interpretation/knowledge quiz for your ${brand.niche} audience.
@@ -1005,8 +1005,8 @@ Return JSON:
   "options": ["Option A", "Option B", "Option C", "Option D"],
   "answer": 0,
   "explanation": "Detailed explanation of the findings (200 words)",
-  "keyFindings": ["finding 1", "finding 2", "finding 3", "finding 4"],
-  "diagnosis": "Final answer"
+  "keyPoints": ["point 1", "point 2", "point 3", "point 4"],
+  "finalAnswer": "Final answer"
 }
 
 Use varied and relevant patterns for your niche.`;
@@ -1026,8 +1026,8 @@ Use varied and relevant patterns for your niche.`;
       options: [],
       answer: 0,
       explanation: "",
-      keyFindings: [],
-      diagnosis: "",
+      keyPoints: [],
+      finalAnswer: "",
     });
   }
 }

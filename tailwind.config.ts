@@ -18,12 +18,6 @@ const config: Config = {
     },
     extend: {
       colors: {
-        // Legacy names kept, now THEME-AWARE so existing usages auto-follow the theme.
-        'cardio-red':     'rgb(var(--accent-rgb) / <alpha-value>)',
-        'cardio-pink':    'rgb(var(--accent-2-rgb) / <alpha-value>)',
-        'cardio-dark':    'rgb(var(--bg-rgb) / <alpha-value>)',
-        'cardio-surface': 'rgb(var(--surface-rgb) / <alpha-value>)',
-        'cardio-border':  '#1E1E2E',
         // ── Theme-aware semantic colors (driven by globals.css [data-theme]) ──
         // Use these instead of hardcoded red/pink so every page follows the theme.
         brand: {
@@ -127,7 +121,6 @@ const config: Config = {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
         'glass-gradient': 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-        'cardio-gradient': 'linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-2-rgb)) 50%, rgb(var(--accent-3-rgb)) 100%)',
         shimmer: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
       },
       backdropBlur: {

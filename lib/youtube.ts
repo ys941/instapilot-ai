@@ -126,8 +126,8 @@ function sanitizeTitle(raw: string): string {
  */
 /**
  * Convert any tag/phrase into a SINGLE valid hashtag token. A hashtag cannot
- * contain spaces — "heart attack symptoms" must become "#HeartAttackSymptoms",
- * never "#heart attack symptoms" (which renders as a broken #heart + plain text).
+ * contain spaces — "easy weeknight dinners" must become "#EasyWeeknightDinners",
+ * never "#easy weeknight dinners" (which renders as a broken #easy + plain text).
  * Multi-word phrases are PascalCased; single words are kept as-is.
  */
 function toHashtag(raw: string): string | null {

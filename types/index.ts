@@ -17,10 +17,10 @@ export type PostType =
   | "QUIZ"
   | "CAROUSEL"
   | "MYTH_FACT"
-  | "CLINICAL_PEARL"
+  | "PRO_TIP"
   | "CASE_STUDY"
-  | "ANGIOGRAPHY_QUIZ"
-  | "ECG_QUIZ"
+  | "IMAGE_QUIZ"
+  | "KNOWLEDGE_QUIZ"
   | "PREVENTIVE"
   | "CTA"
   | "REEL"
@@ -39,7 +39,7 @@ export type ToneType =
   | "Educational"
   | "Conversational"
   | "Inspirational"
-  | "Clinical";
+  | "Authoritative";
 
 // --- Content Generation --------------------------------------
 export interface ContentResult {

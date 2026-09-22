@@ -7,7 +7,13 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { BrandConfig, NEUTRAL_DEFAULT, mergeBrand } from "@/lib/brandConfig";
+import {
+  BrandConfig,
+  NEUTRAL_DEFAULT,
+  mergeBrand,
+  normalizeContentTypeIds,
+  normalizeContentTypeKeys,
+} from "@/lib/brandConfig";
 import { defaultChainFor, defaultVisionChainFor } from "@/lib/aiModels";
 
 interface AiChain { provider: string; model: string; fallbacks: Array<{ provider: string; model: string }>; }
@@ -242,7 +248,7 @@ export const DEFAULTS: AllPreferences = {
   autoPost: {
     enabled:       false,
     postsPerDay:   2,
-    postTypes:     ["EDUCATIONAL", "CLINICAL_PEARL", "QUIZ", "CAROUSEL"],
+    postTypes:     ["EDUCATIONAL", "PRO_TIP", "QUIZ", "CAROUSEL"],
     topics:        [],   // seeded from Settings → Brand
     scheduleDays:  [1, 2, 3, 4, 5],   // Mon - Fri
     scheduleTimes: ["08:00", "19:00"],
@@ -270,7 +276,7 @@ export const DEFAULTS: AllPreferences = {
     replyToComments:   true,
     postsPerDay:       1,
     topics:            [],
-    postTypes:         ["EDUCATIONAL", "CLINICAL_PEARL", "PREVENTIVE"],
+    postTypes:         ["EDUCATIONAL", "PRO_TIP", "PREVENTIVE"],
     customPromptExtra: "",
     postTimes:         ["19:00"],
     scheduleDays:      [0, 1, 2, 3, 4, 5, 6],
@@ -405,7 +411,7 @@ export function sanitizeTimeList(raw: unknown): string[] {
  * an empty/absent blob always yields a fresh default config.
  */
 function mergeOverDefaults(raw: Partial<AllPreferences> | null | undefined): AllPreferences {
-  const r = (raw ?? {}) as any;
+  const r = migrateContentTypeIds(raw);
   return {
     ai:            { ...DEFAULTS.ai,            ...((r.ai            as any) ?? {}) },
     notifications: { ...DEFAULTS.notifications, ...((r.notifications as any) ?? {}) },
@@ -418,6 +424,23 @@ function mergeOverDefaults(raw: Partial<AllPreferences> | null | undefined): All
     ytDefaultPrompt: typeof r.ytDefaultPrompt === "string" ? r.ytDefaultPrompt : (DEFAULTS.ytDefaultPrompt ?? ""),
     brand:         mergeBrand((r.brand as any) ?? null),
   };
+}
+
+/**
+ * Stored preferences may name content types by IDs that have since been renamed
+ * (see LEGACY_CONTENT_TYPE_IDS). Translate them on the way in, for reads and for
+ * incoming patches alike, so nothing downstream ever sees a legacy ID.
+ */
+function migrateContentTypeIds<T extends Partial<AllPreferences> | null | undefined>(raw: T): any {
+  const r = { ...((raw ?? {}) as any) };
+  for (const section of ["autoPost", "stories", "youtube"] as const) {
+    if (r[section] && typeof r[section] === "object" && Array.isArray(r[section].postTypes)) {
+      r[section] = { ...r[section], postTypes: normalizeContentTypeIds(r[section].postTypes) };
+    }
+  }
+  if (r.prompts && typeof r.prompts === "object") r.prompts = normalizeContentTypeKeys(r.prompts);
+  if (r.brand?.contentTypes) r.brand = { ...r.brand, contentTypes: normalizeContentTypeKeys(r.brand.contentTypes) };
+  return r;
 }
 
 /** Deep-merge a partial brand skin onto a complete current brand. */
@@ -441,7 +464,8 @@ function deepMergeBrand(current: BrandConfig, partial: Partial<BrandConfig>): Br
 }
 
 /** Shallow-merge a partial over a base AllPreferences (per-section merge). */
-function mergePartial(base: AllPreferences, prefs: Partial<AllPreferences>): AllPreferences {
+function mergePartial(base: AllPreferences, patch: Partial<AllPreferences>): AllPreferences {
+  const prefs = migrateContentTypeIds(patch) as Partial<AllPreferences>;
   return {
     ai:            { ...base.ai,            ...(prefs.ai            ?? {}) },
     notifications: { ...base.notifications, ...(prefs.notifications ?? {}) },

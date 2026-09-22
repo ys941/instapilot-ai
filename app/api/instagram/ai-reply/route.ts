@@ -53,7 +53,7 @@ async function buildPostContext(
 
     if (!post) return postTitle ? { postTitle } : {};
 
-    const isQuiz = ["QUIZ", "ECG_QUIZ", "ANGIOGRAPHY_QUIZ"].includes(post.type);
+    const isQuiz = ["QUIZ", "KNOWLEDGE_QUIZ", "IMAGE_QUIZ"].includes(post.type);
     let correctLetter: string | undefined;
     let correctAnswer: string | undefined;
 

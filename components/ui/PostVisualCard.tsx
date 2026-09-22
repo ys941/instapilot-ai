@@ -6,8 +6,9 @@ import {
   Heart, Loader2, ImageIcon, CheckCircle, XCircle,
   Zap, BookOpen, HelpCircle, Gem, Microscope,
   Shield, Film, ChevronLeft, ChevronRight, RefreshCw,
-  BellRing, Sparkles, Activity, AlertTriangle, Stethoscope,
+  BellRing, Sparkles, AlertTriangle, Layers, Lightbulb,
 } from "lucide-react";
+import { normalizeContentTypeId } from "@/lib/brandConfig";
 import toast from "react-hot-toast";
 import { useBrand } from "@/components/BrandContext";
 
@@ -161,27 +162,33 @@ function parseCleanBullets(content: string, max = 5): string[] {
     .slice(0, max);
 }
 
-function parseEcgSections(content: string): { caseInfo: string; ecgFindings: string[] } {
+/**
+ * The setup line and key points of a knowledge quiz. Reads the headings the
+ * prompt asks for (SETUP, KEY POINTS) and the ones older posts used (CASE,
+ * ECG FINDINGS).
+ */
+function parseQuizSections(content: string): { caseInfo: string; keyPoints: string[] } {
   const caseMatch = content.match(
-    /CASE(?:\s*DETAILS?)?\s*[:\-]\s*([\s\S]+?)(?=ECG\s*FINDINGS?|[A-D][).:]\s|\bQUESTION\b|$)/i
+    /(?:SETUP|CASE(?:\s*DETAILS?)?)\s*[:\-]\s*([\s\S]+?)(?=KEY\s*POINTS?|ECG\s*FINDINGS?|[A-D][).:]\s|\bQUESTION\b|$)/i
   );
   const caseInfo = caseMatch
     ? caseMatch[1].replace(/\*\*/g, "").replace(/\n+/g, " ").replace(/[-•●]\s*/g, "").trim().slice(0, 130)
     : "";
 
-  const ecgMatch = content.match(
-    /ECG\s*FINDINGS?\s*[:\-]\s*([\s\S]+?)(?=[A-D][).:]\s|\bQUESTION\b|\bANSWER\b|$)/i
+  const pointsMatch = content.match(
+    /(?:KEY\s*POINTS?|ECG\s*FINDINGS?)\s*[:\-]\s*([\s\S]+?)(?=[A-D][).:]\s|\bQUESTION\b|\bANSWER\b|$)/i
   );
-  let ecgFindings: string[] = [];
-  if (ecgMatch) {
-    ecgFindings = ecgMatch[1]
-      .replace(/\*\*/g, "")
-      .split(/[,\n•●\-]+/)
-      .map((s) => s.trim())
+  let keyPoints: string[] = [];
+  if (pointsMatch) {
+    const raw = pointsMatch[1].replace(/\*\*/g, "").trim();
+    // One point per line; a single-line list (older posts) is split on commas.
+    keyPoints = raw
+      .split(raw.includes("\n") ? /[\n•●]+/ : /[,•●]+/)
+      .map((s) => s.trim().replace(/^[-\s]+/, ""))
       .filter((s) => s.length > 3)
       .slice(0, 5);
   }
-  return { caseInfo, ecgFindings };
+  return { caseInfo, keyPoints };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -275,7 +282,7 @@ function EducationalCard({ hook, content }: { hook: string; content: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. QUIZ  -  CATH LAB QUIZ style
+// 2. QUIZ
 // ─────────────────────────────────────────────────────────────────────────────
 function QuizCard({ hook, content }: { hook: string; content: string }) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -439,9 +446,9 @@ function MythFactCard({ hook, content }: { hook: string; content: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. CLINICAL PEARL
+// 4. PRO TIP
 // ─────────────────────────────────────────────────────────────────────────────
-function ClinicalPearlCard({ hook, content }: { hook: string; content: string }) {
+function ProTipCard({ hook, content }: { hook: string; content: string }) {
   // No .slice() — show every line
   const CTA_RE = /^(save this|share this|follow for|drop your|comment below|let me know|tag a|like if)/i;
   const QCTA_RE = /^(what|which|how|when|do you|have you|can you|drop|comment|follow|save|share|tag)/i;
@@ -492,7 +499,16 @@ function ClinicalPearlCard({ hook, content }: { hook: string; content: string })
 // ─────────────────────────────────────────────────────────────────────────────
 function CaseStudyCard({ hook, content }: { hook: string; content: string }) {
   // Parse sections from the structured case study content
-  const sectionLabels = ["PRESENTATION", "KEY FINDINGS", "DIAGNOSIS", "MANAGEMENT", "OUTCOME", "LEARNING POINT"];
+  // Display label → the headings that start that section. The first of each is
+  // what the prompt asks for; the rest are what older posts used.
+  const SECTION_HEADINGS: Array<[string, string[]]> = [
+    ["THE SETUP",    ["THE SETUP", "SETUP", "PRESENTATION"]],
+    ["KEY DETAILS",  ["KEY DETAILS", "WHAT HAPPENED", "KEY FINDINGS", "DIAGNOSIS"]],
+    ["THE APPROACH", ["THE APPROACH", "APPROACH", "MANAGEMENT"]],
+    ["OUTCOME",      ["OUTCOME"]],
+    ["TAKEAWAY",     ["TAKEAWAY", "LEARNING POINT"]],
+  ];
+  const sectionLabels = SECTION_HEADINGS.flatMap(([, headings]) => headings);
   const CTA_RE = /^(save this|share this|what would you|drop your|comment below|let me know|tag a)/i;
 
   // Extract sections by label, or fall back to line-by-line
@@ -501,8 +517,15 @@ function CaseStudyCard({ hook, content }: { hook: string; content: string }) {
   for (const raw of content.split("\n")) {
     const line = raw.replace(/\*\*/g, "").trim();
     if (!line) continue;
-    const headerMatch = sectionLabels.find((s) => new RegExp(`^${s}\\s*[:\\-]?`, "i").test(line));
-    if (headerMatch) { currentSection = headerMatch; continue; }
+    const headerMatch = SECTION_HEADINGS.find(([, headings]) =>
+      headings.some((s) => new RegExp(`^${s}\\s*[:\\-]?`, "i").test(line)));
+    if (headerMatch) {
+      currentSection = headerMatch[0];
+      // "THE SETUP: text" — keep the text that follows the heading on the same line.
+      const rest = line.replace(new RegExp(`^(?:${headerMatch[1].join("|")})\\s*[:\\-]?\\s*`, "i"), "");
+      if (rest) sectionMap[currentSection] = (sectionMap[currentSection] ? sectionMap[currentSection] + " " : "") + rest;
+      continue;
+    }
     if (currentSection) sectionMap[currentSection] = (sectionMap[currentSection] ? sectionMap[currentSection] + " " : "") + line;
   }
 
@@ -528,7 +551,7 @@ function CaseStudyCard({ hook, content }: { hook: string; content: string }) {
         style={{ paddingLeft: 20, paddingRight: 14, paddingTop: 16, paddingBottom: 16 }}>
         <div className="flex flex-col items-center text-center mb-1">
           <div className="flex items-center justify-between w-full mb-1">
-            <DarkIcon size={44}><Stethoscope size={44} color={ICON_CLR} /></DarkIcon>
+            <DarkIcon size={44}><BookOpen size={44} color={ICON_CLR} /></DarkIcon>
             <div className="text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded"
               style={{ background: `${RED}20`, border: `1px solid ${RED}35`, color: RED }}>
               STORY / EXAMPLE
@@ -573,15 +596,15 @@ function CaseStudyCard({ hook, content }: { hook: string; content: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 6. ECG QUIZ
+// 6. KNOWLEDGE QUIZ
 // ─────────────────────────────────────────────────────────────────────────────
-function EcgQuizCard({ hook, content }: { hook: string; content: string }) {
+function KnowledgeQuizCard({ hook, content }: { hook: string; content: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const opts = ["A", "B", "C", "D"];
   const safe = stripAnswerSections(content);
   const lines = safe.split("\n").filter((l) => l.trim());
   const optLines = lines.filter((l) => /^[A-D][).:]/.test(l.trim())).slice(0, 4);
-  const { caseInfo, ecgFindings } = parseEcgSections(safe);
+  const { caseInfo, keyPoints } = parseQuizSections(safe);
 
   return (
     <div
@@ -606,47 +629,48 @@ function EcgQuizCard({ hook, content }: { hook: string; content: string }) {
           <div style={{ height: 1, width: 22, background: `${GOLD}45` }} />
         </div>
 
-        {/* ECG Strip */}
+        {/* Accent strip (rising bars) */}
         <div
           className="rounded-xl relative overflow-hidden mb-2"
           style={{ height: 44, background: `${RED}08`, border: `1px solid ${RED}22`, flexShrink: 0 }}
         >
           <svg viewBox="0 0 300 44" className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-            {[1,2,3,4,5].map((i) => <line key={`v${i}`} x1={i*60} y1="0" x2={i*60} y2="44" stroke={`${RED}20`} strokeWidth="0.5" />)}
             {[1,2,3].map((i) => <line key={`h${i}`} x1="0" y1={i*11} x2="300" y2={i*11} stroke={`${RED}20`} strokeWidth="0.5" />)}
-            <motion.polyline
-              points="0,22 22,22 30,22 34,6 38,38 42,22 60,22 88,22 96,22 100,4 104,40 108,22 126,22 154,22 162,22 166,5 170,39 174,22 192,22 224,22 232,22 236,6 240,38 244,22 262,22 300,22"
-              fill="none" stroke={RED} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 2.5, ease: "easeInOut", repeat: Infinity, repeatType: "loop" }}
-            />
+            {[10, 16, 13, 21, 18, 26, 23, 31, 28, 36].map((h, i) => (
+              <motion.rect
+                key={i}
+                x={i * 30 + 9} width={12} rx={2} fill={RED} opacity={0.35 + i * 0.065}
+                initial={{ height: 0, y: 42 }}
+                animate={{ height: h, y: 42 - h }}
+                transition={{ duration: 0.6, delay: i * 0.08, repeat: Infinity, repeatType: "reverse", repeatDelay: 1.6 }}
+              />
+            ))}
           </svg>
           <span className="absolute top-1 left-2 text-[7px] font-mono" style={{ color: `${RED}55` }}>VISUAL CHALLENGE</span>
         </div>
 
-        {/* CASE INFO row */}
+        {/* SETUP row */}
         {caseInfo && (
           <div
             className="flex items-start gap-2 rounded-lg px-2.5 py-1.5 mb-1.5"
             style={{ background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.25)", flexShrink: 0 }}
           >
-            <span className="text-[8px] font-bold uppercase tracking-wider flex-shrink-0 mt-0.5" style={{ color: "#60a5fa" }}>CASE</span>
+            <span className="text-[8px] font-bold uppercase tracking-wider flex-shrink-0 mt-0.5" style={{ color: "#60a5fa" }}>SETUP</span>
             <p className="text-[10px] leading-snug" style={{ color: "rgba(255,255,255,0.78)" }}>
               {caseInfo}
             </p>
           </div>
         )}
 
-        {/* ECG FINDINGS chips */}
-        {ecgFindings.length > 0 && (
+        {/* KEY POINTS chips */}
+        {keyPoints.length > 0 && (
           <div
             className="rounded-lg px-2.5 py-1.5 mb-1.5"
             style={{ background: `${RED}08`, border: `1px solid ${RED}28`, flexShrink: 0 }}
           >
-            <p className="text-[8px] font-bold uppercase tracking-wider mb-1" style={{ color: RED }}>Key Findings</p>
+            <p className="text-[8px] font-bold uppercase tracking-wider mb-1" style={{ color: RED }}>Key Points</p>
             <div className="flex flex-wrap gap-1">
-              {ecgFindings.map((f, i) => (
+              {keyPoints.map((f, i) => (
                 <span
                   key={i}
                   className="text-[9px] px-2 py-0.5 rounded"
@@ -705,9 +729,9 @@ function EcgQuizCard({ hook, content }: { hook: string; content: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 7. ANGIOGRAPHY QUIZ
+// 7. IMAGE QUIZ
 // ─────────────────────────────────────────────────────────────────────────────
-function AngiographyQuizCard({ hook, content }: { hook: string; content: string }) {
+function ImageQuizCard({ hook, content }: { hook: string; content: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const opts = ["A", "B", "C", "D"];
   const safe = stripAnswerSections(content);
@@ -737,17 +761,19 @@ function AngiographyQuizCard({ hook, content }: { hook: string; content: string 
           </div>
         </div>
 
-        {/* Coronary vessel diagram */}
+        {/* Focus frame: corner brackets around a pulsing target */}
         <div
           className="rounded-xl relative overflow-hidden mb-2"
           style={{ height: 58, background: `${RED}07`, border: `1px solid ${RED}20` }}
         >
           <svg viewBox="0 0 200 52" className="absolute inset-0 w-full h-full">
-            <motion.path d="M100,6 C100,6 78,14 66,26 C54,38 60,46 70,46" fill="none" stroke={`${RED}cc`} strokeWidth="2.5" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 2, repeat: Infinity, repeatType: "loop" }} />
-            <motion.path d="M100,6 C100,6 122,14 134,26 C146,38 140,46 130,46" fill="none" stroke={`${RED}88`} strokeWidth="2" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 2.3, repeat: Infinity, repeatType: "loop", delay: 0.3 }} />
-            <motion.path d="M100,6 C100,6 100,22 100,40" fill="none" stroke={`${RED}99`} strokeWidth="1.8" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.8, repeat: Infinity, repeatType: "loop", delay: 0.6 }} />
-            <circle cx="72" cy="33" r="4" fill={`${RED}35`} stroke={RED} strokeWidth="1.2" />
-            <text x="80" y="36" fontSize="7" fill={RED} fontWeight="bold">?</text>
+            {["M70,12 L70,6 L78,6", "M130,12 L130,6 L122,6", "M70,40 L70,46 L78,46", "M130,40 L130,46 L122,46"].map((d) => (
+              <path key={d} d={d} fill="none" stroke={`${RED}aa`} strokeWidth="2" strokeLinecap="round" />
+            ))}
+            <motion.circle cx="100" cy="26" fill={`${RED}22`} stroke={RED} strokeWidth="1.2"
+              initial={{ r: 6 }} animate={{ r: 11 }}
+              transition={{ duration: 1.4, repeat: Infinity, repeatType: "reverse" }} />
+            <text x="97" y="30" fontSize="10" fill={RED} fontWeight="bold">?</text>
           </svg>
           <span className="absolute top-1 left-2 text-[7px]" style={{ color: `${RED}55` }}>WHAT IS THIS?</span>
         </div>
@@ -994,7 +1020,7 @@ function CarouselCardCompact({
     if (h.includes("emergency") || h.includes("urgent") || h.includes("immediate") || h.includes("alarm"))
       return <BellRing size={sz} color={dark} fill={dark} />;
     if (h.includes("exert") || h.includes("exercise") || h.includes("physical") || h.includes("activ"))
-      return <Activity size={sz} color={dark} />;
+      return <Lightbulb size={sz} color={dark} />;
     if (h.includes("inform") || h.includes("learn") || h.includes("aware") || h.includes("stay") || h.includes("spark"))
       return <Sparkles size={sz} color={dark} fill={dark} />;
     if (h.includes("save") || h.includes("share") || h.includes("follow") || h.includes("bookmark"))
@@ -1005,9 +1031,9 @@ function CarouselCardCompact({
       return <Shield size={sz} color={dark} fill={dark} />;
     if (h.includes("warning") || h.includes("alert") || h.includes("sign") || h.includes("danger"))
       return <AlertTriangle size={sz} color={dark} fill={dark} />;
-    if (h.includes("diagnos") || h.includes("treat") || h.includes("cath") || h.includes("clinical"))
-      return <Stethoscope size={sz} color={dark} />;
-    const defaults = [Heart, Activity, Shield, Zap, BookOpen, BellRing, AlertTriangle];
+    if (h.includes("how") || h.includes("step") || h.includes("method") || h.includes("tip"))
+      return <Sparkles size={sz} color={dark} />;
+    const defaults = [Lightbulb, Layers, Shield, Zap, BookOpen, BellRing, Sparkles];
     const Icon = defaults[slideIndex % defaults.length];
     return <Icon size={sz} color={dark} fill={dark} />;
   };
@@ -1030,20 +1056,16 @@ function CarouselCardCompact({
           className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10"
           style={{ paddingLeft: 20, paddingRight: 14, paddingTop: 16, paddingBottom: 10 }}
         >
-          <svg viewBox="0 0 120 110" style={{ width: 62, opacity: 0.82 }}>
-            <path d="M60,95 C28,74 8,57 8,36 C8,20 20,10 34,12 C43,13 52,19 60,28 C68,19 77,13 86,12 C100,10 112,20 112,36 C112,57 92,74 60,95Z" fill="none" stroke={ICON_CLR} strokeWidth="3.5" strokeLinecap="round" />
-            <path d="M60,28 C59,22 57,14 55,9 C53,4 63,2 65,8 C67,14 63,24 60,28Z" fill="none" stroke={ICON_CLR} strokeWidth="2" />
-            <path d="M57,26 C53,21 47,17 42,14" fill="none" stroke={ICON_CLR} strokeWidth="2" strokeLinecap="round" />
-            <path d="M56,34 C50,40 42,50 38,64 C34,76 39,88 48,92" fill="none" stroke={ICON_CLR} strokeWidth="1.5" strokeLinecap="round" />
-            <path d="M64,34 C70,40 78,50 82,62 C86,74 81,86 72,91" fill="none" stroke={ICON_CLR} strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
+          <Layers size={52} color={ICON_CLR} strokeWidth={1.6} style={{ opacity: 0.85 }} />
           <div className="flex items-center gap-1.5 px-4 py-1.5 rounded-full" style={{ background: RED }}>
-            <span className="text-[9px]">⚠</span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white">WARNING SIGNS</span>
+            <span className="text-[9px]">👆</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white">SWIPE TO LEARN</span>
           </div>
-          <svg viewBox="0 0 320 28" style={{ width: "84%", opacity: 0.2 }} preserveAspectRatio="none">
-            <polyline points="0,14 30,14 42,14 46,3 50,25 54,14 74,14 104,14 116,14 120,2 124,26 128,14 148,14 178,14 190,14 194,3 198,25 202,14 222,14 252,14 264,14 268,3 272,25 276,14 296,14 320,14" fill="none" stroke={RED} strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
+          <div className="flex items-center gap-1.5" style={{ opacity: 0.35 }}>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <span key={i} className="rounded-full" style={{ width: i === 0 ? 16 : 6, height: 6, background: RED }} />
+            ))}
+          </div>
           <h1 className="font-black text-white text-center leading-tight" style={{ fontSize: "clamp(22px, 5.5vw, 32px)", fontFamily: "var(--font-sora), sans-serif" }}>
             {(hook || slide.headline).replace(/\*\*/g, "")}
           </h1>
@@ -1166,14 +1188,15 @@ export default function PostVisualCard({
     if (postType === "CAROUSEL" && carouselSlides?.length) {
       return <CarouselCardCompact slides={carouselSlides} hook={hook} />;
     }
-    switch (postType) {
+    // Legacy type IDs can still arrive from posts saved before the rename.
+    switch (normalizeContentTypeId(postType)) {
       case "EDUCATIONAL":       return <EducationalCard hook={hook} content={content} />;
       case "QUIZ":              return <QuizCard hook={hook} content={content} />;
       case "MYTH_FACT":         return <MythFactCard hook={hook} content={content} />;
-      case "CLINICAL_PEARL":    return <ClinicalPearlCard hook={hook} content={content} />;
+      case "PRO_TIP":           return <ProTipCard hook={hook} content={content} />;
       case "CASE_STUDY":        return <CaseStudyCard hook={hook} content={content} />;
-      case "ECG_QUIZ":          return <EcgQuizCard hook={hook} content={content} />;
-      case "ANGIOGRAPHY_QUIZ":  return <AngiographyQuizCard hook={hook} content={content} />;
+      case "KNOWLEDGE_QUIZ":    return <KnowledgeQuizCard hook={hook} content={content} />;
+      case "IMAGE_QUIZ":        return <ImageQuizCard hook={hook} content={content} />;
       case "PREVENTIVE":        return <PreventiveCard hook={hook} content={content} />;
       case "CTA":               return <CtaCard hook={hook} cta={cta} />;
       case "REEL":              return <ReelCard hook={hook} reelScript={reelScript} cta={cta} />;

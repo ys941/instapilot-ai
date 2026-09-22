@@ -36,13 +36,13 @@ interface DraftPost {
 const TYPE_COLORS: Record<string, string> = {
   EDUCATIONAL:      "bg-blue-500/20 text-blue-300 border-blue-500/30",
   QUIZ:             "bg-brand/20 text-brand-light border-brand/30",
-  CLINICAL_PEARL:   "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  PRO_TIP:   "bg-purple-500/20 text-purple-300 border-purple-500/30",
   MYTH_FACT:        "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
   CASE_STUDY:       "bg-brand-light/20 text-brand-light border-brand-light/30",
   CAROUSEL:         "bg-orange-500/20 text-orange-300 border-orange-500/30",
   REEL:             "bg-teal-500/20 text-teal-300 border-teal-500/30",
-  ECG_QUIZ:         "bg-brand/20 text-brand-light border-brand/30",
-  ANGIOGRAPHY_QUIZ: "bg-brand-light/20 text-brand-light border-brand-light/30",
+  KNOWLEDGE_QUIZ:         "bg-brand/20 text-brand-light border-brand/30",
+  IMAGE_QUIZ: "bg-brand-light/20 text-brand-light border-brand-light/30",
   PREVENTIVE:       "bg-green-500/20 text-green-300 border-green-500/30",
   CTA:              "bg-amber-500/20 text-amber-300 border-amber-500/30",
   STORY:            "bg-gradient-to-r from-fuchsia-500/20 to-orange-500/20 text-fuchsia-300 border-fuchsia-500/30",
@@ -51,13 +51,13 @@ const TYPE_COLORS: Record<string, string> = {
 const TYPE_LABELS: Record<string, string> = {
   EDUCATIONAL:      "Educational",
   QUIZ:             "Quiz",
-  CLINICAL_PEARL:   "Pro Tip",
+  PRO_TIP:   "Pro Tip",
   MYTH_FACT:        "Myth vs Fact",
   CASE_STUDY:       "Story / Example",
   CAROUSEL:         "Carousel",
   REEL:             "Reel",
-  ECG_QUIZ:         "Knowledge Quiz",
-  ANGIOGRAPHY_QUIZ: "Image Quiz",
+  KNOWLEDGE_QUIZ:         "Knowledge Quiz",
+  IMAGE_QUIZ: "Image Quiz",
   PREVENTIVE:       "How-To / Tips",
   CTA:              "Call to Action",
   STORY:            "📖 Story",
@@ -839,7 +839,7 @@ export default function SchedulerPage() {
             {[
               { type: "EDUCATIONAL",    label: "Educational" },
               { type: "QUIZ",           label: "Quiz" },
-              { type: "CLINICAL_PEARL", label: "Pro Tip" },
+              { type: "PRO_TIP", label: "Pro Tip" },
               { type: "CAROUSEL",       label: "Carousel" },
             ].map(({ type, label }) => (
               <div key={type} className="flex items-center gap-1.5">

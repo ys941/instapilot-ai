@@ -11,23 +11,25 @@ import { resolveBrandId } from "@/lib/brands";
 import { brandFromQuery, brandFromBody } from "@/lib/brandRequest";
 import { getBrand } from "@/lib/preferences";
 import { BrandConfig, atHandle, typeLabel } from "@/lib/brandConfig";
+import { LEGACY_CONTENT_TYPE_IDS, normalizeContentTypeId } from "@/lib/brandConfig";
 
 // --- VALIDATION -------------------------------------------------------------------
 
 const GenerateSchema = z.object({
-  type: z.enum([
+  // Legacy type IDs (from before the content types were renamed) are accepted.
+  type: z.preprocess(normalizeContentTypeId, z.enum([
     "EDUCATIONAL",
     "QUIZ",
     "CAROUSEL",
     "MYTH_FACT",
-    "CLINICAL_PEARL",
+    "PRO_TIP",
     "CASE_STUDY",
-    "ANGIOGRAPHY_QUIZ",
-    "ECG_QUIZ",
+    "IMAGE_QUIZ",
+    "KNOWLEDGE_QUIZ",
     "PREVENTIVE",
     "CTA",
     "REEL",
-  ]),
+  ])),
   tone: z.enum(["professional", "educational", "engaging", "conversational", "authoritative"]).default("professional"),
   topic: z.string().min(3).max(300),
   customPrompt: z.string().max(1000).optional(),
@@ -37,8 +39,8 @@ const GenerateSchema = z.object({
 });
 
 // --- AI-DEFAULTS MAPPING ----------------------------------------------------------
-// The AI Settings tab stores human-readable labels (e.g. "Professional", "Clinical
-// Pearl"). Map them onto this route's strict enums so `prefs.ai.defaultTone` /
+// The AI Settings tab stores human-readable labels (e.g. "Professional", "Pro
+// Tip"). Map them onto this route's strict enums so `prefs.ai.defaultTone` /
 // `defaultType` can act as fallbacks when the request omits tone/type. Unknown /
 // absent values return null → caller leaves the field untouched (no crash).
 
@@ -59,14 +61,23 @@ const TYPE_MAP: Record<string, string> = {
   "myth-fact":       "MYTH_FACT",
   "myth fact":       "MYTH_FACT",
   myth_fact:         "MYTH_FACT",
-  "clinical pearl":  "CLINICAL_PEARL",
-  clinical_pearl:    "CLINICAL_PEARL",
+  "pro tip":         "PRO_TIP",
+  pro_tip:           "PRO_TIP",
   "case study":      "CASE_STUDY",
   case_study:        "CASE_STUDY",
-  "angiography quiz":"ANGIOGRAPHY_QUIZ",
-  angiography_quiz:  "ANGIOGRAPHY_QUIZ",
-  "ecg quiz":        "ECG_QUIZ",
-  ecg_quiz:          "ECG_QUIZ",
+  "story / example": "CASE_STUDY",
+  "image quiz":      "IMAGE_QUIZ",
+  image_quiz:        "IMAGE_QUIZ",
+  "knowledge quiz":  "KNOWLEDGE_QUIZ",
+  knowledge_quiz:    "KNOWLEDGE_QUIZ",
+  "how-to / tips":   "PREVENTIVE",
+  // Legacy labels and IDs saved before the content types were renamed.
+  ...Object.fromEntries(
+    Object.entries(LEGACY_CONTENT_TYPE_IDS).flatMap(([id, to]) => [
+      [id.toLowerCase(), to],
+      [id.toLowerCase().replace(/_/g, " "), to],
+    ]),
+  ),
   preventive:        "PREVENTIVE",
   cta:               "CTA",
   reel:              "REEL",
@@ -328,7 +339,7 @@ Respond with this exact JSON structure:
   "carouselSlides": null
 }`,
 
-    CLINICAL_PEARL: `${baseContext}
+    PRO_TIP: `${baseContext}
 
 Create a PRO TIP post -- a high-value, save-worthy insight for your ${niche} audience.
 
@@ -405,7 +416,7 @@ Respond with this exact JSON structure:
   "carouselSlides": null
 }`,
 
-    ANGIOGRAPHY_QUIZ: `${baseContext}
+    IMAGE_QUIZ: `${baseContext}
 
 Create an IMAGE QUIZ post -- a "can you spot it / what is this?" challenge.
 
@@ -445,7 +456,7 @@ Respond with this exact JSON structure:
   "carouselSlides": null
 }`,
 
-    ECG_QUIZ: `${baseContext}
+    KNOWLEDGE_QUIZ: `${baseContext}
 
 Create a KNOWLEDGE QUIZ post -- a deeper interpretation/knowledge challenge.
 
@@ -690,10 +701,10 @@ async function callAI(
 const VIRAL_BASE: Record<string, [number, number]> = {
   CAROUSEL:        [0.83, 0.97],
   QUIZ:            [0.79, 0.94],
-  ECG_QUIZ:        [0.79, 0.94],
-  ANGIOGRAPHY_QUIZ:[0.79, 0.94],
+  KNOWLEDGE_QUIZ:        [0.79, 0.94],
+  IMAGE_QUIZ:[0.79, 0.94],
   REEL:            [0.80, 0.96],
-  CLINICAL_PEARL:  [0.76, 0.92],
+  PRO_TIP:  [0.76, 0.92],
   CASE_STUDY:      [0.74, 0.90],
   MYTH_FACT:       [0.74, 0.90],
   EDUCATIONAL:     [0.71, 0.88],

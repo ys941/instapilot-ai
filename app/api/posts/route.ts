@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { renderPostToJpeg } from "@/lib/postTypeImageGenerator";
 import { uploadBufferToStableCdn } from "@/lib/imageGenerator";
 import { Prisma } from "@prisma/client";
+import { normalizeContentTypeId } from "@/lib/brandConfig";
 
 // ---------------------------------------------
 // VALIDATION
@@ -14,10 +15,11 @@ import { Prisma } from "@prisma/client";
 // nullish() = optional() + nullable()  -  accepts string | null | undefined
 // AI returns null for fields not relevant to the post type (e.g. reelScript on MYTH_FACT)
 const CreatePostSchema = z.object({
-  type: z.enum([
-    "EDUCATIONAL", "QUIZ", "CAROUSEL", "MYTH_FACT", "CLINICAL_PEARL",
-    "CASE_STUDY", "ANGIOGRAPHY_QUIZ", "ECG_QUIZ", "PREVENTIVE", "CTA", "REEL",
-  ]),
+  // Legacy type IDs (from before the content types were renamed) are accepted.
+  type: z.preprocess(normalizeContentTypeId, z.enum([
+    "EDUCATIONAL", "QUIZ", "CAROUSEL", "MYTH_FACT", "PRO_TIP",
+    "CASE_STUDY", "IMAGE_QUIZ", "KNOWLEDGE_QUIZ", "PREVENTIVE", "CTA", "REEL",
+  ])),
   title:   z.string().min(1).max(500),
   content: z.string().min(1).max(50000),
   hook:        z.string().max(2000).nullish(),

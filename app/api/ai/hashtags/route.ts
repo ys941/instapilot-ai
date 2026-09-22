@@ -5,7 +5,7 @@
  * Used by the standalone Hashtags page.
  *
  * Platform-aware (backward compatible — defaults to Instagram):
- *   - Instagram: a reach-tiered MIX of hashtags derived from the specific clinical
+ *   - Instagram: a reach-tiered MIX of hashtags derived from the specific
  *     entities in the topic (1-2 broad + 2-3 mid-niche + 1-2 long-tail), all on-topic.
  *   - YouTube (platform=youtube|both or youtubeMode): a SMALL set (3-5) of searchable,
  *     content-specific keyword tags + always #shorts, optimized for YT search/suggested.

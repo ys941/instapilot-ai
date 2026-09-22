@@ -58,7 +58,7 @@ async function getPostCommentContext(mediaId: string): Promise<PostCommentContex
     });
     if (post) {
       // Give quiz posts more content room so all A/B/C/D options are always visible
-      const isQuizPost = ["QUIZ","ECG_QUIZ","ANGIOGRAPHY_QUIZ"].includes(post.type);
+      const isQuizPost = ["QUIZ","KNOWLEDGE_QUIZ","IMAGE_QUIZ"].includes(post.type);
       const ctx: PostCommentContext = {
         postType:    post.type,
         postTitle:   post.title,
@@ -67,7 +67,7 @@ async function getPostCommentContext(mediaId: string): Promise<PostCommentContex
       };
       // Resolve quiz answer — prefer QUIZ_ANS: stored in reelScript (user-supplied),
       // fall back to AI-resolved answer via shared cache
-      const isQuiz = ["QUIZ","ECG_QUIZ","ANGIOGRAPHY_QUIZ"].includes(post.type);
+      const isQuiz = ["QUIZ","KNOWLEDGE_QUIZ","IMAGE_QUIZ"].includes(post.type);
       if (isQuiz) {
         if (post.reelScript?.startsWith("QUIZ_ANS:")) {
           const parts = post.reelScript.slice(9).split("|");
