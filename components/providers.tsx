@@ -6,6 +6,7 @@ import { Toaster } from "react-hot-toast";
 import { useState } from "react";
 import { BrandProvider } from "@/components/BrandContext";
 import { THEME_IDS, DEFAULT_THEME } from "@/lib/themes";
+import { DemoShim } from "@/components/DemoShim";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -39,6 +40,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <BrandProvider>
           {children}
         </BrandProvider>
+        <DemoShim />
         <Toaster
           position="bottom-right"
           gutter={8}

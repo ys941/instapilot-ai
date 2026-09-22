@@ -23,7 +23,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        window.location.replace("/");
+        window.location.replace(`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/`);
       } else {
         setError(data.error ?? "Invalid access key. Please try again.");
       }

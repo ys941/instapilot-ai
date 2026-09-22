@@ -12,7 +12,7 @@ import {
   Library,
   Activity,
   Settings,
-  Heart,
+  Play,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -170,7 +170,8 @@ export default function Sidebar({
   collapsed?:         boolean;
   onCollapsedChange?: (v: boolean) => void;
 }) {
-  const pathname = usePathname();
+  // Static exports use trailing slashes ("/scheduler/"); nav hrefs are without.
+  const pathname = usePathname().replace(/(.)\/$/, "$1");
   const router   = useRouter();
   const brand    = useBrand();
   // Controlled when the layout passes `collapsed`/`onCollapsedChange` (so the main
@@ -185,7 +186,7 @@ export default function Sidebar({
     await fetch("/api/auth/logout", { method: "POST" });
     // Hard redirect — same as Header — forces browser to re-read cleared cookie
     // through the new middleware so the session is truly gone.
-    window.location.href = "/login";
+    window.location.href = `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/login`;
   };
 
   // ── Desktop sidebar ──────────────────────────────────────────────────────────
@@ -213,7 +214,7 @@ export default function Sidebar({
           className="flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-red-500 via-pink-500 to-purple-600 flex items-center justify-center"
           style={{ boxShadow: "0 0 20px rgba(239,68,68,0.4)" }}
         >
-          <Heart size={18} className="text-white fill-white" />
+          <Play size={18} className="text-white fill-white" />
         </motion.div>
         <AnimatePresence>
           {!collapsed && (
@@ -351,7 +352,7 @@ export default function Sidebar({
                   className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-500 via-pink-500 to-purple-600 flex items-center justify-center"
                   style={{ boxShadow: "0 0 20px rgba(239,68,68,0.4)" }}
                 >
-                  <Heart size={18} className="text-white fill-white" />
+                  <Play size={18} className="text-white fill-white" />
                 </div>
                 <div>
                   <p className="font-bold text-base leading-tight gradient-text" style={{ fontFamily: "var(--font-sora), sans-serif" }}>

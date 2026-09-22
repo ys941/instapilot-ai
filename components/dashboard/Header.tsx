@@ -96,14 +96,15 @@ export default function Header({
   const pathname  = usePathname();
   const router    = useRouter();
   const brand     = useBrand();
-  const pageInfo  = pageTitles[pathname] ?? { title: "Dashboard", subtitle: "" };
+  // Static exports use trailing slashes ("/scheduler/"); the titles are keyed without.
+  const pageInfo  = pageTitles[pathname.replace(/(.)\/$/, "$1")] ?? { title: "Dashboard", subtitle: "" };
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     // Hard redirect so the browser sends the now-cleared session cookie to the
     // middleware on the very next request — soft navigation keeps the old
     // cached route and the session appears to persist.
-    window.location.href = "/login";
+    window.location.href = `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/login`;
   };
 
   const [searchOpen,         setSearchOpen]         = useState(false);

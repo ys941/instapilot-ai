@@ -1,5 +1,10 @@
-﻿﻿import type { NextConfig } from 'next'
+﻿import type { NextConfig } from 'next'
 import path from 'node:path'
+
+// NEXT_PUBLIC_DEMO=1 builds the public demo (scripts/build-demo.mjs): a static
+// export served from NEXT_PUBLIC_BASE_PATH, with /api answered in the browser by
+// lib/demo/api.ts. A normal build is unaffected.
+const isDemo = process.env.NEXT_PUBLIC_DEMO === '1'
 
 const nextConfig: NextConfig = {
   // Next.js infers the workspace root from the nearest lockfile, and can pick
@@ -48,6 +53,8 @@ const nextConfig: NextConfig = {
       },
     ],
     formats: ['image/avif', 'image/webp'],
+    // A static export has no image optimiser.
+    unoptimized: isDemo,
     minimumCacheTTL: 3600,
   },
   experimental: {
@@ -75,7 +82,8 @@ const nextConfig: NextConfig = {
     ],
   },
   // Standalone build for Docker (the Dockerfile copies .next/standalone).
-  output: 'standalone',
+  output: isDemo ? 'export' : 'standalone',
+  ...(isDemo ? { basePath: process.env.NEXT_PUBLIC_BASE_PATH || '', trailingSlash: true } : {}),
   env: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     // White-label: app name comes from env (Settings → Brand can override per account at runtime).

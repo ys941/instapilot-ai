@@ -14,6 +14,10 @@ and answers the comments and DMs it gets back. Any niche, your accounts, your AP
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000?style=flat-square&logo=nextdotjs)](https://nextjs.org)
 [![Self-hosted](https://img.shields.io/badge/self--hosted-no%20keys%20bundled-2D3748?style=flat-square)](#quickstart)
 
+[![Live demo](https://img.shields.io/badge/%E2%96%B6%20Try%20it-Live%20demo-E1306C?style=for-the-badge)](https://ys941.github.io/instapilot-ai/)
+
+**[▶ Try the live demo](https://ys941.github.io/instapilot-ai/)** — the real dashboard running a fictional brand in your browser. Nothing is posted and no AI is called.
+
 <img src="docs/shorts-filmstrip.png" alt="Cards from a Short this software wrote, rendered and published on its own" width="100%" />
 
 <sub><b>Not a mockup.</b> These are frames from <a href="https://youtube.com/shorts/QhR8nuC3Dck">a real Short</a> —

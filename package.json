@@ -8,6 +8,7 @@
     "predev": "node scripts/check-env.mjs",
     "dev": "next dev --turbo -p 3000",
     "build": "prisma generate && next build",
+    "build:demo": "node scripts/build-demo.mjs",
     "start": "next start",
     "lint": "eslint .",
     "postinstall": "prisma generate",
